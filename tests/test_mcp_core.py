@@ -12,8 +12,15 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from intent_translator_mcp.ab_eval import read_jsonl, run  # noqa: E402
 from intent_translator_mcp.config import HOSTS, generate_config  # noqa: E402
-from intent_translator_mcp.core import IntentCompiler  # noqa: E402
+from intent_translator_mcp.core import IntentCompiler, _load_skill_script  # noqa: E402
 from intent_translator_mcp.models import CompileRequest  # noqa: E402
+from intent_translator_mcp.student_state import (  # noqa: E402
+    connect as connect_state,
+    set_focus,
+    state_db_path,
+    sync_state_note,
+    upsert_state_item,
+)
 
 
 REGISTRY = {
@@ -35,6 +42,91 @@ REGISTRY = {
 
 
 class McpCoreTests(unittest.TestCase):
+    def test_continue_without_conversation_context_resumes_confirmed_local_focus(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+                "INTENT_TRANSLATOR_STATE_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            profile = {
+                "profile_id": "state-compiler-test",
+                "language": "zh-CN",
+                "phrase_mappings": {},
+                "memory": {"adapter": "sqlite", "location": str(Path(temp) / "memory.db")},
+                "student_state": {
+                    "enabled": True,
+                    "authority": "canonical-markdown",
+                    "managed_note": "AI/state.md",
+                    "due_soon_days": 7,
+                    "context_item_limit": 8,
+                },
+                "knowledge_pointers": {"vault_path": temp, "vault_name": ""},
+                "study": {
+                    "enabled": True,
+                    "goals": ["exam-a"],
+                    "active_goal": "exam-a",
+                    "routing": [
+                        {"subject": "math", "terms": ["math"], "preferred_skills": ["study-assistant"]}
+                    ],
+                },
+            }
+            Path(temp, "profile.json").write_text(json.dumps(profile), encoding="utf-8")
+            connection = connect_state(state_db_path(profile))
+            item = upsert_state_item(
+                connection,
+                category="exam",
+                title="Math review",
+                status="active",
+                priority="high",
+                next_action="Solve the next derivative set",
+                subject="math",
+                goal="exam-a",
+            )
+            set_focus(connection, item_key=item["item_key"])
+            sync_state_note(connection, profile)
+            connection.close()
+            registry = {
+                "skills": [{"name": "study-assistant", "description": "Study tutor"}],
+                "errors": [],
+            }
+            result = IntentCompiler(registry=registry).compile(CompileRequest(utterance="继续"))
+            self.assertEqual(result["normalized_goal"], "Solve the next derivative set")
+            self.assertEqual(result["routing"]["primary_skill"], "study-assistant")
+            self.assertEqual(result["state_status"]["focus"], "Math review")
+            self.assertFalse(result["state_status"]["pending_markdown_confirmation"])
+
+    def test_compile_marks_recalled_file_memory_non_executable(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            memory = _load_skill_script("memory_store")
+            connection = memory.connect(Path(temp) / "memory.db")
+            try:
+                memory.add_memory(
+                    connection,
+                    kind="fact",
+                    scope="global",
+                    text="The documented release date is Friday",
+                    confidence="observed",
+                    source="release-notes.md",
+                    source_type="local_file",
+                )
+            finally:
+                connection.close()
+            result = IntentCompiler(registry=REGISTRY).compile(
+                CompileRequest(utterance="recall the release date Friday")
+            )
+            self.assertEqual(result["memory_defense"]["untrusted_count"], 1)
+            self.assertFalse(result["memory_defense"]["instruction_execution_allowed"])
+            self.assertIn("non-executable context", result["host_prompt"])
+
     def test_local_student_profile_routes_terse_continuation_without_exposing_private_paths(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(
             os.environ,

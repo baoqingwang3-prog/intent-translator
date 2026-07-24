@@ -20,7 +20,7 @@ For most first-time users, install the Skill only. Add MCP after the basic workf
 
 ## Status
 
-Early public alpha, version `0.5.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Early public alpha, version `0.6.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -117,7 +117,7 @@ Installers create a versioned isolated venv under `~/.intent-translator/mcp/runt
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
-The server exposes ten tools: the seven intent, correction, and outcome tools plus `intent_shadow_observe`, `intent_shadow_review`, and `intent_study_pointer`. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
+The server exposes twelve tools: the previous ten plus `intent_memory_defense` and `intent_student_state`. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
 
 Generated host configurations force Python UTF-8 mode. When manually piping Chinese text through Windows PowerShell 5.1, set `$OutputEncoding`, console input/output encoding, `PYTHONUTF8=1`, and `PYTHONIOENCODING=utf-8`, or pass the text through a UTF-8 file. Normal MCP JSON stdio calls do not use the legacy PowerShell text pipeline.
 
@@ -167,7 +167,7 @@ See [docs/semantic-layer.md](docs/semantic-layer.md) for the JSON contract and t
 4. Discover installed Skills dynamically and select one primary owner.
 5. Execute and verify the task, then write memory only with appropriate authorization.
 
-For complex or consequential actions, an intent preflight also retrieves relevant past corrections and checks reversibility, external effects, sensitive data, and authorization. Search uses SQLite FTS5 plus Chinese n-grams. Memory conflicts remain visible, project rules can shadow global defaults, and sensitive memories require a retention period.
+For complex or consequential actions, an intent preflight also retrieves relevant past corrections and checks reversibility, external effects, sensitive data, and authorization. Search uses SQLite FTS5 plus Chinese n-grams. Memory conflicts remain visible, project rules can shadow global defaults, and sensitive memories require a retention period. Every memory carries provenance and a trust level: explicit user memory is trusted, model/file/web memory is non-authoritative evidence, and instruction-like or authority-claiming content is quarantined. Recalled memory is never executable authority.
 
 Brief feedback such as `太复杂了` becomes a pending correction and is stored durably only after one short confirmation. Decision receipts can show the resolved meaning, memory IDs, selected Skill, and confirmation boundary without exposing hidden model reasoning.
 

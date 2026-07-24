@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -29,13 +30,45 @@ from semantic_search import (  # noqa: E402
 )
 
 
-DB_SCHEMA_VERSION = 3
+DB_SCHEMA_VERSION = 4
 CONFIDENCE_VALUES = {"confirmed", "observed", "inferred"}
 SEVERITY_VALUES = {"low", "medium", "high", "critical"}
 OUTCOME_VALUES = {"heeded", "recurred", "unknown"}
 MEMORY_STATUS_VALUES = {"active", "superseded", "retracted", "expired"}
 SENSITIVITY_VALUES = {"standard", "sensitive"}
 CONFLICT_RESOLUTIONS = {"flag", "replace", "reject"}
+SOURCE_TYPE_VALUES = {
+    "user_explicit",
+    "user_confirmed",
+    "agent_inferred",
+    "local_file",
+    "external",
+    "imported",
+    "legacy",
+}
+TRUST_LEVEL_VALUES = {"trusted", "untrusted", "quarantined"}
+NON_AUTHORITATIVE_SOURCE_TYPES = {"agent_inferred", "local_file", "external", "imported"}
+AUTHORITY_MEMORY_KINDS = {"preference", "phrase", "decision", "warning", "instruction", "policy"}
+INJECTION_PATTERNS = (
+    re.compile(r"\b(?:ignore|disregard|override)\b.{0,80}\b(?:previous|prior|system|developer|safety|instructions?)\b", re.I),
+    re.compile(r"\b(?:reveal|print|show|expose)\b.{0,80}\b(?:system prompt|developer message|hidden instructions?|api key|token|password|secret)\b", re.I),
+    re.compile(r"\b(?:bypass|disable|evade|remove)\b.{0,80}\b(?:safety|policy|guardrails?|authorization|permissions?)\b", re.I),
+    re.compile(r"(?:忽略|无视|覆盖).{0,30}(?:之前|系统|开发者|安全|指令|规则)"),
+    re.compile(r"(?:泄露|显示|输出|告诉我).{0,30}(?:系统提示词|开发者消息|隐藏指令|密钥|令牌|密码)"),
+    re.compile(r"(?:绕过|关闭|移除).{0,30}(?:安全|策略|护栏|授权|权限)"),
+)
+UNTRUSTED_INSTRUCTION_PATTERNS = (
+    re.compile(r"^\s*(?:run|execute|delete|upload|publish|send|transfer|call|use)\b", re.I),
+    re.compile(r"^\s*(?:执行|运行|删除|上传|发布|发送|外发|调用|使用).{0,20}"),
+    re.compile(r"\b(?:system|developer)\s*(?:message|instruction|prompt)\s*:", re.I),
+    re.compile(r"(?:系统|开发者)(?:消息|指令|提示词)\s*[：:]"),
+)
+AUTHORITY_EXPANSION_PATTERNS = (
+    re.compile(r"\b(?:never ask|without (?:asking|confirmation|permission)|treat .{0,30} as authorization)\b", re.I),
+    re.compile(r"\balways\b.{0,60}\bwithout asking\b", re.I),
+    re.compile(r"(?:不用|无需|不必).{0,12}(?:确认|询问|授权|许可)"),
+    re.compile(r"(?:以后别问|默认授权|视为授权|直接).{0,20}(?:发布|删除|外发|付款|购买|上传)"),
+)
 
 
 def now_iso() -> str:
@@ -123,6 +156,10 @@ def connect(db_path: Path) -> sqlite3.Connection:
             "expires_at": "TEXT NOT NULL DEFAULT ''",
             "conflict_key": "TEXT NOT NULL DEFAULT ''",
             "supersedes_id": "INTEGER",
+            "source_type": "TEXT NOT NULL DEFAULT 'legacy'",
+            "trust_level": "TEXT NOT NULL DEFAULT 'trusted'",
+            "instruction_like": "INTEGER NOT NULL DEFAULT 0",
+            "quarantine_reason": "TEXT NOT NULL DEFAULT ''",
         },
     )
     connection.execute(
@@ -212,6 +249,33 @@ def connect(db_path: Path) -> sqlite3.Connection:
         )
         """
     )
+    if old_version < 4:
+        for row in connection.execute("SELECT * FROM memories").fetchall():
+            defense = memory_defense_assessment(
+                text=str(row["text"]),
+                kind=str(row["kind"]),
+                source_type="legacy",
+            )
+            connection.execute(
+                """
+                UPDATE memories
+                SET source_type = ?, trust_level = ?, instruction_like = ?, quarantine_reason = ?
+                WHERE id = ?
+                """,
+                (
+                    defense["source_type"],
+                    defense["trust_level"],
+                    int(defense["instruction_like"]),
+                    defense["quarantine_reason"],
+                    row["id"],
+                ),
+            )
+            record_memory_event(
+                connection,
+                int(row["id"]),
+                "trust_migrated",
+                defense,
+            )
     ensure_fts(connection)
     connection.execute(
         "INSERT OR REPLACE INTO schema_migrations(version, migrated_at, backup_path) VALUES (?, ?, ?)",
@@ -249,6 +313,14 @@ def decorate_memory(record: dict[str, Any], *, score: int | None = None) -> dict
     result = dict(record)
     result["expired"] = memory_is_expired(result)
     result["stale"] = memory_is_stale(result)
+    result["instruction_like"] = bool(result.get("instruction_like", 0))
+    result["memory_defense"] = {
+        "source_type": result.get("source_type", "legacy"),
+        "trust_level": result.get("trust_level", "trusted"),
+        "non_authoritative": result.get("trust_level") == "untrusted",
+        "quarantined": result.get("trust_level") == "quarantined",
+        "quarantine_reason": result.get("quarantine_reason", ""),
+    }
     if score is not None:
         result["score"] = score
     return result
@@ -294,6 +366,45 @@ def _expires_at(sensitivity: str, retain_days: int | None) -> str:
     return (datetime.now(timezone.utc) + timedelta(days=retain_days)).replace(microsecond=0).isoformat()
 
 
+def memory_defense_assessment(*, text: str, kind: str, source_type: str) -> dict[str, Any]:
+    if source_type not in SOURCE_TYPE_VALUES:
+        raise ValueError(f"source_type must be one of {sorted(SOURCE_TYPE_VALUES)}")
+    compact = " ".join(text.split())
+    injection = any(pattern.search(compact) for pattern in INJECTION_PATTERNS)
+    authority_expansion = any(pattern.search(compact) for pattern in AUTHORITY_EXPANSION_PATTERNS)
+    instruction_like = injection or authority_expansion or any(
+        pattern.search(compact) for pattern in UNTRUSTED_INSTRUCTION_PATTERNS
+    )
+    if injection:
+        trust_level = "quarantined"
+        reason = "persistent instruction attempts to override authority, safety, or secret boundaries"
+    elif authority_expansion:
+        trust_level = "quarantined"
+        reason = "persistent memory cannot pre-authorize future external, destructive, paid, or sensitive actions"
+    elif source_type == "legacy":
+        trust_level = "untrusted"
+        reason = "legacy memory has no verified provenance and remains non-authoritative until reconfirmed"
+    elif source_type in NON_AUTHORITATIVE_SOURCE_TYPES and kind.strip().casefold() in AUTHORITY_MEMORY_KINDS:
+        trust_level = "quarantined"
+        reason = "non-user source cannot define an authoritative preference, decision, policy, or instruction"
+    elif source_type in NON_AUTHORITATIVE_SOURCE_TYPES and instruction_like:
+        trust_level = "quarantined"
+        reason = "instruction-like content from a non-authoritative source"
+    elif source_type in NON_AUTHORITATIVE_SOURCE_TYPES:
+        trust_level = "untrusted"
+        reason = "recalled as non-authoritative data only"
+    else:
+        trust_level = "trusted"
+        reason = "explicit or confirmed user-controlled memory"
+    return {
+        "source_type": source_type,
+        "trust_level": trust_level,
+        "instruction_like": instruction_like,
+        "quarantine_reason": reason if trust_level == "quarantined" else "",
+        "trust_reason": reason,
+    }
+
+
 def add_memory(
     connection: sqlite3.Connection,
     *,
@@ -302,6 +413,7 @@ def add_memory(
     text: str,
     confidence: str,
     source: str = "",
+    source_type: str = "user_explicit",
     stale_after_days: int = 0,
     sensitivity: str = "standard",
     retain_days: int | None = None,
@@ -314,21 +426,42 @@ def add_memory(
         raise ValueError(f"conflict_resolution must be one of {sorted(CONFLICT_RESOLUTIONS)}")
     if not kind.strip() or not scope.strip() or not text.strip():
         raise ValueError("kind, scope, and text are required")
+    if len(text) > 2000 or len(source) > 500:
+        raise ValueError("memory text or source exceeds the bounded storage limit")
+    if "\x00" in text or "\x00" in source or "\n" in kind or "\n" in scope:
+        raise ValueError("memory metadata contains forbidden control characters")
     if stale_after_days < 0:
         raise ValueError("stale_after_days cannot be negative")
+    if confidence == "confirmed" and source_type in NON_AUTHORITATIVE_SOURCE_TYPES:
+        raise ValueError("non-authoritative sources cannot create confirmed memory")
 
     timestamp = now_iso()
     expires_at = _expires_at(sensitivity, retain_days)
+    defense = memory_defense_assessment(text=text, kind=kind, source_type=source_type)
     values = (kind.strip(), scope.strip(), text.strip())
     existing = connection.execute(
         "SELECT * FROM memories WHERE kind = ? AND scope = ? AND text = ?", values
     ).fetchone()
     if existing:
+        if existing["trust_level"] == "trusted" and defense["trust_level"] != "trusted":
+            record_memory_event(
+                connection,
+                int(existing["id"]),
+                "poisoning_update_rejected",
+                {"attempted_source_type": source_type, **defense},
+            )
+            connection.commit()
+            result = decorate_memory(row_to_dict(existing))
+            result["deduplicated"] = True
+            result["write_rejected"] = True
+            result["conflict_ids"] = []
+            return result
         connection.execute(
             """
             UPDATE memories
             SET confidence = ?, source = ?, stale_after_days = ?, status = 'active',
-                sensitivity = ?, expires_at = ?, conflict_key = ?, updated_at = ?
+                sensitivity = ?, expires_at = ?, conflict_key = ?, source_type = ?,
+                trust_level = ?, instruction_like = ?, quarantine_reason = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -338,17 +471,25 @@ def add_memory(
                 sensitivity,
                 expires_at,
                 conflict_key.strip(),
+                source_type,
+                defense["trust_level"],
+                int(defense["instruction_like"]),
+                defense["quarantine_reason"],
                 timestamp,
                 existing["id"],
             ),
         )
-        record_memory_event(connection, int(existing["id"]), "reactivated_or_updated")
-        index_record(
-            connection,
-            "memories_fts",
-            int(existing["id"]),
-            f"{kind} {scope} {text} {source}",
-        )
+        event = "quarantined" if defense["trust_level"] == "quarantined" else "reactivated_or_updated"
+        record_memory_event(connection, int(existing["id"]), event, defense)
+        if defense["trust_level"] == "quarantined":
+            remove_record(connection, "memories_fts", int(existing["id"]))
+        else:
+            index_record(
+                connection,
+                "memories_fts",
+                int(existing["id"]),
+                f"{kind} {scope} {text} {source}",
+            )
         connection.commit()
         row = connection.execute("SELECT * FROM memories WHERE id = ?", (existing["id"],)).fetchone()
         result = decorate_memory(row_to_dict(row))
@@ -357,7 +498,7 @@ def add_memory(
         return result
 
     conflicts: list[sqlite3.Row] = []
-    if conflict_key.strip():
+    if conflict_key.strip() and defense["trust_level"] != "quarantined":
         conflicts = connection.execute(
             """
             SELECT * FROM memories
@@ -387,8 +528,9 @@ def add_memory(
         """
         INSERT INTO memories(
             kind, scope, text, confidence, source, created_at, updated_at,
-            stale_after_days, status, sensitivity, expires_at, conflict_key, supersedes_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+            stale_after_days, status, sensitivity, expires_at, conflict_key, supersedes_id,
+            source_type, trust_level, instruction_like, quarantine_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             *values,
@@ -401,16 +543,25 @@ def add_memory(
             expires_at,
             conflict_key.strip(),
             supersedes_id,
+            source_type,
+            defense["trust_level"],
+            int(defense["instruction_like"]),
+            defense["quarantine_reason"],
         ),
     )
     memory_id = int(cursor.lastrowid)
     record_memory_event(
         connection,
         memory_id,
-        "created",
-        {"conflict_ids": [int(row["id"]) for row in conflicts], "resolution": conflict_resolution},
+        "quarantined" if defense["trust_level"] == "quarantined" else "created",
+        {
+            "conflict_ids": [int(row["id"]) for row in conflicts],
+            "resolution": conflict_resolution,
+            **defense,
+        },
     )
-    index_record(connection, "memories_fts", memory_id, f"{kind} {scope} {text} {source}")
+    if defense["trust_level"] != "quarantined":
+        index_record(connection, "memories_fts", memory_id, f"{kind} {scope} {text} {source}")
     connection.commit()
     row = connection.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
     result = decorate_memory(row_to_dict(row))
@@ -429,11 +580,13 @@ def memory_governance(
             "same_scope_conflict_ids": [],
             "shadowed_by_ids": [],
             "requires_clarification": False,
+            "non_authoritative": record.get("trust_level") != "trusted",
+            "instruction_execution_allowed": False,
         }
     rows = connection.execute(
         """
         SELECT id, scope, text FROM memories
-        WHERE status = 'active' AND conflict_key = ? AND id != ?
+        WHERE status = 'active' AND trust_level != 'quarantined' AND conflict_key = ? AND id != ?
         """,
         (conflict_key, record["id"]),
     ).fetchall()
@@ -445,6 +598,8 @@ def memory_governance(
         "same_scope_conflict_ids": same_scope,
         "shadowed_by_ids": shadowed_by,
         "requires_clarification": bool(same_scope),
+        "non_authoritative": record.get("trust_level") != "trusted",
+        "instruction_execution_allowed": False,
     }
 
 
@@ -460,7 +615,7 @@ def search_memories(
     if not query_tokens:
         return []
     candidate_ids = fts_candidate_ids(connection, "memories_fts", query)
-    sql = "SELECT * FROM memories WHERE status = 'active'"
+    sql = "SELECT * FROM memories WHERE status = 'active' AND trust_level != 'quarantined'"
     params: list[Any] = []
     if scope:
         sql += " AND scope IN (?, 'global')"
@@ -471,6 +626,7 @@ def search_memories(
         rows = filtered or rows
 
     confidence_weight = {"confirmed": 30, "observed": 20, "inferred": 10}
+    trust_weight = {"trusted": 20, "untrusted": -30}
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
@@ -483,6 +639,7 @@ def search_memories(
         score = (
             semantic_match * 12
             + confidence_weight.get(str(record["confidence"]), 0)
+            + trust_weight.get(str(record.get("trust_level", "trusted")), -30)
             + scope_weight
             + min(int(record.get("access_count", 0)), 10)
             - stale_penalty
@@ -529,6 +686,71 @@ def list_memories(
     return [decorate_memory(row_to_dict(row)) for row in rows]
 
 
+def list_quarantined_memories(
+    connection: sqlite3.Connection, *, scope: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    sql = """
+        SELECT id, kind, scope, source_type, quarantine_reason, length(text) AS text_chars, updated_at
+        FROM memories WHERE status = 'active' AND trust_level = 'quarantined'
+    """
+    params: list[Any] = []
+    if scope:
+        sql += " AND scope = ?"
+        params.append(scope)
+    sql += " ORDER BY updated_at DESC LIMIT ?"
+    params.append(max(1, min(limit, 200)))
+    return [
+        {
+            **row_to_dict(row),
+            "quarantined_text_exposed": False,
+            "instruction_execution_allowed": False,
+        }
+        for row in connection.execute(sql, tuple(params)).fetchall()
+    ]
+
+
+def memory_defense_status(
+    connection: sqlite3.Connection, *, scope: str | None = None, limit: int = 20
+) -> dict[str, Any]:
+    where = "WHERE status = 'active'"
+    params: list[Any] = []
+    if scope:
+        where += " AND scope = ?"
+        params.append(scope)
+    counts = {level: 0 for level in sorted(TRUST_LEVEL_VALUES)}
+    for row in connection.execute(
+        f"SELECT trust_level, COUNT(*) AS total FROM memories {where} GROUP BY trust_level",
+        tuple(params),
+    ):
+        counts[str(row["trust_level"])] = int(row["total"])
+    quarantine_params = list(params)
+    quarantine_params.append(max(1, min(limit, 100)))
+    quarantined = [
+        {
+            "id": int(row["id"]),
+            "kind": row["kind"],
+            "scope": row["scope"],
+            "source_type": row["source_type"],
+            "quarantine_reason": row["quarantine_reason"],
+            "text_chars": len(str(row["text"])),
+            "updated_at": row["updated_at"],
+        }
+        for row in connection.execute(
+            f"SELECT id, kind, scope, source_type, quarantine_reason, text, updated_at "
+            f"FROM memories {where} AND trust_level = 'quarantined' "
+            "ORDER BY updated_at DESC LIMIT ?",
+            tuple(quarantine_params),
+        )
+    ]
+    return {
+        "scope": scope or "all",
+        "counts": counts,
+        "quarantined": quarantined,
+        "quarantined_text_exposed": False,
+        "instruction_execution_allowed": False,
+    }
+
+
 def set_memory_status(
     connection: sqlite3.Connection, *, memory_id: int, status: str, reason: str = ""
 ) -> dict[str, Any]:
@@ -569,6 +791,13 @@ def add_correction(
         raise ValueError(f"severity must be one of {sorted(SEVERITY_VALUES)}")
     if not scope.strip() or not trigger_text.strip() or not correction.strip():
         raise ValueError("scope, trigger_text, and correction are required")
+    defense = memory_defense_assessment(
+        text=f"{trigger_text}\n{correction}",
+        kind="policy",
+        source_type="user_confirmed",
+    )
+    if defense["trust_level"] == "quarantined":
+        raise ValueError("correction rejected by memory defense: " + defense["quarantine_reason"])
     timestamp = now_iso()
     values = (scope.strip(), trigger_text.strip(), correction.strip())
     existing = connection.execute(
@@ -934,6 +1163,7 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--text", required=True)
     add.add_argument("--confidence", choices=sorted(CONFIDENCE_VALUES), default="confirmed")
     add.add_argument("--source", default="")
+    add.add_argument("--source-type", choices=sorted(SOURCE_TYPE_VALUES), default="user_explicit")
     add.add_argument("--stale-after-days", type=int, default=0)
     add.add_argument("--sensitivity", choices=sorted(SENSITIVITY_VALUES), default="standard")
     add.add_argument("--retain-days", type=int)
@@ -950,6 +1180,14 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--scope")
     listing.add_argument("--limit", type=int, default=50)
     listing.add_argument("--include-inactive", action="store_true")
+
+    quarantine = subparsers.add_parser("quarantine-list")
+    quarantine.add_argument("--scope")
+    quarantine.add_argument("--limit", type=int, default=50)
+
+    defense_status = subparsers.add_parser("defense-status")
+    defense_status.add_argument("--scope")
+    defense_status.add_argument("--limit", type=int, default=20)
 
     retract = subparsers.add_parser("retract")
     retract.add_argument("--id", type=int, required=True)
@@ -1030,6 +1268,7 @@ def main() -> int:
                 text=args.text,
                 confidence=args.confidence,
                 source=args.source,
+                source_type=args.source_type,
                 stale_after_days=args.stale_after_days,
                 sensitivity=args.sensitivity,
                 retain_days=args.retain_days,
@@ -1050,6 +1289,18 @@ def main() -> int:
                 scope=args.scope,
                 limit=args.limit,
                 include_inactive=args.include_inactive,
+            )
+        elif args.command == "quarantine-list":
+            result = list_quarantined_memories(
+                connection,
+                scope=args.scope,
+                limit=args.limit,
+            )
+        elif args.command == "defense-status":
+            result = memory_defense_status(
+                connection,
+                scope=args.scope,
+                limit=args.limit,
             )
         elif args.command == "retract":
             result = set_memory_status(

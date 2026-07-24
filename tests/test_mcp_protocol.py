@@ -40,6 +40,7 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                             "intent_compile",
                             "intent_check",
                             "intent_recall_corrections",
+                            "intent_memory_defense",
                             "intent_record_correction",
                             "intent_suggest_correction",
                             "intent_confirm_correction",
@@ -47,6 +48,7 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                             "intent_shadow_observe",
                             "intent_shadow_review",
                             "intent_study_pointer",
+                            "intent_student_state",
                         },
                     )
                     called = await session.call_tool(
@@ -87,6 +89,24 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertFalse(pointers.isError)
                     self.assertEqual(pointers.structuredContent["count"], 0)
+                    defense = await session.call_tool(
+                        "intent_memory_defense",
+                        {"request": {}},
+                    )
+                    self.assertFalse(defense.isError)
+                    self.assertFalse(defense.structuredContent["quarantined_text_exposed"])
+                    state = await session.call_tool(
+                        "intent_student_state",
+                        {"request": {"action": "summary"}},
+                    )
+                    self.assertFalse(state.isError)
+                    self.assertEqual(state.structuredContent["total"], 0)
+                    state = await session.call_tool(
+                        "intent_student_state",
+                        {"request": {"action": "summary"}},
+                    )
+                    self.assertFalse(state.isError)
+                    self.assertEqual(state.structuredContent["total"], 0)
 
 
 if __name__ == "__main__":

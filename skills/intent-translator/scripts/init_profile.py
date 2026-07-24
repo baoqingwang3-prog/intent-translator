@@ -51,7 +51,7 @@ def default_profile(language: str = "auto") -> dict[str, Any]:
         "phrase_mappings": {},
         "memory": {
             "adapter": "sqlite",
-            "location": str(Path.home() / ".intent-translator" / "memory.db"),
+            "location": "~/.intent-translator/memory.db",
         },
         "cognitive_priors": [],
     }
@@ -202,6 +202,16 @@ def validate_profile(profile: dict[str, Any]) -> list[str]:
             errors.append("knowledge_pointers must be an object")
         elif pointers.get("scan_vault", False):
             errors.append("knowledge_pointers.scan_vault must remain false")
+    student_state = profile.get("student_state")
+    if student_state is not None:
+        if not isinstance(student_state, dict):
+            errors.append("student_state must be an object")
+        elif student_state.get("authority", "canonical-markdown") != "canonical-markdown":
+            errors.append("student_state.authority must be canonical-markdown")
+        elif not _is_positive_integer(student_state.get("due_soon_days", 7)):
+            errors.append("student_state.due_soon_days must be positive")
+        elif not _is_positive_integer(student_state.get("context_item_limit", 8)):
+            errors.append("student_state.context_item_limit must be positive")
     return errors
 
 

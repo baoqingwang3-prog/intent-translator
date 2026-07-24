@@ -89,7 +89,8 @@ def rebuild_indexes(connection: sqlite3.Connection) -> None:
     connection.execute("DELETE FROM memories_fts")
     connection.execute("DELETE FROM corrections_fts")
     for row in connection.execute(
-        "SELECT id, kind, scope, text, source FROM memories WHERE status = 'active'"
+        "SELECT id, kind, scope, text, source FROM memories "
+        "WHERE status = 'active' AND trust_level != 'quarantined'"
     ):
         index_record(
             connection,

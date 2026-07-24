@@ -13,12 +13,26 @@ from .models import (
     CompileRequest,
     CorrectionRequest,
     CorrectionSuggestionRequest,
+    MemoryDefenseRequest,
     OutcomeRequest,
     PendingCorrectionRequest,
     RecallRequest,
     ShadowObserveRequest,
     ShadowReviewRequest,
     StudyPointerRequest,
+    StudentStateRequest,
+)
+from .student_state import (
+    bootstrap_from_profile,
+    connect as connect_state,
+    list_state_items,
+    refresh_from_canonical,
+    set_focus,
+    state_db_path,
+    summarize_state,
+    sync_state_note,
+    update_state_status,
+    upsert_state_item,
 )
 from .study_shadow import (
     connect as connect_study,
@@ -80,6 +94,22 @@ def intent_check(request: CheckRequest) -> dict[str, Any]:
 def intent_recall_corrections(request: RecallRequest) -> dict[str, Any]:
     """Retrieve relevant active corrections without changing retrieval counters."""
     return {"corrections": compiler().recall_corrections(**request.model_dump())}
+
+
+@mcp.tool(
+    title="Inspect memory defense",
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def intent_memory_defense(request: MemoryDefenseRequest) -> dict[str, Any]:
+    """Report memory trust counts and quarantine metadata without exposing quarantined text."""
+    instance = compiler()
+    memory = _load_skill_script("memory_store")
+    connection = memory.connect(_memory_path(instance.profile))
+    try:
+        return memory.memory_defense_status(connection, **request.model_dump())
+    finally:
+        connection.close()
 
 
 @mcp.tool(
@@ -207,6 +237,69 @@ def intent_study_pointer(request: StudyPointerRequest) -> dict[str, Any]:
             return {"pointers": pointers, "count": len(pointers)}
         content = render_pointer_index(list_pointers(connection, limit=100))
         return {**sync_pointer_index(instance.profile, content), "pointer_count": len(pointers)}
+    finally:
+        connection.close()
+
+
+@mcp.tool(
+    title="Manage local university state",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True),
+    structured_output=True,
+)
+def intent_student_state(request: StudentStateRequest) -> dict[str, Any]:
+    """Manage local goals, deadlines, focus, next actions, and an optional Obsidian state mirror."""
+    instance = compiler()
+    connection = connect_state(state_db_path(instance.profile))
+    try:
+        if request.action == "summary":
+            return summarize_state(connection, due_soon_days=int(instance.profile.get("student_state", {}).get("due_soon_days", 7)))
+        if request.action == "list":
+            return {
+                "items": list_state_items(
+                    connection,
+                    category=request.category,
+                    status=request.status,
+                    query=request.query,
+                    limit=request.limit,
+                )
+            }
+        if request.action == "bootstrap":
+            result = bootstrap_from_profile(connection, instance.profile)
+            return {**result, "canonical": sync_state_note(connection, instance.profile)}
+        if request.action == "upsert":
+            if not request.category or not request.title.strip():
+                raise ValueError("upsert requires category and title")
+            item = upsert_state_item(
+                    connection,
+                    item_key=request.item_key,
+                    category=request.category,
+                    title=request.title,
+                    status=request.status or "planned",
+                    priority=request.priority,
+                    deadline=request.deadline,
+                    next_action=request.next_action,
+                    subject=request.subject,
+                    goal=request.goal,
+                    source_pointer=request.source_pointer,
+                    details=request.details,
+                    sensitive=request.sensitive,
+                    retain_days=request.retain_days,
+                )
+            return {"item": item, "canonical": sync_state_note(connection, instance.profile)}
+        if request.action == "focus":
+            item = set_focus(connection, item_key=request.item_key)
+            return {"item": item, "canonical": sync_state_note(connection, instance.profile)}
+        if request.action in {"complete", "archive"}:
+            item = update_state_status(
+                    connection,
+                    item_key=request.item_key,
+                    status="done" if request.action == "complete" else "archived",
+                )
+            return {"item": item, "canonical": sync_state_note(connection, instance.profile)}
+        if request.action == "refresh":
+            return refresh_from_canonical(connection, instance.profile, confirmed=request.confirmed)
+        summary = summarize_state(connection, due_soon_days=int(instance.profile.get("student_state", {}).get("due_soon_days", 7)))
+        return sync_state_note(connection, instance.profile, summary)
     finally:
         connection.close()
 

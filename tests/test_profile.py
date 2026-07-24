@@ -69,6 +69,8 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(packed["student_life"]["role"], "university-student")
         self.assertIn("coursework", packed["student_life"]["areas"])
         self.assertIn("internships-and-career", packed["student_life"]["areas"])
+        self.assertTrue(packed["student_state"]["enabled"])
+        self.assertEqual(packed["student_state"]["authority"], "canonical-markdown")
         self.assertEqual(packed["study"]["goals"], [])
         self.assertEqual(packed["knowledge_pointers"]["vault_path"], "")
         self.assertEqual(validate_profile(packed), [])

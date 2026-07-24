@@ -12,6 +12,16 @@
       "workload_policy": "protect-classes-rest-and-active-focus",
       "private_fields": ["institution", "major", "year", "grades", "schedule", "deadlines", "applications", "personal-files"]
     },
+    "student_state": {
+      "enabled": true,
+      "authority": "canonical-markdown",
+      "managed_note": "AI/大学生状态.md",
+      "local_path": "",
+      "due_soon_days": 7,
+      "context_item_limit": 8,
+      "confirm_manual_edits": true,
+      "sync_policy": "after-authorized-write-or-session-end"
+    },
     "study": {
       "enabled": true,
       "goals": [],

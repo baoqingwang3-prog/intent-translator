@@ -4,6 +4,17 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-25
+
+### Added
+
+- Memory provenance, trust levels, prompt-injection detection, and a non-executable quarantine.
+- Poisoning-resistant updates, non-authoritative external facts, and correction-policy defense.
+- Read-only MCP and CLI defense status that never exposes quarantined text.
+- Legacy-memory trust migration, bounded student-state persistence, and private-state exclusion from summaries and Obsidian mirrors.
+- Generic-profile contamination audit and profile-independent behavior regression tests.
+- Skippable local onboarding, hashed pre-confirmation language observations, and cautious-mode policy after repeated misunderstandings.
+
 ## [0.5.0] - 2026-07-25
 
 ### Added

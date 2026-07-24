@@ -36,6 +36,11 @@ class RecallRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
 
 
+class MemoryDefenseRequest(BaseModel):
+    scope: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
 class CorrectionRequest(BaseModel):
     trigger_text: str = Field(min_length=1)
     correction: str = Field(min_length=1)
@@ -91,3 +96,23 @@ class StudyPointerRequest(BaseModel):
     authority_level: Literal["reference", "official", "teacher", "working", "personal"] = "working"
     query: str = ""
     limit: int = Field(default=20, ge=1, le=100)
+
+
+class StudentStateRequest(BaseModel):
+    action: Literal["summary", "list", "upsert", "focus", "complete", "archive", "bootstrap", "sync", "refresh"]
+    item_key: str = ""
+    category: Literal["", "goal", "course", "assignment", "exam", "research", "project", "career", "campus", "routine", "wellbeing", "finance"] = ""
+    title: str = ""
+    status: Literal["", "planned", "active", "blocked", "waiting", "done", "archived"] = ""
+    priority: Literal["low", "medium", "high", "critical"] = "medium"
+    deadline: str = ""
+    next_action: str = ""
+    subject: str = ""
+    goal: str = ""
+    source_pointer: str = ""
+    details: str = ""
+    sensitive: bool = False
+    retain_days: int | None = Field(default=None, ge=1, le=3650)
+    confirmed: bool = False
+    query: str = ""
+    limit: int = Field(default=50, ge=1, le=200)
