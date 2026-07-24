@@ -20,6 +20,7 @@ class StrangerSmokeTests(unittest.TestCase):
         self.assertEqual(report["metrics"]["cross_contamination_count"], 0)
         self.assertEqual(report["metrics"]["skills_created_and_invoked"], 2)
         self.assertTrue(report["metrics"]["first_correction_effective"])
+        self.assertTrue(all(item["generic_before_onboarding"] for item in report["users"].values()))
         self.assertFalse(report["real_button_ui_complete"])
 
 

@@ -23,6 +23,22 @@ class DoctorTests(unittest.TestCase):
             serialized = json.dumps(report)
             self.assertNotIn(str(home.resolve()), serialized)
 
+    def test_missing_data_directory_is_creatable_first_run_warning(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            data = home / "new-user-data"
+            report = run_doctor(
+                home=home,
+                env={
+                    "INTENT_TRANSLATOR_PROFILE": str(data / "profile.json"),
+                    "INTENT_TRANSLATOR_MEMORY_DB": str(data / "memory.db"),
+                },
+            )
+            memory = next(item for item in report["checks"] if item["id"] == "memory")
+            self.assertEqual(memory["status"], "warn")
+            self.assertEqual(report["status"], "warn")
+            self.assertFalse(data.exists())
+
     def test_invalid_profile_fails_without_echoing_content(self):
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -16,7 +17,13 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_step(name: str, command: list[str], *, cwd: Path = REPO_ROOT) -> dict[str, Any]:
+def run_step(
+    name: str,
+    command: list[str],
+    *,
+    cwd: Path = REPO_ROOT,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
     completed = subprocess.run(
         command,
         cwd=cwd,
@@ -24,12 +31,73 @@ def run_step(name: str, command: list[str], *, cwd: Path = REPO_ROOT) -> dict[st
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
     result: dict[str, Any] = {"name": name, "passed": completed.returncode == 0}
     if completed.returncode != 0:
         result["returncode"] = completed.returncode
         result["output_tail"] = (completed.stdout + completed.stderr)[-3000:]
     return result
+
+
+def installed_wheel_steps(wheel: Path, root: Path, python: str) -> list[dict[str, Any]]:
+    venv = root / "installed-wheel"
+    scripts = venv / ("Scripts" if os.name == "nt" else "bin")
+    installed_python = scripts / ("python.exe" if os.name == "nt" else "python")
+    executable_suffix = ".exe" if os.name == "nt" else ""
+    env = dict(os.environ)
+    env.update(
+        {
+            "HOME": str(root),
+            "USERPROFILE": str(root),
+            "INTENT_TRANSLATOR_PROFILE": str(root / "data" / "profile.json"),
+            "INTENT_TRANSLATOR_MEMORY_DB": str(root / "data" / "memory.db"),
+            "PIP_CACHE_DIR": str(root / "pip-cache"),
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+            "PYTHONUTF8": "1",
+        }
+    )
+    steps = [run_step("wheel-venv", [python, "-m", "venv", str(venv)])]
+    if not steps[-1]["passed"]:
+        return steps
+    steps.append(
+        run_step(
+            "wheel-install",
+            [str(installed_python), "-m", "pip", "install", str(wheel)],
+            env=env,
+        )
+    )
+    if not steps[-1]["passed"]:
+        return steps
+    steps.extend(
+        [
+            run_step(
+                "wheel-doctor",
+                [str(scripts / f"intent-translator-doctor{executable_suffix}"), "--json"],
+                env=env,
+            ),
+            run_step(
+                "wheel-onboarding",
+                [
+                    str(scripts / f"intent-translator-onboard{executable_suffix}"),
+                    "--memory",
+                    "local",
+                    "--interpretation",
+                    "choices",
+                    "--tone",
+                    "concise",
+                    "--json",
+                ],
+                env=env,
+            ),
+            run_step(
+                "wheel-mcp-import",
+                [str(installed_python), "-c", "from intent_translator_mcp.server import mcp; assert mcp"],
+                env=env,
+            ),
+        ]
+    )
+    return steps
 
 
 def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
@@ -69,6 +137,9 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
                 )
                 steps.append(package_audit)
                 package_report = {"artifacts": sorted(path.name for path in dist.iterdir())}
+                if package_audit["passed"]:
+                    wheel = next(dist.glob("*.whl"))
+                    steps.extend(installed_wheel_steps(wheel, Path(temp), python))
 
     passed = all(step["passed"] for step in steps)
     return {

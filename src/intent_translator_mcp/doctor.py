@@ -31,6 +31,13 @@ def _check(identifier: str, status: str, message: str, **details: Any) -> dict[s
     return result
 
 
+def _directory_can_be_created(path: Path) -> bool:
+    candidate = path
+    while not candidate.exists() and candidate != candidate.parent:
+        candidate = candidate.parent
+    return candidate.is_dir() and os.access(candidate, os.W_OK)
+
+
 def run_doctor(
     *,
     home: Path | None = None,
@@ -110,7 +117,7 @@ def run_doctor(
             )
     else:
         parent = memory_path.parent
-        writable = parent.exists() and os.access(parent, os.W_OK)
+        writable = _directory_can_be_created(parent)
         checks.append(
             _check(
                 "memory",

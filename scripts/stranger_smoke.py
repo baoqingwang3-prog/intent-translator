@@ -126,6 +126,7 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
         memory = root / "data" / "memory.db"
         skill_root = root / "skills"
         skill_root.mkdir(parents=True)
+        generic = compile_for(profile, memory, skill_root, "Help me organize a small task.")
         apply_onboarding(
             profile,
             memory="local",
@@ -164,7 +165,7 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
         invocation = compile_for(profile, memory, skill_root, str(scenario["call"]))
         phrase_result = compile_for(profile, memory, skill_root, "kick it off")
         results[user_id] = {
-            "generic_before_onboarding": False,
+            "generic_before_onboarding": generic["personalization_status"]["mode"] == "generic",
             "first_correction_applied": first["applied_to_current_turn"],
             "promotion_suggested_after_first": first["promotion_suggested"],
             "promotion_suggested_after_second": second["promotion_suggested"],
@@ -175,7 +176,6 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
             "invocation_route": invocation["routing"]["primary_skill"],
             "phrase_mode": phrase_result["mode"],
             "base_mode_without_cloud": phrase_result["base_mode"]["active"],
-            "profile_id": json.loads(profile.read_text(encoding="utf-8"))["profile_id"],
         }
 
     left_profile = (workspace / "user-a" / "data" / "profile.json").read_text(encoding="utf-8")
@@ -193,6 +193,7 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
         and results["user-b"]["invocation_route"] == users["user-b"]["skill_name"]
         and results["user-a"]["phrase_mode"] != results["user-b"]["phrase_mode"]
         and all(item["skill_valid"] for item in results.values())
+        and all(item["generic_before_onboarding"] for item in results.values())
         and all(item["first_correction_applied"] for item in results.values())
         and all(item["promotion_suggested_after_second"] for item in results.values())
         and cross_contamination == 0
