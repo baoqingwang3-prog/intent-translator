@@ -48,6 +48,7 @@ Do not turn routine actions into interviews. Do not let speed bypass a material 
 12. When the user says `不是这个意思`, `太复杂了`, `以后别这样`, or an equivalent brief correction, create a pending correction with MCP `intent_suggest_correction` or `memory_store.py correction-suggest`. Show its one-line confirmation prompt. Persist it only after the user confirms, then call `intent_confirm_correction` or `correction-confirm`.
 13. When a local study profile is enabled, preserve the current goal and subject, prefer its installed Skill routing hints, and check `intent_study_pointer` before asking for a known material again. Register pointers only for files the user explicitly supplies or identifies. Never scan an entire vault.
 14. Call `intent_shadow_observe` only when the user has enabled local shadow evaluation, and only for ambiguous interpretations or study-routing decisions after both compiler and host choices are known. Store no utterance preview unless the local profile explicitly chooses a nonzero limit. Review aggregates with `intent_shadow_review` during maintenance or when requested, not after every message.
+15. When local university state is enabled, use `intent_student_state summary` to resume a confirmed current focus. Treat its Markdown as the user-readable authority for state values, require confirmation before applying manual edits, and keep sensitive rows out of default context and mirrors.
 
 ## Execution Envelope
 

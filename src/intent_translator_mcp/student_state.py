@@ -781,6 +781,7 @@ def main() -> int:
     try:
         if args.command == "bootstrap":
             result = bootstrap_from_profile(connection, profile)
+            result = {**result, "canonical": sync_state_note(connection, profile)}
         elif args.command == "summary":
             result = summarize_state(connection, due_soon_days=int(profile.get("student_state", {}).get("due_soon_days", 7)))
         elif args.command == "list":

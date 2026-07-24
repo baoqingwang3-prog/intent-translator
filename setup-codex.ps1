@@ -92,8 +92,11 @@ $state = Get-Content -LiteralPath $statePath -Raw -Encoding utf8 | ConvertFrom-J
 $venvScripts = Split-Path -Parent $state.command
 $doctor = Join-Path $venvScripts "intent-translator-doctor.exe"
 $study = Join-Path $venvScripts "intent-translator-study.exe"
+$studentState = Join-Path $venvScripts "intent-translator-state.exe"
 & $doctor
 if ($LASTEXITCODE -ne 0) { throw "intent-translator doctor reported a failure." }
+& $studentState bootstrap --profile $profilePath
+if ($LASTEXITCODE -ne 0) { throw "University state bootstrap failed." }
 if (-not $SkipPointerSync -and ($ObsidianVaultName.Trim() -or $ObsidianVaultPath.Trim())) {
     & $study pointer-sync --profile $profilePath
     if ($LASTEXITCODE -ne 0) { throw "Study pointer index sync failed." }
