@@ -44,6 +44,9 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                             "intent_suggest_correction",
                             "intent_confirm_correction",
                             "intent_record_outcome",
+                            "intent_shadow_observe",
+                            "intent_shadow_review",
+                            "intent_study_pointer",
                         },
                     )
                     called = await session.call_tool(
@@ -78,6 +81,12 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertFalse(confirmed.isError)
                     self.assertEqual(confirmed.structuredContent["status"], "confirmed")
+                    pointers = await session.call_tool(
+                        "intent_study_pointer",
+                        {"request": {"action": "list"}},
+                    )
+                    self.assertFalse(pointers.isError)
+                    self.assertEqual(pointers.structuredContent["count"], 0)
 
 
 if __name__ == "__main__":

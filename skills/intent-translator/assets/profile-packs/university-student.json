@@ -1,0 +1,57 @@
+{
+  "pack_schema_version": 1,
+  "name": "university-student",
+  "description": "Optional local-first defaults for university coursework, projects, research, career preparation, and campus life.",
+  "profile": {
+    "adaptation": {"domains": ["university-study", "coursework", "academic-research", "career-preparation", "campus-life"]},
+    "student_life": {
+      "enabled": true,
+      "role": "university-student",
+      "areas": ["coursework", "assignments-and-exams", "research-and-writing", "projects-and-competitions", "internships-and-career", "campus-administration", "personal-knowledge-management"],
+      "deadline_policy": "preserve-confirmed-deadlines",
+      "workload_policy": "protect-classes-rest-and-active-focus",
+      "private_fields": ["institution", "major", "year", "grades", "schedule", "deadlines", "applications", "personal-files"]
+    },
+    "study": {
+      "enabled": true,
+      "goals": [],
+      "active_goal": "",
+      "active_subject": "",
+      "protect_study_time": true,
+      "focus_window_minutes": 45,
+      "interruption_policy": "batch-nonurgent",
+      "continuity": {
+        "resume_recent_subject": true,
+        "prefer_existing_materials": true,
+        "ask_only_when_blocked": true,
+        "keep_evaluation_silent": true
+      },
+      "routing": [
+        {"subject": "coursework", "terms": ["课程", "作业", "实验报告", "课程笔记", "期中", "期末", "考试周", "coursework", "assignment", "final exam"], "preferred_skills": ["study-assistant"]},
+        {"subject": "research-and-writing", "terms": ["论文", "文献", "开题", "参考文献", "学术写作", "research paper", "literature review", "citation"], "preferred_skills": ["research", "doc-coauthoring", "study-assistant"]},
+        {"subject": "projects-and-competitions", "terms": ["课程设计", "大创", "竞赛", "项目答辩", "小组项目", "capstone", "competition", "group project"], "preferred_skills": ["study-assistant", "planning-with-files"]},
+        {"subject": "career", "terms": ["实习", "校招", "简历", "面试", "职业规划", "internship", "resume", "interview", "career"], "preferred_skills": ["career-ops"]},
+        {"subject": "campus-administration", "terms": ["选课", "教务", "奖学金", "综测", "请假", "校园事务", "course registration", "scholarship", "campus"], "preferred_skills": []},
+        {"subject": "knowledge-management", "terms": ["整理笔记", "知识库", "资料索引", "归档", "knowledge base", "organize notes"], "preferred_skills": ["knowledge-base-organizer", "obsidian-cli"]}
+      ]
+    },
+    "shadow_evaluation": {
+      "enabled": false,
+      "retention_days": 30,
+      "max_events": 500,
+      "store_full_utterance": false,
+      "preview_chars": 0,
+      "notify_user": true,
+      "review_policy": "batched"
+    },
+    "knowledge_pointers": {
+      "enabled": true,
+      "adapter": "obsidian",
+      "vault_name": "",
+      "vault_path": "",
+      "managed_note": "AI/意图中枢-学习索引.md",
+      "scan_vault": false,
+      "sync_policy": "explicit-or-session-end"
+    }
+  }
+}

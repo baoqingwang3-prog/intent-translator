@@ -7,7 +7,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "skills" / "intent-translator" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from init_profile import default_profile, set_phrase_mapping, validate_profile  # noqa: E402
+from init_profile import (  # noqa: E402
+    apply_profile_pack,
+    configure_study_profile,
+    default_profile,
+    load_profile_pack,
+    set_phrase_mapping,
+    validate_profile,
+)
 
 
 class ProfileTests(unittest.TestCase):
@@ -44,6 +51,53 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(mapping["confidence"], "confirmed")
         self.assertEqual(mapping["scope"], "global")
         self.assertEqual(validate_profile(profile), [])
+
+    def test_student_pack_is_generic_and_preserves_private_profile_fields(self):
+        profile = default_profile("zh-CN")
+        profile["phrase_mappings"]["继续"] = "Resume current work"
+        memory_location = profile["memory"]["location"]
+        packed = apply_profile_pack(profile, load_profile_pack("student-exam-prep"))
+        self.assertTrue(packed["study"]["protect_study_time"])
+        self.assertEqual(packed["study"]["goals"], [])
+        self.assertEqual(packed["knowledge_pointers"]["vault_path"], "")
+        self.assertEqual(packed["phrase_mappings"]["继续"], "Resume current work")
+        self.assertEqual(packed["memory"]["location"], memory_location)
+        self.assertEqual(validate_profile(packed), [])
+
+    def test_university_pack_covers_general_student_life_without_private_values(self):
+        packed = apply_profile_pack(default_profile("zh-CN"), load_profile_pack("university-student"))
+        self.assertEqual(packed["student_life"]["role"], "university-student")
+        self.assertIn("coursework", packed["student_life"]["areas"])
+        self.assertIn("internships-and-career", packed["student_life"]["areas"])
+        self.assertEqual(packed["study"]["goals"], [])
+        self.assertEqual(packed["knowledge_pointers"]["vault_path"], "")
+        self.assertEqual(validate_profile(packed), [])
+
+    def test_local_study_configuration_overrides_only_private_fields(self):
+        profile = apply_profile_pack(default_profile(), load_profile_pack("student-exam-prep"))
+        configure_study_profile(
+            profile,
+            goals=["考研", "雅思", "考研"],
+            vault_name="测试",
+            vault_path=str(REPO_ROOT),
+            enable_shadow=True,
+            shadow_preview_chars=48,
+        )
+        self.assertEqual(profile["study"]["goals"], ["考研", "雅思"])
+        self.assertEqual(profile["study"]["active_goal"], "考研")
+        self.assertEqual(profile["knowledge_pointers"]["vault_name"], "测试")
+        self.assertTrue(profile["shadow_evaluation"]["enabled"])
+        self.assertFalse(profile["shadow_evaluation"]["notify_user"])
+        self.assertEqual(profile["shadow_evaluation"]["preview_chars"], 48)
+        self.assertEqual(validate_profile(profile), [])
+
+    def test_profile_pack_numeric_settings_fail_validation_without_crashing(self):
+        profile = apply_profile_pack(default_profile(), load_profile_pack("student-exam-prep"))
+        profile["study"]["focus_window_minutes"] = "later"
+        profile["shadow_evaluation"]["retention_days"] = False
+        errors = validate_profile(profile)
+        self.assertIn("study.focus_window_minutes must be positive", errors)
+        self.assertIn("shadow_evaluation retention_days and max_events must be positive", errors)
 
 
 if __name__ == "__main__":

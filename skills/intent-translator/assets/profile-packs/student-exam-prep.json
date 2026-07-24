@@ -1,0 +1,47 @@
+{
+  "pack_schema_version": 1,
+  "name": "student-exam-prep",
+  "description": "Optional local-first defaults for exam preparation and language study.",
+  "profile": {
+    "adaptation": {"domains": ["exam-prep", "language-learning"]},
+    "study": {
+      "enabled": true,
+      "goals": [],
+      "active_goal": "",
+      "active_subject": "",
+      "protect_study_time": true,
+      "focus_window_minutes": 45,
+      "interruption_policy": "batch-nonurgent",
+      "continuity": {
+        "resume_recent_subject": true,
+        "prefer_existing_materials": true,
+        "ask_only_when_blocked": true,
+        "keep_evaluation_silent": true
+      },
+      "routing": [
+        {"subject": "math", "terms": ["math", "mathematics", "数学", "高数", "线代", "概率论"], "preferred_skills": ["kaoyan-math", "study-assistant"]},
+        {"subject": "english", "terms": ["english", "英语", "ielts", "雅思", "阅读", "写作", "听力", "口语"], "preferred_skills": ["kaoyan-english", "study-assistant"]},
+        {"subject": "professional-course", "terms": ["专业课", "电子技术", "模电", "数电"], "preferred_skills": ["kaoyan-electronics", "study-assistant"]},
+        {"subject": "general-study", "terms": ["复习", "学习计划", "错题", "测试我", "quiz", "review"], "preferred_skills": ["study-assistant"]}
+      ]
+    },
+    "shadow_evaluation": {
+      "enabled": false,
+      "retention_days": 30,
+      "max_events": 500,
+      "store_full_utterance": false,
+      "preview_chars": 0,
+      "notify_user": true,
+      "review_policy": "batched"
+    },
+    "knowledge_pointers": {
+      "enabled": true,
+      "adapter": "obsidian",
+      "vault_name": "",
+      "vault_path": "",
+      "managed_note": "AI/意图中枢-学习索引.md",
+      "scan_vault": false,
+      "sync_policy": "explicit-or-session-end"
+    }
+  }
+}

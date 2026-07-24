@@ -15,6 +15,9 @@ class CompileRequest(BaseModel):
     authorization: Literal["granted", "unknown", "denied"] = "unknown"
     available_files: list[str] = Field(default_factory=list)
     include_prompt: bool = True
+    semantic_mode: Literal["off", "auto", "required"] = "auto"
+    allow_external_semantic: bool = False
+    allow_sensitive_semantic: bool = False
 
 
 class CheckRequest(BaseModel):
@@ -57,3 +60,34 @@ class OutcomeRequest(BaseModel):
     correction_id: int = Field(ge=1)
     outcome: Literal["heeded", "recurred", "unknown"]
     context: str = ""
+
+
+class ShadowObserveRequest(BaseModel):
+    utterance: str = Field(min_length=1)
+    compiler_mode: str = Field(min_length=1)
+    compiler_skill: str = ""
+    compiler_clarification: bool = False
+    codex_mode: str = Field(min_length=1)
+    codex_skill: str = ""
+    codex_clarification: bool = False
+    subject: str = ""
+    exam_goal: str = ""
+    context_switched: bool = False
+    pointer_reused: bool = False
+    sample_reason: str = "ambiguous-or-study-routing"
+
+
+class ShadowReviewRequest(BaseModel):
+    days: int = Field(default=30, ge=1, le=365)
+
+
+class StudyPointerRequest(BaseModel):
+    action: Literal["upsert", "list", "reuse", "sync"]
+    path: str = ""
+    title: str = ""
+    purpose: str = ""
+    subject: str = ""
+    exam_goal: str = ""
+    authority_level: Literal["reference", "official", "teacher", "working", "personal"] = "working"
+    query: str = ""
+    limit: int = Field(default=20, ge=1, le=100)

@@ -1,6 +1,6 @@
 ---
 name: intent-translator
-description: Compile terse, implicit, conversational, or context-dependent user language into reliable agent instructions. Recover intent from recent context and local memory, preserve personal voice, challenge consequential weak assumptions, resolve ambiguity, compress context, discover installed Skills, and route work through the smallest capable tool set. Use for short approvals or continuations, unclear requests, product and architecture proposals, prompt conversion, memory or recall, agent handoffs, context compression, and uncertain Skill selection.
+description: Compile terse, implicit, conversational, or context-dependent user language into reliable agent instructions. Recover intent from recent context and local memory, preserve personal voice, challenge consequential weak assumptions, resolve ambiguity, compress context, discover installed Skills, maintain study continuity and material pointers, and route work through the smallest capable tool set. Use for short approvals or continuations, unclear requests, study follow-ups, product and architecture proposals, prompt conversion, memory or recall, agent handoffs, context compression, and uncertain Skill selection.
 ---
 
 # Intent Translator
@@ -20,7 +20,8 @@ When the host exposes the `intent_compile` MCP tool, prefer it for terse, implic
 5. Read [references/audience-adaptation.md](references/audience-adaptation.md) when expertise, accessibility, age-appropriate communication, culture, or high-stakes domain risk materially changes the response.
 6. Read [references/external-egress.md](references/external-egress.md) before sending user-derived context to an external service.
 7. Read [references/optional-adapters.md](references/optional-adapters.md) only when a locally enabled adapter is needed.
-8. Read [references/decision-receipts.md](references/decision-receipts.md) when the user asks what was understood, which memory was used, or why a Skill was selected.
+8. Read [references/semantic-model-layer.md](references/semantic-model-layer.md) when MCP semantic output is present or a semantic adapter is being configured.
+9. Read [references/decision-receipts.md](references/decision-receipts.md) when the user asks what was understood, which memory was used, or why a Skill was selected.
 
 ## Compilation Depth
 
@@ -45,6 +46,8 @@ Do not turn routine actions into interviews. Do not let speed bypass a material 
 10. Execute the task. Do not stop at rebuttal, analysis, or prompt generation unless the user explicitly requests only that artifact.
 11. Verify against `completion` using [references/verification.md](references/verification.md). Apply only authorized memory changes. Record whether a surfaced correction was `heeded` or `recurred` when the outcome is observable.
 12. When the user says `不是这个意思`, `太复杂了`, `以后别这样`, or an equivalent brief correction, create a pending correction with MCP `intent_suggest_correction` or `memory_store.py correction-suggest`. Show its one-line confirmation prompt. Persist it only after the user confirms, then call `intent_confirm_correction` or `correction-confirm`.
+13. When a local study profile is enabled, preserve the current goal and subject, prefer its installed Skill routing hints, and check `intent_study_pointer` before asking for a known material again. Register pointers only for files the user explicitly supplies or identifies. Never scan an entire vault.
+14. Call `intent_shadow_observe` only when the user has enabled local shadow evaluation, and only for ambiguous interpretations or study-routing decisions after both compiler and host choices are known. Store no utterance preview unless the local profile explicitly chooses a nonzero limit. Review aggregates with `intent_shadow_review` during maintenance or when requested, not after every message.
 
 ## Execution Envelope
 
@@ -93,6 +96,8 @@ For `compress`, retain the objective, terminology, decisions, constraints, autho
 ## Evaluation
 
 Read [references/evaluation.md](references/evaluation.md) when changing routing, ambiguity handling, memory behavior, or compilation rules. Use `scripts/evaluate_predictions.py` with versioned JSONL cases. Do not claim general user understanding from anecdotal success.
+
+The public `university-student` base pack covers coursework, assignments, research, projects, career preparation, campus administration, and knowledge management. The `student-exam-prep` extension adds exam and language-goal routing. Institution, major, grades, schedules, goals, vault paths, progress, mistakes, and language corrections belong only in the local profile. Shadow evaluation stores no full utterance and must not become a study notification system.
 
 ## Prompt Output
 

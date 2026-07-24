@@ -20,7 +20,7 @@ For most first-time users, install the Skill only. Add MCP after the basic workf
 
 ## Status
 
-Early public alpha, version `0.4.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Early public alpha, version `0.5.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -73,6 +73,14 @@ sh ./install.sh --host all --replace
 
 Restart or reload the agent host after installation. Personal configuration is created at `~/.intent-translator/profile.json`; memory defaults to `~/.intent-translator/memory.db`. Neither belongs in this repository.
 
+For a Codex-first Windows setup that installs the Skill and MCP, applies the reusable student profile pack, manages the Codex rules block, and runs the doctor:
+
+```powershell
+.\setup-codex.ps1 -StudyGoal "postgraduate exam","IELTS" -ObsidianVaultName "My Vault" -ObsidianVaultPath "D:\My Vault" -EnableShadow
+```
+
+The repository contains a generic `university-student` base pack plus a `student-exam-prep` goal extension. Shadow evaluation remains off unless `-EnableShadow` is supplied. Goals, current subjects, vault locations, progress, mistakes, and correction history are written to the local profile or database and must not be committed. See [docs/student-profile.md](docs/student-profile.md).
+
 Installers report the installed and available versions, stage upgrades before replacing the active Skill, and restore the previous version when installation fails. Check without changing files:
 
 ```powershell
@@ -105,9 +113,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mcp.ps1
 sh ./install-mcp.sh
 ```
 
-Installers create an isolated venv under `~/.intent-translator/mcp/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Windows users may pass `-ConfigureCodex` to append a new Codex entry when one does not already exist.
+Installers create a versioned isolated venv under `~/.intent-translator/mcp/runtimes/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Versioned runtimes avoid Windows upgrade failures when an older MCP process is still running. Windows users may pass `-ConfigureCodex` to add or update the Codex entry after the new runtime passes its smoke test.
 
-The server exposes seven tools: `intent_compile`, `intent_check`, `intent_recall_corrections`, `intent_record_correction`, `intent_suggest_correction`, `intent_confirm_correction`, and `intent_record_outcome`. Read-only compilation and recall do not mutate memory access counters.
+For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
+
+The server exposes ten tools: the seven intent, correction, and outcome tools plus `intent_shadow_observe`, `intent_shadow_review`, and `intent_study_pointer`. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
 
 Generated host configurations force Python UTF-8 mode. When manually piping Chinese text through Windows PowerShell 5.1, set `$OutputEncoding`, console input/output encoding, `PYTHONUTF8=1`, and `PYTHONIOENCODING=utf-8`, or pass the text through a UTF-8 file. Normal MCP JSON stdio calls do not use the legacy PowerShell text pipeline.
 
@@ -127,6 +137,27 @@ Remove only the MCP runtime and generated snippets while preserving profile and 
 ```bash
 sh ./uninstall-mcp.sh
 ```
+
+### Optional semantic model
+
+The semantic layer is a provider-neutral JSON command adapter. It can call a local model runner or a user-supplied cloud wrapper, but no provider, model, account, or API key is bundled. Configure the command as a JSON argument array, never as a shell string:
+
+```bash
+export INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON='["my-model-wrapper", "--json"]'
+export INTENT_TRANSLATOR_SEMANTIC_NAME='my-local-model'
+```
+
+Or point directly at a local server implementing `/v1/chat/completions`:
+
+```bash
+export INTENT_TRANSLATOR_SEMANTIC_PROVIDER='chat-completions'
+export INTENT_TRANSLATOR_SEMANTIC_BASE_URL='http://127.0.0.1:11434/v1'
+export INTENT_TRANSLATOR_SEMANTIC_MODEL='your-local-model'
+```
+
+Mark a wrapper that sends data off-device with `INTENT_TRANSLATOR_SEMANTIC_EXTERNAL=1`. Each compile request must then separately set `allow_external_semantic`; sensitive content also requires `allow_sensitive_semantic`. Model output may raise risk or request clarification, but cannot lower deterministic risk or grant authorization. A model-inferred action that was not found by deterministic rules always enters review before execution.
+
+See [docs/semantic-layer.md](docs/semantic-layer.md) for the JSON contract and threat model.
 
 ## How It Works
 
@@ -187,8 +218,16 @@ python skills/intent-translator/scripts/evaluate_predictions.py --cases evals/ca
 # Compare a naive baseline with the deterministic compiler
 intent-translator-eval --cases evals/cases.jsonl --output work/ab-report.json
 
+# Compare no-model, helpful-model, and adversarial-model fixtures
+intent-translator-semantic-eval --cases evals/semantic_cases.jsonl
+
 # Diagnose an installation without printing exact home paths
 intent-translator-doctor --json
+
+# Review silent shadow samples and sync the managed pointer index
+intent-translator-study shadow-review
+intent-translator-study pointer-list --exam-goal IELTS
+intent-translator-study pointer-sync
 ```
 
 ## Test
@@ -218,7 +257,7 @@ On the isolated 24-case regression set, the naive baseline scores 60.4% across r
 - The deterministic regression set is small and intentionally cannot prove general understanding.
 - New languages, dialects, professions, and third-party Skills need out-of-distribution evaluation.
 - Host auto-invocation behavior varies; installing the MCP server does not guarantee every host will call it on every message.
-- The optional semantic model layer is not implemented, so novel metaphors and indirect language still depend on the host model.
+- No model is bundled. Real semantic quality depends on the configured adapter and still needs held-out live-model evaluation.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
 

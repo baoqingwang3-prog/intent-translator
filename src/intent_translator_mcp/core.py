@@ -12,6 +12,7 @@ from types import ModuleType
 from typing import Any
 
 from .models import CompileRequest
+from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
 
 
 MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
@@ -201,6 +202,61 @@ def _route_skill(text: str, discovered: dict[str, Any]) -> tuple[str | None, lis
     return (candidates[0]["name"] if candidates else None), candidates
 
 
+def _study_profile_context(
+    profile: dict[str, Any], text: str, registry: dict[str, Any]
+) -> tuple[dict[str, Any], str | None]:
+    study = profile.get("study", {})
+    if not isinstance(study, dict) or not study.get("enabled", False):
+        return {"enabled": False}, None
+    folded = text.casefold()
+    goals = [str(goal) for goal in study.get("goals", []) if str(goal).strip()]
+    matched_goals = [goal for goal in goals if goal.casefold() in folded]
+    active_goal = matched_goals[0] if matched_goals else str(study.get("active_goal", ""))
+    installed = {item["name"] for item in registry.get("skills", [])}
+    matched_subject = ""
+    preferred_skill: str | None = None
+    matched_terms: list[str] = []
+    for route in study.get("routing", []):
+        if not isinstance(route, dict):
+            continue
+        terms = [str(term) for term in route.get("terms", []) if str(term).strip()]
+        hits = [term for term in terms if term.casefold() in folded]
+        if not hits:
+            continue
+        matched_subject = str(route.get("subject", ""))
+        matched_terms = hits
+        preferred_skill = next(
+            (str(name) for name in route.get("preferred_skills", []) if str(name) in installed),
+            None,
+        )
+        break
+    if not matched_subject:
+        matched_subject = str(study.get("active_subject", ""))
+    return (
+        {
+            "enabled": True,
+            "goals": goals,
+            "matched_goals": matched_goals,
+            "active_goal": active_goal,
+            "subject": matched_subject,
+            "matched_terms": matched_terms,
+            "protect_study_time": bool(study.get("protect_study_time", False)),
+            "focus_window_minutes": int(study.get("focus_window_minutes", 45)),
+            "interruption_policy": str(study.get("interruption_policy", "batch-nonurgent")),
+            "prefer_existing_materials": bool(study.get("continuity", {}).get("prefer_existing_materials", True)),
+            "keep_evaluation_silent": bool(study.get("continuity", {}).get("keep_evaluation_silent", True)),
+            "student_life": {
+                "enabled": bool(profile.get("student_life", {}).get("enabled", False)),
+                "role": str(profile.get("student_life", {}).get("role", "")),
+                "areas": list(profile.get("student_life", {}).get("areas", [])),
+                "deadline_policy": str(profile.get("student_life", {}).get("deadline_policy", "")),
+                "workload_policy": str(profile.get("student_life", {}).get("workload_policy", "")),
+            },
+        },
+        preferred_skill,
+    )
+
+
 def _path_and_clarification(text: str, mode: str, risk: dict[str, Any], memories: list[dict[str, Any]]) -> tuple[str, bool]:
     review_terms = ("我想到", "我认为", "反驳", "提示词", "小学老师", "人格类型", "老样子", "之前定的", "my idea", "I think", "challenge my claim", "as before")
     stale = any(item.get("stale") for item in memories)
@@ -215,12 +271,23 @@ def _path_and_clarification(text: str, mode: str, risk: dict[str, Any], memories
 class IntentCompiler:
     """Compile user language into a compact, auditable execution envelope."""
 
-    def __init__(self, *, registry: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        registry: dict[str, Any] | None = None,
+        semantic_adapter: SemanticAdapter | None = None,
+    ) -> None:
         self.profile = load_profile()
         if registry is None:
             discover = _load_skill_script("discover_skills")
             registry = discover.discover_skills(discover.default_roots())
         self.registry = registry
+        self.semantic_config_error: str | None = None
+        try:
+            self.semantic_adapter = semantic_adapter or adapter_from_env()
+        except ValueError as exc:
+            self.semantic_adapter = None
+            self.semantic_config_error = str(exc)
 
     def recall_corrections(self, query: str, scope: str = "global", limit: int = 5) -> list[dict[str, Any]]:
         memory = _load_skill_script("memory_store")
@@ -256,6 +323,7 @@ class IntentCompiler:
             mode = "change"
         if utterance in APPROVAL_TERMS and mode == "answer" and request.context:
             mode = "build" if _contains(request.context, ("create", "build", "设计", "创建")) else "change"
+        deterministic_mode = mode
         memory_action = _memory_action(source_text, mode)
         risk = _risk(source_text, request.authorization)
         corrections = self.recall_corrections(source_text, request.scope)
@@ -263,19 +331,142 @@ class IntentCompiler:
         path, clarification = _path_and_clarification(source_text, mode, risk, memories)
         routing_text = source_text if utterance in APPROVAL_TERMS | CONTINUE_TERMS or len(utterance) <= 4 else " ".join((utterance, expanded))
         primary_skill, skill_candidates = _route_skill(routing_text, self.registry)
+        study_context, study_skill = _study_profile_context(self.profile, source_text, self.registry)
+        if primary_skill is None and study_skill:
+            primary_skill = study_skill
+            skill_candidates.insert(
+                0,
+                {"name": study_skill, "score": 45, "matched_terms": ["local-study-profile"]},
+            )
         if utterance in CONTINUE_TERMS and "obsidian" in source_text.casefold():
             primary_skill = "obsidian-cli"
         confidence = 0.95 if mapping else 0.82 if request.context or request.pending_action else 0.68
         if clarification:
             confidence = min(confidence, 0.72)
         normalized = expanded or request.pending_action if utterance in APPROVAL_TERMS | CONTINUE_TERMS else utterance
+
+        semantic_sensitive = bool(risk["sensitive"])
+        if self.semantic_adapter and self.semantic_adapter.external:
+            try:
+                privacy = _load_skill_script("privacy_guard").inspect_text(source_text)
+                semantic_sensitive = semantic_sensitive or bool(privacy["requires_review"])
+            except RuntimeError:
+                semantic_sensitive = True
+        draft = {
+            "normalized_goal": normalized,
+            "mode": mode,
+            "path": path,
+            "memory_action": memory_action,
+            "primary_skill": primary_skill,
+            "risk": {
+                "impact": risk["impact"],
+                "external": risk["external"],
+                "sensitive": risk["sensitive"],
+                "high_stakes": risk["high_stakes"],
+                "confirmation_required": risk["confirmation_required"],
+            },
+        }
+        semantic = run_semantic_adapter(
+            self.semantic_adapter,
+            payload=semantic_payload(
+                utterance=utterance,
+                context=request.context,
+                pending_action=request.pending_action,
+                deterministic=draft,
+                skills=self.registry.get("skills", []),
+            ),
+            semantic_mode=request.semantic_mode,
+            allow_external=request.allow_external_semantic,
+            allow_sensitive=request.allow_sensitive_semantic,
+            sensitive=semantic_sensitive,
+        )
+        if self.semantic_config_error and semantic["status"] == "unavailable":
+            semantic = {
+                **semantic,
+                "status": "error",
+                "error": "invalid semantic adapter configuration",
+            }
+
+        proposal = semantic.get("proposal")
+        if proposal:
+            semantic_confidence = float(proposal["confidence"])
+            if semantic_confidence >= 0.55:
+                normalized = str(proposal["normalized_goal"]).strip() or normalized
+                if mode == "answer" and proposal.get("mode"):
+                    mode = str(proposal["mode"])
+            installed_names = {item["name"] for item in self.registry.get("skills", [])}
+            suggested_skill = proposal.get("primary_skill")
+            if primary_skill is None and suggested_skill in installed_names:
+                primary_skill = str(suggested_skill)
+                skill_candidates.insert(
+                    0,
+                    {"name": primary_skill, "score": 35, "matched_terms": ["semantic-proposal"]},
+                )
+
+            normalized_risk = _risk(normalized, request.authorization)
+            if normalized_risk["external"]:
+                risk["external"] = True
+            if normalized_risk["sensitive"]:
+                risk["sensitive"] = True
+            if normalized_risk["high_stakes"]:
+                risk["high_stakes"] = True
+            if normalized_risk["reversible"] == "no":
+                risk["reversible"] = "no"
+            for reason in normalized_risk["reasons"]:
+                if reason not in risk["reasons"]:
+                    risk["reasons"].append(reason)
+
+            hints = set(proposal.get("risk_hints", []))
+            if "external" in hints:
+                risk["external"] = True
+            if "sensitive" in hints:
+                risk["sensitive"] = True
+            if "irreversible" in hints:
+                risk["reversible"] = "no"
+            if "high_stakes" in hints:
+                risk["high_stakes"] = True
+            if risk["high_stakes"] or risk["reversible"] == "no" or (risk["external"] and risk["sensitive"]):
+                risk["impact"] = "high"
+            elif risk["external"] or risk["sensitive"]:
+                risk["impact"] = "medium"
+            if request.authorization == "unknown":
+                semantic_reasons = []
+                if risk["external"]:
+                    semantic_reasons.append("external action lacks explicit authorization")
+                if risk["reversible"] == "no":
+                    semantic_reasons.append("irreversible action lacks explicit authorization")
+                if risk["external"] and risk["sensitive"]:
+                    semantic_reasons.append("sensitive external transfer lacks explicit authorization")
+                if risk["high_stakes"]:
+                    semantic_reasons.append("high-stakes request requires verified evidence and bounded guidance")
+                for reason in semantic_reasons:
+                    if reason not in risk["reasons"]:
+                        risk["reasons"].append(reason)
+            risk["confirmation_required"] = bool(risk["reasons"]) and not risk["blocked"]
+            semantic_clarification = (
+                bool(proposal.get("clarification_recommended"))
+                or semantic_confidence < 0.55
+                or bool(proposal.get("alternatives"))
+                or (deterministic_mode == "answer" and mode not in {"answer", "diagnose"})
+            )
+            clarification = clarification or risk["confirmation_required"] or semantic_clarification
+            if clarification or proposal.get("assumptions") or proposal.get("alternatives"):
+                path = "review"
+            confidence = min(confidence, semantic_confidence) if clarification else max(confidence, semantic_confidence)
+        elif request.semantic_mode == "required" and semantic["status"] != "applied":
+            clarification = True
+            path = "review"
+            confidence = min(confidence, 0.5)
+
         prompt = (
             "Interpret the latest user message using this execution envelope. Preserve the user's voice. "
             "Do not expand authorization beyond the stated scope. Execute reversible in-scope work, but ask "
             "before external, irreversible, sensitive, or otherwise high-impact actions. "
+            "When study_context is enabled, preserve the current study thread, reuse registered materials, and batch "
+            "nonurgent evaluation so it does not interrupt study. "
             f"Mode={mode}; path={path}; normalized_goal={normalized!r}; primary_skill={primary_skill!r}; "
             f"memory_action={memory_action}; clarification_required={clarification}; "
-            f"risk_reasons={risk['reasons']}; correction_ids={[item['id'] for item in corrections]}."
+            f"study_context={study_context}; risk_reasons={risk['reasons']}; correction_ids={[item['id'] for item in corrections]}."
         )
         envelope = {
             "schema_version": 1,
@@ -296,6 +487,8 @@ class IntentCompiler:
                 "discovered_skill_count": len(self.registry.get("skills", [])),
                 "discovery_errors": len(self.registry.get("errors", [])),
             },
+            "semantic": semantic,
+            "study_context": study_context,
             "completion_contract": {
                 "execute": mode not in {"answer", "diagnose"} and not risk["blocked"] and not clarification,
                 "verify": mode in {"build", "change", "route"},

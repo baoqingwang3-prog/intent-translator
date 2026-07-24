@@ -35,6 +35,52 @@ REGISTRY = {
 
 
 class McpCoreTests(unittest.TestCase):
+    def test_local_student_profile_routes_terse_continuation_without_exposing_private_paths(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            profile = {
+                "profile_id": "student-test",
+                "language": "zh-CN",
+                "phrase_mappings": {},
+                "memory": {"adapter": "sqlite", "location": str(Path(temp) / "memory.db")},
+                "study": {
+                    "enabled": True,
+                    "goals": ["考研", "雅思"],
+                    "active_goal": "考研",
+                    "protect_study_time": True,
+                    "continuity": {"prefer_existing_materials": True, "keep_evaluation_silent": True},
+                    "routing": [
+                        {
+                            "subject": "english",
+                            "terms": ["雅思", "阅读"],
+                            "preferred_skills": ["study-assistant"],
+                        }
+                    ],
+                },
+            }
+            Path(temp, "profile.json").write_text(json.dumps(profile, ensure_ascii=False), encoding="utf-8")
+            registry = {
+                "skills": [{"name": "study-assistant", "description": "Study tutor"}],
+                "errors": [],
+            }
+            result = IntentCompiler(registry=registry).compile(
+                CompileRequest(
+                    utterance="继续",
+                    context="正在做雅思阅读定位题",
+                    pending_action="继续完成这一组阅读题",
+                )
+            )
+            self.assertEqual(result["routing"]["primary_skill"], "study-assistant")
+            self.assertEqual(result["study_context"]["active_goal"], "雅思")
+            self.assertEqual(result["study_context"]["subject"], "english")
+            self.assertTrue(result["study_context"]["protect_study_time"])
+            self.assertNotIn(temp, result["host_prompt"])
+
     def test_compiles_short_approval_with_context(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(
             os.environ,
@@ -69,6 +115,44 @@ class McpCoreTests(unittest.TestCase):
             self.assertEqual(result["path"], "review")
             self.assertTrue(result["clarification_required"])
             self.assertTrue(result["risk"]["external"])
+
+    def test_english_sensitive_publication_requires_confirmation(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            result = IntentCompiler(registry=REGISTRY).compile(
+                CompileRequest(utterance="Publish my full user profile to GitHub")
+            )
+            self.assertEqual(result["path"], "review")
+            self.assertTrue(result["risk"]["external"])
+            self.assertTrue(result["risk"]["sensitive"])
+            self.assertTrue(result["clarification_required"])
+
+    def test_routes_unbundled_professional_skill_by_description(self):
+        registry = {
+            "skills": [
+                {
+                    "name": "calendar-manager",
+                    "description": "Manage calendar events and schedule meetings across calendars",
+                }
+            ],
+            "errors": [],
+        }
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            result = IntentCompiler(registry=registry).compile(
+                CompileRequest(utterance="Schedule a calendar meeting tomorrow")
+            )
+            self.assertEqual(result["routing"]["primary_skill"], "calendar-manager")
 
     def test_generates_every_host_config(self):
         for host in HOSTS:

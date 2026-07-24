@@ -33,6 +33,25 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(report["status"], "fail")
             self.assertNotIn("not-json", json.dumps(report))
 
+    def test_versioned_runtime_state_requires_existing_command(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            data = home / ".intent-translator"
+            runtime = data / "mcp" / "runtimes" / "0.4.0" / "venv" / "Scripts"
+            runtime.mkdir(parents=True)
+            command = runtime / "intent-translator-mcp.exe"
+            command.touch()
+            (data / "mcp" / "current.json").write_text(
+                json.dumps({"version": "0.4.0", "command": str(command)}),
+                encoding="utf-8",
+            )
+
+            report = run_doctor(home=home, env={})
+            check = next(item for item in report["checks"] if item["id"] == "mcp_runtime")
+            self.assertEqual(check["status"], "pass")
+            self.assertEqual(check["details"]["version"], "0.4.0")
+            self.assertNotIn(str(home.resolve()), json.dumps(report))
+
 
 if __name__ == "__main__":
     unittest.main()

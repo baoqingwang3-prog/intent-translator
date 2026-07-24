@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$utf8 = [Text.UTF8Encoding]::new($false)
 $userHome = [Environment]::GetFolderPath("UserProfile")
 $defaultRuntime = Join-Path $userHome ".intent-translator\mcp"
 if (-not $RuntimeRoot) { $RuntimeRoot = $defaultRuntime }
@@ -38,7 +39,7 @@ if (-not $KeepCodexConfig) {
         if ($found) {
             $backup = "$codexConfig.bak-intent-translator-$(Get-Date -Format 'yyyyMMddTHHmmss')"
             Copy-Item -LiteralPath $codexConfig -Destination $backup
-            Set-Content -LiteralPath $codexConfig -Value $result -Encoding utf8
+            [IO.File]::WriteAllLines($codexConfig, $result, $utf8)
             Write-Host "Removed Codex MCP entry; backup: $backup"
         }
     }

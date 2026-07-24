@@ -7,6 +7,7 @@ import json
 import os
 import sqlite3
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -140,6 +141,80 @@ def run_doctor(
             location=_display_path(config_dir, home, show_paths),
         )
     )
+
+    runtime_state = home / ".intent-translator" / "mcp" / "current.json"
+    if not runtime_state.exists():
+        checks.append(_check("mcp_runtime", "warn", "Versioned MCP runtime state was not found"))
+    else:
+        try:
+            state = json.loads(runtime_state.read_text(encoding="utf-8-sig"))
+            raw_command = str(state.get("command", "")).strip()
+            command = Path(raw_command).expanduser() if raw_command else None
+            version = str(state.get("version", "")).strip()
+            valid = bool(version and command is not None and command.is_absolute() and command.is_file())
+            checks.append(
+                _check(
+                    "mcp_runtime",
+                    "pass" if valid else "fail",
+                    "Versioned MCP runtime is installed" if valid else "Versioned MCP runtime state is stale or invalid",
+                    version=version or None,
+                    command=_display_path(command, home, show_paths) if command is not None else None,
+                )
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            checks.append(
+                _check(
+                    "mcp_runtime",
+                    "fail",
+                    "Versioned MCP runtime state cannot be read",
+                    error=type(exc).__name__,
+                )
+            )
+
+    semantic_command = env.get("INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON", "").strip()
+    semantic_provider = env.get("INTENT_TRANSLATOR_SEMANTIC_PROVIDER", "").strip().casefold()
+    if not semantic_command and not semantic_provider:
+        checks.append(_check("semantic_adapter", "pass", "Optional semantic adapter is disabled"))
+    elif semantic_provider in {"chat-completions", "openai-compatible"}:
+        base_url = env.get("INTENT_TRANSLATOR_SEMANTIC_BASE_URL", "").strip()
+        model = env.get("INTENT_TRANSLATOR_SEMANTIC_MODEL", "").strip()
+        parsed = urllib.parse.urlparse(base_url)
+        valid = bool(model and parsed.scheme in {"http", "https"} and parsed.netloc)
+        external = (parsed.hostname or "").casefold() not in {"localhost", "127.0.0.1", "::1"}
+        checks.append(
+            _check(
+                "semantic_adapter",
+                "warn" if valid and external else "pass" if valid else "fail",
+                "External chat-completions adapter is configured; each request still needs explicit egress authorization"
+                if valid and external
+                else "Local chat-completions adapter configuration is valid"
+                if valid
+                else "Chat-completions adapter requires a valid HTTP(S) base URL and model",
+                provider="chat-completions",
+                external=external,
+            )
+        )
+    else:
+        try:
+            semantic_argv = json.loads(semantic_command)
+            valid = isinstance(semantic_argv, list) and bool(semantic_argv) and all(
+                isinstance(item, str) and bool(item) for item in semantic_argv
+            )
+        except json.JSONDecodeError:
+            valid = False
+        external = env.get("INTENT_TRANSLATOR_SEMANTIC_EXTERNAL", "0") == "1"
+        checks.append(
+            _check(
+                "semantic_adapter",
+                "warn" if valid and external else "pass" if valid else "fail",
+                "External semantic adapter is configured; each request still needs explicit egress authorization"
+                if valid and external
+                else "Local semantic adapter configuration is valid"
+                if valid
+                else "Semantic adapter command must be a non-empty JSON string array",
+                external=external,
+            )
+        )
 
     statuses = {item["status"] for item in checks}
     overall = "fail" if "fail" in statuses else "warn" if "warn" in statuses else "pass"

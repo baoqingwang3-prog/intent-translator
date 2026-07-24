@@ -14,45 +14,79 @@ $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 $userHome = [Environment]::GetFolderPath("UserProfile")
 if (-not $RuntimeRoot) { $RuntimeRoot = Join-Path $userHome ".intent-translator\mcp" }
-$venv = Join-Path $RuntimeRoot "venv"
+$version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot "VERSION") -Raw).Trim()
+if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$') { throw "Invalid VERSION: $version" }
+$versionRoot = Join-Path $RuntimeRoot (Join-Path "runtimes" $version)
+$venv = Join-Path $versionRoot "venv"
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
 if (-not $python) { throw "Python 3.10+ is required." }
 
-if ((Test-Path -LiteralPath $venv) -and $Replace) {
+if ((Test-Path -LiteralPath $versionRoot) -and $Replace) {
     $resolvedRuntime = [IO.Path]::GetFullPath($RuntimeRoot)
-    $resolvedVenv = [IO.Path]::GetFullPath($venv)
-    if (-not $resolvedVenv.StartsWith($resolvedRuntime, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to replace a venv outside the runtime root: $resolvedVenv"
+    $resolvedVersion = [IO.Path]::GetFullPath($versionRoot)
+    if (-not $resolvedVersion.StartsWith($resolvedRuntime, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to replace a version outside the runtime root: $resolvedVersion"
     }
-    Remove-Item -LiteralPath $venv -Recurse -Force
+    Remove-Item -LiteralPath $versionRoot -Recurse -Force
 }
 if (-not (Test-Path -LiteralPath (Join-Path $venv "Scripts\python.exe"))) {
-    New-Item -ItemType Directory -Path $RuntimeRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $versionRoot -Force | Out-Null
     & $python.Source -m venv $venv
 }
 
 $venvPython = Join-Path $venv "Scripts\python.exe"
-& $venvPython -m pip install --disable-pip-version-check --upgrade $PSScriptRoot
+$runtimeHealthy = $false
+if (-not $Replace -and (Test-Path -LiteralPath $venvPython)) {
+    & $venvPython -c "import importlib.util as u, importlib.metadata as m; raise SystemExit(u.find_spec('intent_translator_mcp') is None or m.version('intent-translator-mcp') != '$version')"
+    $runtimeHealthy = $LASTEXITCODE -eq 0
+}
+if ($runtimeHealthy) {
+    Write-Host "Reusing healthy MCP runtime $version at $versionRoot"
+} else {
+    & $venvPython -m pip install --disable-pip-version-check --upgrade $PSScriptRoot
+    if ($LASTEXITCODE -ne 0) { throw "Failed to install MCP package into $versionRoot" }
+}
 
 $skillDir = Join-Path $userHome ".codex\skills\intent-translator"
 $configDir = Join-Path $userHome ".intent-translator\mcp-configs"
 $command = Join-Path $venv "Scripts\intent-translator-mcp.exe"
 & $venvPython -m intent_translator_mcp.config --host all --command $command --skill-dir $skillDir --output-dir $configDir
+if ($LASTEXITCODE -ne 0) { throw "Failed to generate MCP host configurations" }
+
+& $venvPython -c "from intent_translator_mcp.server import mcp; print('MCP import smoke test passed')"
+if ($LASTEXITCODE -ne 0) { throw "MCP import smoke test failed" }
 
 if ($ConfigureCodex) {
     $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $userHome ".codex" }
     $codexConfig = Join-Path $codexHome "config.toml"
-    $snippet = Get-Content -LiteralPath (Join-Path $configDir "codex-mcp.toml") -Raw
-    $existing = if (Test-Path -LiteralPath $codexConfig) { Get-Content -LiteralPath $codexConfig -Raw } else { "" }
-    if ($existing -match '(?m)^\[mcp_servers\.intent-translator\]') {
-        throw "Codex already has an intent-translator MCP entry. Update it manually from $configDir."
+    $snippet = @(Get-Content -LiteralPath (Join-Path $configDir "codex-mcp.toml") -Encoding utf8)
+    $existingLines = if (Test-Path -LiteralPath $codexConfig) { @(Get-Content -LiteralPath $codexConfig -Encoding utf8) } else { @() }
+    $result = [System.Collections.Generic.List[string]]::new()
+    $skipping = $false
+    $found = $false
+    foreach ($line in $existingLines) {
+        if ($line -match '^\[mcp_servers\.intent-translator(?:\.env)?\]$') {
+            $skipping = $true
+            $found = $true
+            continue
+        }
+        if ($skipping -and $line -match '^\[') { $skipping = $false }
+        if (-not $skipping) { $result.Add($line) }
     }
     New-Item -ItemType Directory -Path (Split-Path -Parent $codexConfig) -Force | Out-Null
-    Add-Content -LiteralPath $codexConfig -Value ("`n" + $snippet) -Encoding utf8
-    Write-Host "Configured Codex MCP in $codexConfig"
+    if ($found) {
+        $backup = "$codexConfig.bak-intent-translator-$(Get-Date -Format 'yyyyMMddTHHmmss')"
+        Copy-Item -LiteralPath $codexConfig -Destination $backup
+        Write-Host "Backed up previous Codex config to $backup"
+    }
+    if ($result.Count -gt 0 -and $result[$result.Count - 1] -ne "") { $result.Add("") }
+    foreach ($line in $snippet) { $result.Add($line) }
+    [IO.File]::WriteAllLines($codexConfig, $result, $utf8)
+    Write-Host "Configured Codex MCP $version in $codexConfig"
 }
 
-& $venvPython -c "from intent_translator_mcp.server import mcp; print('MCP import smoke test passed')"
-Write-Host "Installed MCP runtime to $RuntimeRoot"
+$state = @{ version = $version; runtime = $versionRoot; command = $command; installed_at = [DateTime]::UtcNow.ToString('o') }
+[IO.File]::WriteAllText((Join-Path $RuntimeRoot "current.json"), ($state | ConvertTo-Json), $utf8)
+Write-Host "Installed MCP runtime $version to $versionRoot"
 Write-Host "Generated host configurations in $configDir"

@@ -17,7 +17,10 @@ python scripts/init_profile.py validate
 python scripts/init_profile.py show
 python scripts/init_profile.py set-phrase --phrase "continue" --meaning "Resume the current unfinished flow"
 python scripts/init_profile.py remove-phrase --phrase "continue"
+python scripts/init_profile.py apply-pack --pack student-exam-prep --goal "exam name"
 ```
+
+Profile packs are optional starting points, not inferred identities. Applying one merges generic defaults while preserving existing phrase mappings, memory settings, and private paths. Users must supply any local vault path explicitly.
 
 ## Fields
 
@@ -30,6 +33,7 @@ python scripts/init_profile.py remove-phrase --phrase "continue"
 - `phrase_mappings`: User-confirmed shorthand and scoped meanings.
 - `memory`: Adapter and local storage location.
 - `cognitive_priors`: Optional, explicitly chosen interpretive hints.
+- `study`, `knowledge_pointers`, and `shadow_evaluation`: Optional pack-provided workflow preferences that remain local and must not silently scan files or retain full utterances.
 
 Treat cognitive priors as uncertain suggestions. Never use them to override current language, evidence, or user correction.
 
