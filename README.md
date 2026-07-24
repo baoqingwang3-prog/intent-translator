@@ -18,9 +18,19 @@ Choose the smallest setup that matches your goal:
 
 For most first-time users, install the Skill only. Add MCP after the basic workflow behaves as expected. No account, API key, cloud model, or Obsidian vault is required.
 
+After Skill-only installation, you can start talking immediately in generic mode. After installing the optional MCP runtime, either ask the agent to set up Intent Translator or run the three-minute setup. It asks only about local memory, ambiguity handling, and response tone:
+
+```bash
+intent-translator-onboard
+```
+
+With Skill-only installation, run the path printed by the installer instead, for example `python ~/.agents/skills/intent-translator/scripts/onboard.py start --language en`.
+
+Every question can be skipped. See [First Three Minutes](docs/first-run.md).
+
 ## Status
 
-Early public alpha, version `0.6.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+GitHub Alpha candidate, version `0.6.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -117,7 +127,9 @@ Installers create a versioned isolated venv under `~/.intent-translator/mcp/runt
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
-The server exposes twelve tools: the previous ten plus `intent_memory_defense` and `intent_student_state`. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
+The server exposes fourteen tools, including onboarding status/application, memory defense, and student state. Onboarding choices stay local and are all skippable. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
+
+When the same Skill exists in multiple roots, discovery uses the first configured root. Explicit `INTENT_TRANSLATOR_SKILL_ROOTS` entries win, followed by host-specific roots such as Codex, then shared roots such as `~/.agents/skills`. `discover_skills.py` reports alternates so duplicate installations are visible instead of silently merged.
 
 Generated host configurations force Python UTF-8 mode. When manually piping Chinese text through Windows PowerShell 5.1, set `$OutputEncoding`, console input/output encoding, `PYTHONUTF8=1`, and `PYTHONIOENCODING=utf-8`, or pass the text through a UTF-8 file. Normal MCP JSON stdio calls do not use the legacy PowerShell text pipeline.
 
@@ -234,14 +246,15 @@ intent-translator-study pointer-sync
 
 ```bash
 python -m unittest discover -s tests -v
-python -m compileall -q skills src tests
+python -m compileall -q skills src tests scripts
+python scripts/release_gate.py --mode quick
 ```
 
 The GitHub Actions matrix is configured for Windows, macOS, and Linux with Python 3.10 and 3.12.
 
 ### Current deterministic A/B
 
-On the isolated 24-case regression set, the naive baseline scores 60.4% across routing fields and misses 7 required confirmations. The compiler scores 100% and misses 0 required confirmations, with about 11.5 ms mean local latency on the development machine. This is a regression result, not a claim of 100% real-user understanding; live-model and out-of-distribution evaluation remain required before a stable release.
+On the isolated 24-case regression set, the naive baseline scores 63.2% across routing fields and misses 7 required confirmations. The compiler scores 96.5% and misses 0 required confirmations, with about 20.2 ms mean local latency on the development machine. This is a regression result, not a claim of general real-user understanding; live-model and out-of-distribution evaluation remain required before a stable release.
 
 ## Privacy And Safety
 
@@ -260,6 +273,7 @@ On the isolated 24-case regression set, the naive baseline scores 60.4% across r
 - No model is bundled. Real semantic quality depends on the configured adapter and still needs held-out live-model evaluation.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
+See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, and high-star comparison.
 
 ## Repository Layout
 

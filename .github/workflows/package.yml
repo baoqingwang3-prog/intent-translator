@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -18,15 +20,24 @@ jobs:
           python-version: "3.12"
       - name: Verify tag and versions
         run: python tests/check_release_metadata.py --tag "${GITHUB_REF_NAME:-}"
-      - name: Build distributions
+      - name: Release quality gate
         run: |
           python -m pip install build
-          python -m build
-      - name: Inspect wheel
+          python scripts/release_gate.py --mode ci
+      - name: Build distributions
+        run: python -m build
+      - name: Inspect distributions
+        run: python scripts/release_audit.py --repo . --dist dist
+      - name: Install wheel and run doctor
         run: |
           python -m venv "$RUNNER_TEMP/package-test"
           "$RUNNER_TEMP/package-test/bin/python" -m pip install dist/*.whl
           "$RUNNER_TEMP/package-test/bin/intent-translator-doctor" --json
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: intent-translator-distributions

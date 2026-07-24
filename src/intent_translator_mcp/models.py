@@ -20,6 +20,17 @@ class CompileRequest(BaseModel):
     allow_sensitive_semantic: bool = False
 
 
+class OnboardingStatusRequest(BaseModel):
+    pass
+
+
+class OnboardingApplyRequest(BaseModel):
+    memory: Literal["local", "off", "skip"] = "skip"
+    interpretation: Literal["choices", "ask", "skip"] = "skip"
+    tone: Literal["concise", "balanced", "detailed", "skip"] = "skip"
+    sharp_review: bool | None = None
+
+
 class CheckRequest(BaseModel):
     goal: str = Field(min_length=1)
     scope: str = "global"

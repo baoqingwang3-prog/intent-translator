@@ -35,7 +35,7 @@ class PersonalizationFirewallTests(unittest.TestCase):
 
     def test_clean_profile_contains_no_creator_shadow(self):
         serialized = json.dumps(default_profile(), ensure_ascii=False)
-        for forbidden in ("BBG", "考研", "雅思", "ENTP", "PUA", "D:\\测试"):
+        for forbidden in ("example-creator-handle", "考研", "雅思", "ENTP", "PUA", "D:\\测试"):
             self.assertNotIn(forbidden, serialized)
         self.assertEqual(default_profile()["phrase_mappings"], {})
         self.assertNotIn("student_state", default_profile())
@@ -98,10 +98,13 @@ class PersonalizationFirewallTests(unittest.TestCase):
             self.assertFalse(generic["student_state"]["enabled"])
 
     def test_repository_contamination_metrics_are_zero(self):
-        report = audit_repository(REPO_ROOT)
+        private_term = "definitely-not-" + "present-private-handle"
+        report = audit_repository(REPO_ROOT, private_terms=[private_term])
         self.assertEqual(report["creator_shadow_leakage"], 0)
         self.assertEqual(report["default_user_contamination_rate"], 0.0)
         self.assertEqual(report["findings"], [])
+        self.assertGreater(report["tracked_text_files"], 20)
+        self.assertEqual(report["private_terms_checked"], 1)
 
 
 if __name__ == "__main__":

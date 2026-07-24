@@ -147,3 +147,8 @@ if [ "$skip_profile" = "false" ]; then
     echo "Warning: Python 3.10+ was not found; profile initialization was skipped." >&2
   fi
 fi
+
+first_target=$(printf '%s\n' "$targets" | sed -n '1p')
+if [ -n "$first_target" ]; then
+  echo "Optional first-time setup: python \"$first_target/intent-translator/scripts/onboard.py\" start"
+fi

@@ -38,6 +38,8 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                         {tool.name for tool in listed.tools},
                         {
                             "intent_compile",
+                            "intent_onboarding_status",
+                            "intent_apply_onboarding",
                             "intent_check",
                             "intent_recall_corrections",
                             "intent_memory_defense",
@@ -66,6 +68,25 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                         called.structuredContent["routing"]["primary_skill"],
                         "skill-creator",
                     )
+                    onboarding = await session.call_tool(
+                        "intent_onboarding_status",
+                        {"request": {}},
+                    )
+                    self.assertFalse(onboarding.isError)
+                    self.assertEqual(onboarding.structuredContent["mode"], "generic")
+                    configured = await session.call_tool(
+                        "intent_apply_onboarding",
+                        {
+                            "request": {
+                                "memory": "local",
+                                "interpretation": "choices",
+                                "tone": "concise",
+                            }
+                        },
+                    )
+                    self.assertFalse(configured.isError)
+                    self.assertEqual(configured.structuredContent["interpretation"], "show-choices")
+                    self.assertNotIn(str(Path(temp)), str(configured.structuredContent))
                     suggested = await session.call_tool(
                         "intent_suggest_correction",
                         {

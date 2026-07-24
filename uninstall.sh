@@ -3,6 +3,7 @@ set -eu
 
 target_host="auto"
 destination=""
+data_root=""
 purge_data="false"
 confirm_purge=""
 
@@ -10,6 +11,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --host) target_host="$2"; shift 2 ;;
     --destination) destination="$2"; shift 2 ;;
+    --data-root) data_root="$2"; shift 2 ;;
     --purge-data) purge_data="true"; shift ;;
     --confirm-purge) confirm_purge="$2"; shift 2 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
@@ -65,7 +67,7 @@ if [ "$purge_data" = "true" ]; then
     echo "Purging profile and memory requires --confirm-purge DELETE-LOCAL-DATA" >&2
     exit 4
   }
-  data_path="$HOME/.intent-translator"
+  data_path="${data_root:-$HOME/.intent-translator}"
   case "$data_path" in
     */.intent-translator) rm -rf -- "$data_path" ;;
     *) echo "Refusing to remove unexpected data path: $data_path" >&2; exit 5 ;;

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -14,6 +15,8 @@ from .models import (
     CorrectionRequest,
     CorrectionSuggestionRequest,
     MemoryDefenseRequest,
+    OnboardingApplyRequest,
+    OnboardingStatusRequest,
     OutcomeRequest,
     PendingCorrectionRequest,
     RecallRequest,
@@ -21,6 +24,12 @@ from .models import (
     ShadowReviewRequest,
     StudyPointerRequest,
     StudentStateRequest,
+)
+from .onboarding import (
+    apply_onboarding,
+    default_profile_path,
+    onboarding_status,
+    onboarding_summary,
 )
 from .student_state import (
     bootstrap_from_profile,
@@ -68,6 +77,32 @@ def compiler() -> IntentCompiler:
 def intent_compile(request: CompileRequest) -> dict[str, Any]:
     """Compile wording into an envelope, optionally using an explicitly configured semantic adapter."""
     return compiler().compile(request)
+
+
+@mcp.tool(
+    title="Inspect onboarding status",
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def intent_onboarding_status(request: OnboardingStatusRequest) -> dict[str, Any]:
+    """Return the three skippable local onboarding choices without claiming personal knowledge."""
+    path = default_profile_path()
+    try:
+        profile = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        profile = None
+    return onboarding_status(profile_exists=path.exists(), profile=profile)
+
+
+@mcp.tool(
+    title="Apply local onboarding choices",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def intent_apply_onboarding(request: OnboardingApplyRequest) -> dict[str, Any]:
+    """Apply memory, interpretation, and tone choices to the local profile."""
+    profile = apply_onboarding(default_profile_path(), **request.model_dump())
+    return onboarding_summary(profile)
 
 
 @mcp.tool(

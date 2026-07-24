@@ -154,3 +154,8 @@ if (-not $SkipProfile) {
         Write-Warning "Python 3.10+ was not found; Skill files were installed but the local profile was not initialized."
     }
 }
+
+if ($uniqueTargets.Count -gt 0) {
+    $onboard = Join-Path (Join-Path $uniqueTargets[0] "intent-translator") "scripts\onboard.py"
+    Write-Host "Optional first-time setup: python `"$onboard`" start"
+}

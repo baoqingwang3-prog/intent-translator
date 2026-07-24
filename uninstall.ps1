@@ -3,6 +3,7 @@ param(
     [ValidateSet("Auto", "Codex", "Claude", "Cursor", "Gemini", "Copilot", "OpenCode", "Shared", "All")]
     [string]$TargetHost = "Auto",
     [string]$Destination,
+    [string]$DataRoot,
     [switch]$PurgeData,
     [string]$ConfirmPurge = ""
 )
@@ -42,7 +43,7 @@ if ($PurgeData) {
     if ($ConfirmPurge -ne "DELETE-LOCAL-DATA") {
         throw "Purging profile and memory requires -ConfirmPurge DELETE-LOCAL-DATA"
     }
-    $dataPath = [IO.Path]::GetFullPath((Join-Path $userHome ".intent-translator"))
+    $dataPath = [IO.Path]::GetFullPath($(if ($DataRoot) { $DataRoot } else { Join-Path $userHome ".intent-translator" }))
     if ((Split-Path -Leaf $dataPath) -ne ".intent-translator") {
         throw "Refusing to remove unexpected data path: $dataPath"
     }

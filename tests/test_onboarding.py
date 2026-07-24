@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,8 +16,10 @@ from intent_translator_mcp.models import CompileRequest  # noqa: E402
 from intent_translator_mcp.onboarding import (  # noqa: E402
     apply_onboarding,
     confirm_language_rule,
+    generic_profile,
     observe_language_correction,
     onboarding_status,
+    personalization_status,
 )
 
 
@@ -34,6 +37,30 @@ class OnboardingTests(unittest.TestCase):
             )
             self.assertEqual(result["personalization_status"]["mode"], "generic")
             self.assertIn("没有个人记忆", result["personalization_status"]["message"])
+
+    def test_unmodified_initialized_profile_stays_generic_until_onboarding(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            path = Path(temp) / "profile.json"
+            path.write_text(json.dumps(generic_profile()), encoding="utf-8")
+            result = IntentCompiler(registry={"skills": [], "errors": []}).compile(
+                CompileRequest(utterance="帮我整理一下", semantic_mode="off")
+            )
+            self.assertEqual(result["personalization_status"]["mode"], "generic")
+            self.assertFalse(result["personalization_status"]["claims_personal_knowledge"])
+
+    def test_skipping_every_onboarding_choice_stays_generic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "profile.json"
+            profile = apply_onboarding(path)
+            result = personalization_status(profile_exists=True, profile=profile)
+            self.assertEqual(result["mode"], "generic")
+            self.assertFalse(result["claims_personal_knowledge"])
 
     def test_onboarding_only_asks_memory_interpretation_and_tone(self):
         status = onboarding_status(profile_exists=False)
@@ -80,6 +107,67 @@ class OnboardingTests(unittest.TestCase):
             serialized = json.dumps(profile, ensure_ascii=False)
             self.assertNotIn("ENTP", serialized)
             self.assertNotIn("PUA", serialized)
+
+    def test_partial_onboarding_preserves_existing_review_preferences(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "profile.json"
+            profile = generic_profile()
+            profile["review_preferences"] = {"sharp_review": True, "conditional_pua": True}
+            path.write_text(json.dumps(profile), encoding="utf-8")
+            updated = apply_onboarding(path, memory="local")
+            self.assertTrue(updated["review_preferences"]["sharp_review"])
+            self.assertTrue(updated["review_preferences"]["conditional_pua"])
+
+    def test_noninteractive_cli_applies_only_selected_local_preferences(self):
+        with tempfile.TemporaryDirectory() as temp:
+            profile = Path(temp) / "profile.json"
+            env = dict(os.environ)
+            env["PYTHONPATH"] = str(REPO_ROOT / "src")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "intent_translator_mcp.onboarding",
+                    "--profile",
+                    str(profile),
+                    "--memory",
+                    "local",
+                    "--interpretation",
+                    "choices",
+                    "--tone",
+                    "concise",
+                    "--json",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
+            )
+            summary = json.loads(completed.stdout)
+            self.assertEqual(summary["memory"], "local-confirmed-only")
+            self.assertEqual(summary["interpretation"], "show-choices")
+            self.assertEqual(summary["tone"], "concise")
+            self.assertTrue(summary["local_only"])
+            self.assertNotIn(str(profile), completed.stdout)
+
+            status = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "intent_translator_mcp.onboarding",
+                    "--profile",
+                    str(profile),
+                    "--status",
+                    "--json",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
+            )
+            self.assertEqual(json.loads(status.stdout)["mode"], "local-profile")
 
     def test_language_rule_rejects_persistent_authority_override(self):
         with tempfile.TemporaryDirectory() as temp:

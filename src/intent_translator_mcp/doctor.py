@@ -121,12 +121,19 @@ def run_doctor(
         )
 
     skill_dirs = _candidate_skill_dirs()
+    duplicate_skills = len(skill_dirs) > 1
     checks.append(
         _check(
             "skill",
-            "pass" if skill_dirs else "warn",
-            "Installed intent-translator Skill found" if skill_dirs else "No installed Skill found; MCP can still report this condition",
+            "warn" if duplicate_skills or not skill_dirs else "pass",
+            "Multiple intent-translator Skill copies found; the first location has precedence"
+            if duplicate_skills
+            else "Installed intent-translator Skill found"
+            if skill_dirs
+            else "No installed Skill found; MCP can still report this condition",
             locations=[_display_path(path, home, show_paths) for path in skill_dirs],
+            active_location=_display_path(skill_dirs[0], home, show_paths) if skill_dirs else None,
+            duplicate_count=max(0, len(skill_dirs) - 1),
         )
     )
 

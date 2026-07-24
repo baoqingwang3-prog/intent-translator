@@ -30,7 +30,7 @@ MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
 
 SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
     ("obsidian-cli", ("obsidian", "文件记", "知识库")),
-    ("skill-creator", ("skill", "技能", "创建并验证")),
+    ("skill-creator", ("skill", "技能", "创建并验证", "reusable helper", "小工具")),
     ("domain-modeling", ("产品架构", "设计不变量", "编译器", "方案", "architecture", "metaphor")),
     ("diagnosing-bugs", ("报错", "失败命令", "诊断")),
     ("agent-reach", ("全网", "大家怎么评价", "外部搜索", "查一下", "搜索")),
@@ -614,7 +614,7 @@ class IntentCompiler:
             "study_context": study_context,
             "student_state": state_context,
             "state_status": state_status,
-            "personalization_status": personalization_status(profile_exists=profile_exists),
+            "personalization_status": personalization_status(profile_exists=profile_exists, profile=self.profile),
             "interpretation_gate": gate,
             "prompt_source_map": source_map,
             "adaptive_autonomy": autonomy,

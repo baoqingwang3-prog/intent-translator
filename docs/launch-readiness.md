@@ -18,6 +18,37 @@ This document separates repository readiness from product intelligence. A green 
 | P2 | First-time users face too many concepts | MCP, profiles, memory, Skills, and adapters create cognitive load | Skill-first recommendation and Chinese quick start | Usability test participants install and uninstall without maintainer help |
 | P2 | No stable product identity or package ownership | Name collisions and unofficial forks can confuse users | Versioned alpha and clear repository scope | Repository name, package name, release channel, and maintainer policy finalized |
 
+Automated evidence is available through `python scripts/release_gate.py --mode full`. The stranger-user protocol is documented in [alpha-trial.md](alpha-trial.md). Passing local automation does not replace the first GitHub-hosted matrix run or the 3-5 person Alpha rehearsal.
+
 ## Release Rule
 
 Do not call a release stable until P0 exit conditions are met and the real-user evaluation design is published. Alpha releases may ship with P1 gaps when the limitation is visible and the default remains local and reversible.
+
+## Alpha Preparation Matrix
+
+| Area | State | Evidence | Remaining external proof |
+|---|---|---|---|
+| Creator-shadow isolation | Complete locally | Generic-profile firewall, tracked-content audit, private-term scan support | Re-run immediately before first push |
+| Clean-room install and first use | Complete locally | Cross-platform acceptance test covers install, generic first use, third-party Skill routing, onboarding, uninstall, and retained local data | GitHub-hosted macOS/Linux/Windows run |
+| Core release acceptance | Complete locally | Unit, protocol, semantic safety, memory defense, student-state, metadata, and doctor suites | First remote CI run |
+| Beginner onboarding | Complete for CLI/MCP alpha | Three skippable choices, redacted summary, first-run guide | Host-native buttons remain host-dependent |
+| Release quality gates | Complete locally | CI matrix, compile/import checks, rollback tests, metadata check, secret and contamination audits | Artifact attestation and remote branch protection |
+| Stranger-user evidence | Planned, not complete | Trial protocol below | At least five consented users who did not help build the project |
+
+## Stranger-User Trial
+
+Recruit at least five people across different roles or study situations. Do not preload creator preferences or explain the intended interpretation.
+
+Each participant should:
+
+1. Install using only the README and record whether help was needed.
+2. Skip or complete onboarding in their own words.
+3. Give five natural requests, including one terse continuation, one correction, one unfamiliar professional task, one external-action request, and one request that should remain an answer rather than an action.
+4. Inspect the decision receipt for one non-obvious interpretation.
+5. Uninstall and verify whether local data was preserved as stated.
+
+Record only consented, redacted outcomes: successful task completion, wrong Skill, unnecessary interruption, missed confirmation, correction recurrence, install time, and uninstall success. Do not store full utterances by default. Alpha exit requires zero missed publication/deletion/privacy confirmations and no creator-specific default appearing in any participant profile.
+
+## Publication Hold
+
+Preparation does not authorize publication. Before creating a remote or pushing, confirm the destination owner, repository name, visibility, and exact branch/tag. Run current-tree, staged, and history secret scans plus the local private-term contamination scan immediately before that confirmation.

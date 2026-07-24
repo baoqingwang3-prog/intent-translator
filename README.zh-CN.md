@@ -16,6 +16,16 @@
 
 第一次使用建议先只装 Skill。确认行为符合预期后，再加 MCP。它不要求账号、API Key、云模型或 Obsidian。
 
+只安装 Skill 后即可直接以通用模式使用，不会假装已经了解你。安装可选 MCP 后，可以让 Agent“设置意图中枢”，也可以运行可跳过的三分钟设置。它只询问本地记忆、歧义确认和回答语气：
+
+```bash
+intent-translator-onboard
+```
+
+只安装 Skill 时，运行安装器最后打印的脚本路径，例如 `python ~/.agents/skills/intent-translator/scripts/onboard.py start`。
+
+详见 [首次三分钟](docs/first-run.md)。
+
 如果主要使用 Codex，并希望一次装好 Skill、MCP、学生画像、托管规则和 doctor，可在 Windows 运行：
 
 ```powershell
@@ -91,7 +101,9 @@ sh ./uninstall.sh --host codex
 sh ./uninstall-mcp.sh
 ```
 
-MCP 共提供 12 个工具：原有 10 个工具之外增加 `intent_memory_defense` 和 `intent_student_state`。前者只返回可信、非权威和隔离记忆的数量与元数据，不暴露隔离文本；后者管理本地学习状态，敏感条目不会进入默认上下文或 Obsidian 镜像。影子评测默认关闭且默认不保存发言预览；学习资料只保存用户明确登记的指针，可以显式同步一个索引到已配置的 Obsidian 仓库，不会扫描整个仓库。
+MCP 共提供 14 个工具，包括新手设置状态/应用、记忆防御和本地学习状态。新手设置全部可跳过且只写本机；记忆防御不暴露隔离文本；敏感学习状态不会进入默认上下文或 Obsidian 镜像。影子评测默认关闭且默认不保存发言预览；学习资料只保存用户明确登记的指针，可以显式同步一个索引到已配置的 Obsidian 仓库，不会扫描整个仓库。
+
+同一个 Skill 如果装在多个目录，发现器按目录优先级使用第一份：显式配置的 `INTENT_TRANSLATOR_SKILL_ROOTS` 最优先，其次是 Codex 等宿主目录，最后是 `~/.agents/skills` 等共享目录。`discover_skills.py` 会报告重复副本，不会把不同版本偷偷混在一起。
 
 ## 可选模型语义层
 
@@ -124,9 +136,18 @@ export INTENT_TRANSLATOR_SEMANTIC_MODEL='your-local-model'
 - 影子评测默认关闭；启用后保存带本地画像盐的哈希和差异指标，默认不保存发言预览，最多保留 30 天、500 条。
 - Obsidian 只保存资料指针和一个受管索引，不自动扫描或复制整个 Vault。
 
+## GitHub Alpha 发布前验收
+
+```bash
+python scripts/release_gate.py --mode quick
+python scripts/stranger_smoke.py
+```
+
+发布门禁、陌生用户试用和高星项目对标分别见 [docs/release-gate.md](docs/release-gate.md)、[docs/alpha-trial.md](docs/alpha-trial.md) 和 [docs/github-benchmark.md](docs/github-benchmark.md)。当前定位是 GitHub Alpha 候选版，不声称稳定版或能够理解所有用户。
+
 ## 现在还不能吹什么
 
-- 24 条回归题的 100% 只说明这些固定案例没有退化，不代表能理解所有人。
+- 当前 24 条回归题的 96.5% 只说明固定字段上的本地回归表现，不代表能理解所有人。
 - 新语言、方言、职业和陌生表达仍需要真实用户评测。
 - 各宿主是否自动调用 MCP 不完全一致。
 - 项目不内置模型；真实语义效果取决于用户接入的适配器，仍需独立真实模型评测。

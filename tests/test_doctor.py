@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +52,23 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(check["status"], "pass")
             self.assertEqual(check["details"]["version"], "0.4.0")
             self.assertNotIn(str(home.resolve()), json.dumps(report))
+
+    def test_duplicate_skill_locations_are_visible_and_have_precedence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            first = home / ".codex" / "skills" / "intent-translator"
+            second = home / ".agents" / "skills" / "intent-translator"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            with patch("intent_translator_mcp.doctor._candidate_skill_dirs", return_value=[first, second]):
+                report = run_doctor(home=home, env={})
+            check = next(item for item in report["checks"] if item["id"] == "skill")
+            self.assertEqual(check["status"], "warn")
+            self.assertEqual(
+                check["details"]["active_location"],
+                str(Path("~") / ".codex" / "skills" / "intent-translator"),
+            )
+            self.assertEqual(check["details"]["duplicate_count"], 1)
 
 
 if __name__ == "__main__":

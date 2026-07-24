@@ -24,8 +24,12 @@ jobs:
         run: python -m pip install .
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Stranger-user smoke
+        run: python scripts/stranger_smoke.py
+      - name: Privacy and release audit
+        run: python scripts/release_audit.py --repo .
       - name: Compile Python
-        run: python -m compileall -q skills src tests
+        run: python -m compileall -q skills src tests scripts
       - name: MCP import smoke test
         run: python -c "from intent_translator_mcp.server import mcp; print('MCP import passed')"
       - name: Release metadata
@@ -71,4 +75,7 @@ jobs:
           $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\install-mcp.ps1", [ref]$null, [ref]$errors)
           [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\uninstall-mcp.ps1", [ref]$null, [ref]$errors)
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\install.ps1", [ref]$null, [ref]$errors)
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\uninstall.ps1", [ref]$null, [ref]$errors)
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\setup-codex.ps1", [ref]$null, [ref]$errors)
           if ($errors) { $errors | Format-List; exit 1 }
