@@ -20,7 +20,7 @@ def now_iso() -> str:
 
 
 def study_db_path(profile: dict[str, Any]) -> Path:
-    configured = os.environ.get("INTENT_TRANSLATOR_STUDY_DB")
+    configured = os.environ.get("INTENT_TRANSLATOR_STUDY_DB") or os.environ.get("INTENT_TRANSLATOR_MEMORY_DB")
     location = configured or profile.get("memory", {}).get("location")
     return Path(location).expanduser() if location else Path.home() / ".intent-translator" / "memory.db"
 
