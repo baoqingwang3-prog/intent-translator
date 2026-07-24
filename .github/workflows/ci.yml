@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Compile Python
+        run: python -m compileall -q skills tests
+      - name: Environment smoke test
+        run: python skills/intent-translator/scripts/detect_environment.py --compact
+      - name: Skill discovery smoke test
+        run: python skills/intent-translator/scripts/discover_skills.py --root skills --compact
+      - name: Unix installer syntax
+        if: runner.os != 'Windows'
+        run: sh -n install.sh
+      - name: Unix installer smoke test
+        if: runner.os != 'Windows'
+        run: |
+          sh ./install.sh --destination "$RUNNER_TEMP/intent-compiler-skills" --skip-profile
+          test -f "$RUNNER_TEMP/intent-compiler-skills/intent-translator/SKILL.md"
+          sh ./install.sh --destination "$RUNNER_TEMP/intent-compiler-skills" --skip-profile --replace
+      - name: Windows installer smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1 -Destination "$env:RUNNER_TEMP\intent-compiler-skills" -SkipProfile
+          if (-not (Test-Path "$env:RUNNER_TEMP\intent-compiler-skills\intent-translator\SKILL.md")) { exit 1 }
+          ./install.ps1 -Destination "$env:RUNNER_TEMP\intent-compiler-skills" -SkipProfile -Replace

@@ -1,0 +1,4 @@
+interface:
+  display_name: "意图转译中枢"
+  short_description: "两遍梳理真实意图，反驳弱前提并编译 Agent 提示词"
+  default_prompt: "Use $intent-translator to review my wording, resolve the real intent, and compile an executable agent prompt."

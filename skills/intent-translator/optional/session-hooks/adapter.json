@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "name": "session-hooks",
+  "default_enabled": false,
+  "events": {
+    "session_start": "python session_lifecycle.py --db <memory.db> start --project <scope>",
+    "session_end": "python session_lifecycle.py --db <memory.db> end --project <scope> --summary <text> --next-action <text>"
+  },
+  "writes": ["local SQLite session_snapshots table"],
+  "network": false
+}
