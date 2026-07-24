@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Local-first SQLite memory, correction, and intent-check store."""
+"""Local-first governed memory, correction, and intent-check store."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
 import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
@@ -13,9 +14,28 @@ from pathlib import Path
 from typing import Any
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from semantic_search import (  # noqa: E402
+    ensure_fts,
+    fts_candidate_ids,
+    index_record,
+    overlap_score,
+    rebuild_indexes,
+    remove_record,
+    semantic_tokens,
+)
+
+
+DB_SCHEMA_VERSION = 3
 CONFIDENCE_VALUES = {"confirmed", "observed", "inferred"}
 SEVERITY_VALUES = {"low", "medium", "high", "critical"}
 OUTCOME_VALUES = {"heeded", "recurred", "unknown"}
+MEMORY_STATUS_VALUES = {"active", "superseded", "retracted", "expired"}
+SENSITIVITY_VALUES = {"standard", "sensitive"}
+CONFLICT_RESOLUTIONS = {"flag", "replace", "reject"}
 
 
 def now_iso() -> str:
@@ -39,11 +59,43 @@ def ensure_columns(connection: sqlite3.Connection, table: str, columns: dict[str
             connection.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
 
 
+def database_path(connection: sqlite3.Connection) -> Path:
+    row = connection.execute("PRAGMA database_list").fetchone()
+    return Path(row["file"]).resolve()
+
+
+def backup_database(connection: sqlite3.Connection, destination: Path | None = None) -> Path:
+    source = database_path(connection)
+    if destination is None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        destination = source.with_name(f"{source.name}.backup-{stamp}")
+    destination = destination.expanduser().resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    target = sqlite3.connect(destination)
+    try:
+        connection.backup(target)
+    finally:
+        target.close()
+    return destination
+
+
+def migration_backup_path(db_path: Path, version: int) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return db_path.with_name(f"{db_path.name}.bak-v{version}-{stamp}")
+
+
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path = db_path.expanduser().resolve()
+    existed = db_path.exists() and db_path.stat().st_size > 0
     db_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    old_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+    backup_path = ""
+    if existed and old_version < DB_SCHEMA_VERSION:
+        backup_path = str(backup_database(connection, migration_backup_path(db_path, old_version)))
+
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS memories (
@@ -66,7 +118,23 @@ def connect(db_path: Path) -> sqlite3.Connection:
             "stale_after_days": "INTEGER NOT NULL DEFAULT 0",
             "access_count": "INTEGER NOT NULL DEFAULT 0",
             "last_accessed_at": "TEXT NOT NULL DEFAULT ''",
+            "status": "TEXT NOT NULL DEFAULT 'active'",
+            "sensitivity": "TEXT NOT NULL DEFAULT 'standard'",
+            "expires_at": "TEXT NOT NULL DEFAULT ''",
+            "conflict_key": "TEXT NOT NULL DEFAULT ''",
+            "supersedes_id": "INTEGER",
         },
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS memory_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_id INTEGER NOT NULL,
+            event TEXT NOT NULL,
+            details TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+        """
     )
     connection.execute(
         """
@@ -101,6 +169,24 @@ def connect(db_path: Path) -> sqlite3.Connection:
     )
     connection.execute(
         """
+        CREATE TABLE IF NOT EXISTS pending_corrections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scope TEXT NOT NULL,
+            trigger_text TEXT NOT NULL,
+            correction TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            evidence TEXT NOT NULL DEFAULT '',
+            source_message TEXT NOT NULL DEFAULT '',
+            previous_behavior TEXT NOT NULL DEFAULT '',
+            ready_for_confirmation INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
         CREATE TABLE IF NOT EXISTS intent_checks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scope TEXT NOT NULL,
@@ -117,6 +203,23 @@ def connect(db_path: Path) -> sqlite3.Connection:
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY,
+            migrated_at TEXT NOT NULL,
+            backup_path TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    ensure_fts(connection)
+    connection.execute(
+        "INSERT OR REPLACE INTO schema_migrations(version, migrated_at, backup_path) VALUES (?, ?, ?)",
+        (DB_SCHEMA_VERSION, now_iso(), backup_path),
+    )
+    connection.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
+    expire_memories(connection, commit=False)
+    rebuild_indexes(connection)
     connection.commit()
     return connection
 
@@ -125,7 +228,16 @@ def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {key: row[key] for key in row.keys()}
 
 
+def memory_is_expired(record: dict[str, Any], *, at: datetime | None = None) -> bool:
+    expires_at = str(record.get("expires_at", "") or "")
+    if not expires_at:
+        return False
+    return parse_iso(expires_at) <= (at or datetime.now(timezone.utc))
+
+
 def memory_is_stale(record: dict[str, Any], *, at: datetime | None = None) -> bool:
+    if memory_is_expired(record, at=at):
+        return True
     stale_after_days = int(record.get("stale_after_days", 0) or 0)
     if stale_after_days <= 0:
         return False
@@ -135,10 +247,51 @@ def memory_is_stale(record: dict[str, Any], *, at: datetime | None = None) -> bo
 
 def decorate_memory(record: dict[str, Any], *, score: int | None = None) -> dict[str, Any]:
     result = dict(record)
+    result["expired"] = memory_is_expired(result)
     result["stale"] = memory_is_stale(result)
     if score is not None:
         result["score"] = score
     return result
+
+
+def record_memory_event(
+    connection: sqlite3.Connection, memory_id: int, event: str, details: dict[str, Any] | None = None
+) -> None:
+    connection.execute(
+        "INSERT INTO memory_events(memory_id, event, details, created_at) VALUES (?, ?, ?, ?)",
+        (memory_id, event, json.dumps(details or {}, ensure_ascii=False), now_iso()),
+    )
+
+
+def expire_memories(connection: sqlite3.Connection, *, commit: bool = True) -> int:
+    timestamp = now_iso()
+    rows = connection.execute(
+        "SELECT id FROM memories WHERE status = 'active' AND expires_at != '' AND expires_at <= ?",
+        (timestamp,),
+    ).fetchall()
+    for row in rows:
+        memory_id = int(row["id"])
+        connection.execute(
+            "UPDATE memories SET status = 'expired', updated_at = ? WHERE id = ?",
+            (timestamp, memory_id),
+        )
+        remove_record(connection, "memories_fts", memory_id)
+        record_memory_event(connection, memory_id, "expired")
+    if commit:
+        connection.commit()
+    return len(rows)
+
+
+def _expires_at(sensitivity: str, retain_days: int | None) -> str:
+    if sensitivity not in SENSITIVITY_VALUES:
+        raise ValueError(f"sensitivity must be one of {sorted(SENSITIVITY_VALUES)}")
+    if retain_days is not None and retain_days <= 0:
+        raise ValueError("retain_days must be positive")
+    if sensitivity == "sensitive" and retain_days is None:
+        raise ValueError("sensitive memory requires an explicit retain_days value")
+    if retain_days is None:
+        return ""
+    return (datetime.now(timezone.utc) + timedelta(days=retain_days)).replace(microsecond=0).isoformat()
 
 
 def add_memory(
@@ -150,15 +303,22 @@ def add_memory(
     confidence: str,
     source: str = "",
     stale_after_days: int = 0,
+    sensitivity: str = "standard",
+    retain_days: int | None = None,
+    conflict_key: str = "",
+    conflict_resolution: str = "flag",
 ) -> dict[str, Any]:
     if confidence not in CONFIDENCE_VALUES:
         raise ValueError(f"confidence must be one of {sorted(CONFIDENCE_VALUES)}")
+    if conflict_resolution not in CONFLICT_RESOLUTIONS:
+        raise ValueError(f"conflict_resolution must be one of {sorted(CONFLICT_RESOLUTIONS)}")
     if not kind.strip() or not scope.strip() or not text.strip():
         raise ValueError("kind, scope, and text are required")
     if stale_after_days < 0:
         raise ValueError("stale_after_days cannot be negative")
 
     timestamp = now_iso()
+    expires_at = _expires_at(sensitivity, retain_days)
     values = (kind.strip(), scope.strip(), text.strip())
     existing = connection.execute(
         "SELECT * FROM memories WHERE kind = ? AND scope = ? AND text = ?", values
@@ -167,30 +327,125 @@ def add_memory(
         connection.execute(
             """
             UPDATE memories
-            SET confidence = ?, source = ?, stale_after_days = ?, updated_at = ?
+            SET confidence = ?, source = ?, stale_after_days = ?, status = 'active',
+                sensitivity = ?, expires_at = ?, conflict_key = ?, updated_at = ?
             WHERE id = ?
             """,
-            (confidence, source.strip(), stale_after_days, timestamp, existing["id"]),
+            (
+                confidence,
+                source.strip(),
+                stale_after_days,
+                sensitivity,
+                expires_at,
+                conflict_key.strip(),
+                timestamp,
+                existing["id"],
+            ),
+        )
+        record_memory_event(connection, int(existing["id"]), "reactivated_or_updated")
+        index_record(
+            connection,
+            "memories_fts",
+            int(existing["id"]),
+            f"{kind} {scope} {text} {source}",
         )
         connection.commit()
         row = connection.execute("SELECT * FROM memories WHERE id = ?", (existing["id"],)).fetchone()
         result = decorate_memory(row_to_dict(row))
         result["deduplicated"] = True
+        result["conflict_ids"] = []
         return result
+
+    conflicts: list[sqlite3.Row] = []
+    if conflict_key.strip():
+        conflicts = connection.execute(
+            """
+            SELECT * FROM memories
+            WHERE status = 'active' AND scope = ? AND conflict_key = ? AND text != ?
+            ORDER BY updated_at DESC
+            """,
+            (scope.strip(), conflict_key.strip(), text.strip()),
+        ).fetchall()
+    if conflicts and conflict_resolution == "reject":
+        raise ValueError(
+            "active memory conflict: " + ", ".join(str(row["id"]) for row in conflicts)
+        )
+
+    supersedes_id = int(conflicts[0]["id"]) if conflicts and conflict_resolution == "replace" else None
+    if conflicts and conflict_resolution == "replace":
+        for conflict in conflicts:
+            connection.execute(
+                "UPDATE memories SET status = 'superseded', updated_at = ? WHERE id = ?",
+                (timestamp, conflict["id"]),
+            )
+            remove_record(connection, "memories_fts", int(conflict["id"]))
+            record_memory_event(
+                connection, int(conflict["id"]), "superseded", {"replacement_text": text.strip()}
+            )
 
     cursor = connection.execute(
         """
         INSERT INTO memories(
-            kind, scope, text, confidence, source, created_at, updated_at, stale_after_days
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            kind, scope, text, confidence, source, created_at, updated_at,
+            stale_after_days, status, sensitivity, expires_at, conflict_key, supersedes_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
         """,
-        (*values, confidence, source.strip(), timestamp, timestamp, stale_after_days),
+        (
+            *values,
+            confidence,
+            source.strip(),
+            timestamp,
+            timestamp,
+            stale_after_days,
+            sensitivity,
+            expires_at,
+            conflict_key.strip(),
+            supersedes_id,
+        ),
     )
+    memory_id = int(cursor.lastrowid)
+    record_memory_event(
+        connection,
+        memory_id,
+        "created",
+        {"conflict_ids": [int(row["id"]) for row in conflicts], "resolution": conflict_resolution},
+    )
+    index_record(connection, "memories_fts", memory_id, f"{kind} {scope} {text} {source}")
     connection.commit()
-    row = connection.execute("SELECT * FROM memories WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    row = connection.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
     result = decorate_memory(row_to_dict(row))
     result["deduplicated"] = False
+    result["conflict_ids"] = [int(item["id"]) for item in conflicts]
+    result["requires_clarification"] = bool(conflicts and conflict_resolution == "flag")
     return result
+
+
+def memory_governance(
+    connection: sqlite3.Connection, record: dict[str, Any], requested_scope: str | None
+) -> dict[str, Any]:
+    conflict_key = str(record.get("conflict_key", "") or "")
+    if not conflict_key:
+        return {
+            "same_scope_conflict_ids": [],
+            "shadowed_by_ids": [],
+            "requires_clarification": False,
+        }
+    rows = connection.execute(
+        """
+        SELECT id, scope, text FROM memories
+        WHERE status = 'active' AND conflict_key = ? AND id != ?
+        """,
+        (conflict_key, record["id"]),
+    ).fetchall()
+    same_scope = [int(row["id"]) for row in rows if row["scope"] == record["scope"] and row["text"] != record["text"]]
+    shadowed_by = []
+    if requested_scope and record["scope"] == "global":
+        shadowed_by = [int(row["id"]) for row in rows if row["scope"] == requested_scope]
+    return {
+        "same_scope_conflict_ids": same_scope,
+        "shadowed_by_ids": shadowed_by,
+        "requires_clarification": bool(same_scope),
+    }
 
 
 def search_memories(
@@ -199,65 +454,106 @@ def search_memories(
     query: str,
     scope: str | None = None,
     limit: int = 10,
+    track_access: bool = True,
 ) -> list[dict[str, Any]]:
-    terms = [term.casefold() for term in query.split() if term.strip()]
-    if not terms:
+    query_tokens = semantic_tokens(query)
+    if not query_tokens:
         return []
-    sql = "SELECT * FROM memories"
-    params: tuple[Any, ...] = ()
+    candidate_ids = fts_candidate_ids(connection, "memories_fts", query)
+    sql = "SELECT * FROM memories WHERE status = 'active'"
+    params: list[Any] = []
     if scope:
-        sql += " WHERE scope IN (?, 'global')"
-        params = (scope,)
-    rows = connection.execute(sql, params).fetchall()
+        sql += " AND scope IN (?, 'global')"
+        params.append(scope)
+    rows = connection.execute(sql, tuple(params)).fetchall()
+    if candidate_ids:
+        filtered = [row for row in rows if int(row["id"]) in candidate_ids]
+        rows = filtered or rows
 
     confidence_weight = {"confirmed": 30, "observed": 20, "inferred": 10}
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
-        haystack = f"{record['text']} {record['source']} {record['kind']} {record['scope']}".casefold()
-        matches = sum(1 for term in terms if term in haystack)
-        if not matches:
+        haystack = f"{record['text']} {record['source']} {record['kind']} {record['scope']}"
+        semantic_match = overlap_score(query_tokens, semantic_tokens(haystack))
+        if not semantic_match:
             continue
-        stale_penalty = 60 if memory_is_stale(record) else 0
+        scope_weight = 50 if scope and record["scope"] == scope else 10 if record["scope"] == "global" else 0
+        stale_penalty = 80 if memory_is_stale(record) else 0
         score = (
-            matches * 100
+            semantic_match * 12
             + confidence_weight.get(str(record["confidence"]), 0)
+            + scope_weight
             + min(int(record.get("access_count", 0)), 10)
             - stale_penalty
         )
-        ranked.append((score, str(record["updated_at"]), decorate_memory(record, score=score)))
+        decorated = decorate_memory(record, score=score)
+        decorated["governance"] = memory_governance(connection, record, scope)
+        ranked.append((score, str(record["updated_at"]), decorated))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
     results = [item[2] for item in ranked[: max(1, limit)]]
 
-    timestamp = now_iso()
-    for result in results:
-        connection.execute(
-            """
-            UPDATE memories
-            SET access_count = access_count + 1, last_accessed_at = ?
-            WHERE id = ?
-            """,
-            (timestamp, result["id"]),
-        )
-        result["access_count"] = int(result.get("access_count", 0)) + 1
-        result["last_accessed_at"] = timestamp
-    connection.commit()
+    if track_access:
+        timestamp = now_iso()
+        for result in results:
+            connection.execute(
+                "UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?",
+                (timestamp, result["id"]),
+            )
+            result["access_count"] = int(result.get("access_count", 0)) + 1
+            result["last_accessed_at"] = timestamp
+        connection.commit()
     return results
 
 
 def list_memories(
-    connection: sqlite3.Connection, *, scope: str | None = None, limit: int = 50
+    connection: sqlite3.Connection,
+    *,
+    scope: str | None = None,
+    limit: int = 50,
+    include_inactive: bool = False,
 ) -> list[dict[str, Any]]:
+    where: list[str] = []
+    params: list[Any] = []
+    if not include_inactive:
+        where.append("status = 'active'")
     if scope:
-        rows = connection.execute(
-            "SELECT * FROM memories WHERE scope = ? ORDER BY updated_at DESC LIMIT ?",
-            (scope, max(1, limit)),
-        ).fetchall()
-    else:
-        rows = connection.execute(
-            "SELECT * FROM memories ORDER BY updated_at DESC LIMIT ?", (max(1, limit),)
-        ).fetchall()
+        where.append("scope = ?")
+        params.append(scope)
+    sql = "SELECT * FROM memories"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY updated_at DESC LIMIT ?"
+    params.append(max(1, limit))
+    rows = connection.execute(sql, tuple(params)).fetchall()
     return [decorate_memory(row_to_dict(row)) for row in rows]
+
+
+def set_memory_status(
+    connection: sqlite3.Connection, *, memory_id: int, status: str, reason: str = ""
+) -> dict[str, Any]:
+    if status not in MEMORY_STATUS_VALUES - {"active"}:
+        raise ValueError("status must be superseded, retracted, or expired")
+    existing = connection.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+    if not existing:
+        raise ValueError(f"memory does not exist: {memory_id}")
+    connection.execute(
+        "UPDATE memories SET status = ?, updated_at = ? WHERE id = ?",
+        (status, now_iso(), memory_id),
+    )
+    remove_record(connection, "memories_fts", memory_id)
+    record_memory_event(connection, memory_id, status, {"reason": reason.strip()})
+    connection.commit()
+    row = connection.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+    return decorate_memory(row_to_dict(row))
+
+
+def hard_delete_memory(connection: sqlite3.Connection, memory_id: int) -> bool:
+    remove_record(connection, "memories_fts", memory_id)
+    connection.execute("DELETE FROM memory_events WHERE memory_id = ?", (memory_id,))
+    cursor = connection.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+    connection.commit()
+    return cursor.rowcount == 1
 
 
 def add_correction(
@@ -276,39 +572,36 @@ def add_correction(
     timestamp = now_iso()
     values = (scope.strip(), trigger_text.strip(), correction.strip())
     existing = connection.execute(
-        """
-        SELECT * FROM corrections
-        WHERE scope = ? AND trigger_text = ? AND correction = ?
-        """,
+        "SELECT * FROM corrections WHERE scope = ? AND trigger_text = ? AND correction = ?",
         values,
     ).fetchone()
     if existing:
         connection.execute(
-            """
-            UPDATE corrections
-            SET severity = ?, evidence = ?, status = 'active', updated_at = ?
-            WHERE id = ?
-            """,
+            "UPDATE corrections SET severity = ?, evidence = ?, status = 'active', updated_at = ? WHERE id = ?",
             (severity, evidence.strip(), timestamp, existing["id"]),
         )
-        connection.commit()
-        row = connection.execute("SELECT * FROM corrections WHERE id = ?", (existing["id"],)).fetchone()
-        result = row_to_dict(row)
-        result["deduplicated"] = True
-        return result
-
-    cursor = connection.execute(
-        """
-        INSERT INTO corrections(
-            scope, trigger_text, correction, severity, evidence, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (*values, severity, evidence.strip(), timestamp, timestamp),
+        correction_id = int(existing["id"])
+        deduplicated = True
+    else:
+        cursor = connection.execute(
+            """
+            INSERT INTO corrections(scope, trigger_text, correction, severity, evidence, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (*values, severity, evidence.strip(), timestamp, timestamp),
+        )
+        correction_id = int(cursor.lastrowid)
+        deduplicated = False
+    index_record(
+        connection,
+        "corrections_fts",
+        correction_id,
+        f"{scope} {trigger_text} {correction} {evidence}",
     )
     connection.commit()
-    row = connection.execute("SELECT * FROM corrections WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    row = connection.execute("SELECT * FROM corrections WHERE id = ?", (correction_id,)).fetchone()
     result = row_to_dict(row)
-    result["deduplicated"] = False
+    result["deduplicated"] = deduplicated
     return result
 
 
@@ -318,27 +611,34 @@ def search_corrections(
     query: str,
     scope: str | None = None,
     limit: int = 10,
+    track_access: bool = True,
 ) -> list[dict[str, Any]]:
-    terms = [term.casefold() for term in query.split() if term.strip()]
-    if not terms:
+    query_tokens = semantic_tokens(query)
+    if not query_tokens:
         return []
+    candidate_ids = fts_candidate_ids(connection, "corrections_fts", query)
     sql = "SELECT * FROM corrections WHERE status = 'active'"
-    params: tuple[Any, ...] = ()
+    params: list[Any] = []
     if scope:
         sql += " AND scope IN (?, 'global')"
-        params = (scope,)
-    rows = connection.execute(sql, params).fetchall()
+        params.append(scope)
+    rows = connection.execute(sql, tuple(params)).fetchall()
+    if candidate_ids:
+        filtered = [row for row in rows if int(row["id"]) in candidate_ids]
+        rows = filtered or rows
     severity_weight = {"low": 5, "medium": 10, "high": 20, "critical": 40}
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
-        haystack = f"{record['trigger_text']} {record['correction']} {record['evidence']}".casefold()
-        matches = sum(1 for term in terms if term in haystack)
-        if not matches:
+        haystack = f"{record['trigger_text']} {record['correction']} {record['evidence']}"
+        semantic_match = overlap_score(query_tokens, semantic_tokens(haystack))
+        if not semantic_match:
             continue
+        scope_weight = 40 if scope and record["scope"] == scope else 5
         score = (
-            matches * 100
+            semantic_match * 12
             + severity_weight.get(str(record["severity"]), 0)
+            + scope_weight
             + int(record["recurred_count"]) * 5
             + int(record["heeded_count"])
         )
@@ -346,13 +646,14 @@ def search_corrections(
         ranked.append((score, str(record["updated_at"]), record))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
     results = [item[2] for item in ranked[: max(1, limit)]]
-    for result in results:
-        connection.execute(
-            "UPDATE corrections SET retrieved_count = retrieved_count + 1 WHERE id = ?",
-            (result["id"],),
-        )
-        result["retrieved_count"] = int(result["retrieved_count"]) + 1
-    connection.commit()
+    if track_access:
+        for result in results:
+            connection.execute(
+                "UPDATE corrections SET retrieved_count = retrieved_count + 1 WHERE id = ?",
+                (result["id"],),
+            )
+            result["retrieved_count"] = int(result["retrieved_count"]) + 1
+        connection.commit()
     return results
 
 
@@ -365,17 +666,12 @@ def record_correction_outcome(
 ) -> dict[str, Any]:
     if outcome not in OUTCOME_VALUES:
         raise ValueError(f"outcome must be one of {sorted(OUTCOME_VALUES)}")
-    existing = connection.execute(
-        "SELECT * FROM corrections WHERE id = ?", (correction_id,)
-    ).fetchone()
+    existing = connection.execute("SELECT * FROM corrections WHERE id = ?", (correction_id,)).fetchone()
     if not existing:
         raise ValueError(f"correction does not exist: {correction_id}")
     timestamp = now_iso()
     connection.execute(
-        """
-        INSERT INTO correction_events(correction_id, outcome, context, created_at)
-        VALUES (?, ?, ?, ?)
-        """,
+        "INSERT INTO correction_events(correction_id, outcome, context, created_at) VALUES (?, ?, ?, ?)",
         (correction_id, outcome, context.strip(), timestamp),
     )
     if outcome in {"heeded", "recurred"}:
@@ -387,6 +683,110 @@ def record_correction_outcome(
     connection.commit()
     row = connection.execute("SELECT * FROM corrections WHERE id = ?", (correction_id,)).fetchone()
     return row_to_dict(row)
+
+
+def _extract_replacement(message: str) -> str:
+    for marker in ("我是说", "意思是", "应该是", "改成"):
+        if marker in message:
+            return message.split(marker, 1)[1].lstrip("：:，, ").strip()
+    return ""
+
+
+def suggest_correction(
+    connection: sqlite3.Connection,
+    *,
+    message: str,
+    scope: str = "global",
+    previous_behavior: str = "",
+    replacement: str = "",
+    severity: str = "medium",
+) -> dict[str, Any]:
+    if severity not in SEVERITY_VALUES:
+        raise ValueError(f"severity must be one of {sorted(SEVERITY_VALUES)}")
+    if not message.strip() or not scope.strip():
+        raise ValueError("message and scope are required")
+    replacement = replacement.strip() or _extract_replacement(message)
+    if replacement:
+        correction = replacement
+        trigger_text = previous_behavior.strip() or message.strip()
+        ready = True
+    elif "太复杂" in message or "简单点" in message:
+        correction = "Use a simpler, result-first response with fewer details for similar requests."
+        trigger_text = previous_behavior.strip() or "Response was more complex than the user needed."
+        ready = True
+    elif previous_behavior.strip():
+        correction = f"Avoid this behavior in similar situations: {previous_behavior.strip()}"
+        trigger_text = previous_behavior.strip()
+        ready = True
+    else:
+        correction = ""
+        trigger_text = message.strip()
+        ready = False
+    timestamp = now_iso()
+    cursor = connection.execute(
+        """
+        INSERT INTO pending_corrections(
+            scope, trigger_text, correction, severity, evidence, source_message,
+            previous_behavior, ready_for_confirmation, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 'pending', ?, ?)
+        """,
+        (
+            scope.strip(),
+            trigger_text,
+            correction,
+            severity,
+            message.strip(),
+            previous_behavior.strip(),
+            int(ready),
+            timestamp,
+            timestamp,
+        ),
+    )
+    connection.commit()
+    pending_id = int(cursor.lastrowid)
+    row = connection.execute("SELECT * FROM pending_corrections WHERE id = ?", (pending_id,)).fetchone()
+    result = row_to_dict(row)
+    result["confirmation_prompt"] = (
+        f"我准备记成：{correction}。确认以后都按这条吗？"
+        if ready
+        else "我知道刚才理解偏了。你希望我以后具体改成怎样？"
+    )
+    return result
+
+
+def confirm_pending_correction(connection: sqlite3.Connection, pending_id: int) -> dict[str, Any]:
+    pending = connection.execute(
+        "SELECT * FROM pending_corrections WHERE id = ?", (pending_id,)
+    ).fetchone()
+    if not pending:
+        raise ValueError(f"pending correction does not exist: {pending_id}")
+    if pending["status"] != "pending":
+        raise ValueError(f"pending correction is already {pending['status']}")
+    if not pending["ready_for_confirmation"] or not str(pending["correction"]).strip():
+        raise ValueError("pending correction needs a concrete replacement before confirmation")
+    correction = add_correction(
+        connection,
+        scope=str(pending["scope"]),
+        trigger_text=str(pending["trigger_text"]),
+        correction=str(pending["correction"]),
+        severity=str(pending["severity"]),
+        evidence=f"Confirmed from: {pending['source_message']}",
+    )
+    connection.execute(
+        "UPDATE pending_corrections SET status = 'confirmed', updated_at = ? WHERE id = ?",
+        (now_iso(), pending_id),
+    )
+    connection.commit()
+    return {"pending_id": pending_id, "status": "confirmed", "correction": correction}
+
+
+def reject_pending_correction(connection: sqlite3.Connection, pending_id: int) -> dict[str, Any]:
+    cursor = connection.execute(
+        "UPDATE pending_corrections SET status = 'rejected', updated_at = ? WHERE id = ? AND status = 'pending'",
+        (now_iso(), pending_id),
+    )
+    connection.commit()
+    return {"pending_id": pending_id, "status": "rejected", "updated": cursor.rowcount == 1}
 
 
 def check_intent(
@@ -407,7 +807,9 @@ def check_intent(
         raise ValueError("reversible must be yes, no, or unknown")
     if authorization not in {"granted", "unknown", "denied"}:
         raise ValueError("authorization must be granted, unknown, or denied")
-    corrections = search_corrections(connection, query=goal, scope=scope, limit=5)
+    corrections = search_corrections(
+        connection, query=goal, scope=scope, limit=5, track_access=record
+    )
     reasons: list[str] = []
     blocked = authorization == "denied"
     if blocked:
@@ -462,6 +864,63 @@ def check_intent(
     return result
 
 
+def export_store(connection: sqlite3.Connection) -> dict[str, Any]:
+    tables = (
+        "memories",
+        "memory_events",
+        "corrections",
+        "correction_events",
+        "pending_corrections",
+        "intent_checks",
+        "schema_migrations",
+    )
+    return {
+        "schema_version": int(connection.execute("PRAGMA user_version").fetchone()[0]),
+        "exported_at": now_iso(),
+        "tables": {
+            table: [row_to_dict(row) for row in connection.execute(f"SELECT * FROM {table}")]
+            for table in tables
+        },
+    }
+
+
+def purge_store(connection: sqlite3.Connection, *, scope: str | None = None) -> dict[str, Any]:
+    if scope:
+        memory_ids = [
+            int(row["id"]) for row in connection.execute("SELECT id FROM memories WHERE scope = ?", (scope,))
+        ]
+        correction_ids = [
+            int(row["id"]) for row in connection.execute("SELECT id FROM corrections WHERE scope = ?", (scope,))
+        ]
+        for memory_id in memory_ids:
+            connection.execute("DELETE FROM memory_events WHERE memory_id = ?", (memory_id,))
+        for correction_id in correction_ids:
+            connection.execute("DELETE FROM correction_events WHERE correction_id = ?", (correction_id,))
+        connection.execute("DELETE FROM memories WHERE scope = ?", (scope,))
+        connection.execute("DELETE FROM corrections WHERE scope = ?", (scope,))
+        connection.execute("DELETE FROM pending_corrections WHERE scope = ?", (scope,))
+        connection.execute("DELETE FROM intent_checks WHERE scope = ?", (scope,))
+    else:
+        memory_ids = [int(row["id"]) for row in connection.execute("SELECT id FROM memories")]
+        correction_ids = [int(row["id"]) for row in connection.execute("SELECT id FROM corrections")]
+        for table in (
+            "memory_events",
+            "correction_events",
+            "pending_corrections",
+            "intent_checks",
+            "memories",
+            "corrections",
+        ):
+            connection.execute(f"DELETE FROM {table}")
+    rebuild_indexes(connection)
+    connection.commit()
+    return {
+        "scope": scope or "all",
+        "deleted_memories": len(memory_ids),
+        "deleted_corrections": len(correction_ids),
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=default_db_path())
@@ -476,15 +935,25 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--confidence", choices=sorted(CONFIDENCE_VALUES), default="confirmed")
     add.add_argument("--source", default="")
     add.add_argument("--stale-after-days", type=int, default=0)
+    add.add_argument("--sensitivity", choices=sorted(SENSITIVITY_VALUES), default="standard")
+    add.add_argument("--retain-days", type=int)
+    add.add_argument("--conflict-key", default="")
+    add.add_argument("--on-conflict", choices=sorted(CONFLICT_RESOLUTIONS), default="flag")
 
     search = subparsers.add_parser("search")
     search.add_argument("--query", required=True)
     search.add_argument("--scope")
     search.add_argument("--limit", type=int, default=10)
+    search.add_argument("--no-track", action="store_true")
 
     listing = subparsers.add_parser("list")
     listing.add_argument("--scope")
     listing.add_argument("--limit", type=int, default=50)
+    listing.add_argument("--include-inactive", action="store_true")
+
+    retract = subparsers.add_parser("retract")
+    retract.add_argument("--id", type=int, required=True)
+    retract.add_argument("--reason", default="")
 
     delete = subparsers.add_parser("delete")
     delete.add_argument("--id", type=int, required=True)
@@ -500,11 +969,24 @@ def build_parser() -> argparse.ArgumentParser:
     correction_search.add_argument("--query", required=True)
     correction_search.add_argument("--scope")
     correction_search.add_argument("--limit", type=int, default=10)
+    correction_search.add_argument("--no-track", action="store_true")
 
     correction_outcome = subparsers.add_parser("correction-outcome")
     correction_outcome.add_argument("--id", type=int, required=True)
     correction_outcome.add_argument("--outcome", choices=sorted(OUTCOME_VALUES), required=True)
     correction_outcome.add_argument("--context", default="")
+
+    correction_suggest = subparsers.add_parser("correction-suggest")
+    correction_suggest.add_argument("--message", required=True)
+    correction_suggest.add_argument("--scope", default="global")
+    correction_suggest.add_argument("--previous-behavior", default="")
+    correction_suggest.add_argument("--replacement", default="")
+    correction_suggest.add_argument("--severity", choices=sorted(SEVERITY_VALUES), default="medium")
+
+    correction_confirm = subparsers.add_parser("correction-confirm")
+    correction_confirm.add_argument("--id", type=int, required=True)
+    correction_reject = subparsers.add_parser("correction-reject")
+    correction_reject.add_argument("--id", type=int, required=True)
 
     intent_check = subparsers.add_parser("intent-check")
     intent_check.add_argument("--scope", default="global")
@@ -517,6 +999,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--authorization", choices=("granted", "unknown", "denied"), default="unknown"
     )
     intent_check.add_argument("--no-record", action="store_true")
+
+    backup = subparsers.add_parser("backup")
+    backup.add_argument("--output", type=Path)
+    export = subparsers.add_parser("export")
+    export.add_argument("--output", type=Path)
+    purge = subparsers.add_parser("purge")
+    purge.add_argument("--scope")
+    purge.add_argument("--confirm", required=True)
     return parser
 
 
@@ -527,7 +1017,11 @@ def main() -> int:
     connection = connect(args.db)
     try:
         if args.command == "init":
-            result: Any = {"database": str(args.db.expanduser().resolve()), "initialized": True}
+            result: Any = {
+                "database": str(args.db.expanduser().resolve()),
+                "initialized": True,
+                "schema_version": int(connection.execute("PRAGMA user_version").fetchone()[0]),
+            }
         elif args.command == "add":
             result = add_memory(
                 connection,
@@ -537,15 +1031,32 @@ def main() -> int:
                 confidence=args.confidence,
                 source=args.source,
                 stale_after_days=args.stale_after_days,
+                sensitivity=args.sensitivity,
+                retain_days=args.retain_days,
+                conflict_key=args.conflict_key,
+                conflict_resolution=args.on_conflict,
             )
         elif args.command == "search":
-            result = search_memories(connection, query=args.query, scope=args.scope, limit=args.limit)
+            result = search_memories(
+                connection,
+                query=args.query,
+                scope=args.scope,
+                limit=args.limit,
+                track_access=not args.no_track,
+            )
         elif args.command == "list":
-            result = list_memories(connection, scope=args.scope, limit=args.limit)
+            result = list_memories(
+                connection,
+                scope=args.scope,
+                limit=args.limit,
+                include_inactive=args.include_inactive,
+            )
+        elif args.command == "retract":
+            result = set_memory_status(
+                connection, memory_id=args.id, status="retracted", reason=args.reason
+            )
         elif args.command == "delete":
-            cursor = connection.execute("DELETE FROM memories WHERE id = ?", (args.id,))
-            connection.commit()
-            result = {"id": args.id, "deleted": cursor.rowcount == 1}
+            result = {"id": args.id, "deleted": hard_delete_memory(connection, args.id)}
         elif args.command == "correction-add":
             result = add_correction(
                 connection,
@@ -557,7 +1068,11 @@ def main() -> int:
             )
         elif args.command == "correction-search":
             result = search_corrections(
-                connection, query=args.query, scope=args.scope, limit=args.limit
+                connection,
+                query=args.query,
+                scope=args.scope,
+                limit=args.limit,
+                track_access=not args.no_track,
             )
         elif args.command == "correction-outcome":
             result = record_correction_outcome(
@@ -566,7 +1081,20 @@ def main() -> int:
                 outcome=args.outcome,
                 context=args.context,
             )
-        else:
+        elif args.command == "correction-suggest":
+            result = suggest_correction(
+                connection,
+                message=args.message,
+                scope=args.scope,
+                previous_behavior=args.previous_behavior,
+                replacement=args.replacement,
+                severity=args.severity,
+            )
+        elif args.command == "correction-confirm":
+            result = confirm_pending_correction(connection, args.id)
+        elif args.command == "correction-reject":
+            result = reject_pending_correction(connection, args.id)
+        elif args.command == "intent-check":
             result = check_intent(
                 connection,
                 scope=args.scope,
@@ -578,8 +1106,29 @@ def main() -> int:
                 authorization=args.authorization,
                 record=not args.no_record,
             )
+        elif args.command == "backup":
+            path = backup_database(connection, args.output)
+            result = {"backup": str(path), "created": True}
+        elif args.command == "export":
+            result = export_store(connection)
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(
+                    json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                )
+                result = {"export": str(args.output.resolve()), "created": True}
+        else:
+            expected = f"PURGE:{args.scope}" if args.scope else "PURGE:ALL"
+            if args.confirm != expected:
+                raise ValueError(f"purge requires --confirm {expected}")
+            backup = backup_database(connection)
+            result = purge_store(connection, scope=args.scope)
+            result["backup"] = str(backup)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 2
     finally:
         connection.close()
 

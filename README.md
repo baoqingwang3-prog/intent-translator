@@ -6,7 +6,7 @@ The project does not claim to read minds or understand every profession by itsel
 
 ## Status
 
-Early public alpha. The deterministic utilities are dependency-free Python and covered by unit tests. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Early public alpha. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -59,6 +59,44 @@ sh ./install.sh --host all --replace
 
 Restart or reload the agent host after installation. Personal configuration is created at `~/.intent-translator/profile.json`; memory defaults to `~/.intent-translator/memory.db`. Neither belongs in this repository.
 
+Installers report the installed and available versions, stage upgrades before replacing the active Skill, and restore the previous version when installation fails. Check without changing files:
+
+```powershell
+.\install.ps1 -TargetHost Codex -CheckOnly
+```
+
+```bash
+sh ./install.sh --host codex --check
+```
+
+Uninstalling preserves local profile and memory unless an explicit purge confirmation is supplied:
+
+```powershell
+.\uninstall.ps1 -TargetHost Codex
+```
+
+```bash
+sh ./uninstall.sh --host codex
+```
+
+### Optional MCP runtime
+
+The MCP runtime makes the deterministic preflight callable instead of relying on prompt instructions alone. It uses local stdio transport and does not call a model or cloud service.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mcp.ps1
+```
+
+```bash
+sh ./install-mcp.sh
+```
+
+Installers create an isolated venv under `~/.intent-translator/mcp/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Windows users may pass `-ConfigureCodex` to append a new Codex entry when one does not already exist.
+
+The server exposes five tools: `intent_compile`, `intent_check`, `intent_recall_corrections`, `intent_record_correction`, and `intent_record_outcome`. Read-only compilation and recall do not mutate memory access counters.
+
+Generated host configurations force Python UTF-8 mode. When manually piping Chinese text through Windows PowerShell 5.1, set `$OutputEncoding`, console input/output encoding, `PYTHONUTF8=1`, and `PYTHONIOENCODING=utf-8`, or pass the text through a UTF-8 file. Normal MCP JSON stdio calls do not use the legacy PowerShell text pipeline.
+
 ## How It Works
 
 1. Recover the active objective from the latest message, unfinished action, local profile, and relevant memory.
@@ -105,16 +143,23 @@ python skills/intent-translator/scripts/privacy_guard.py --redact < context.txt
 # Create and score evaluation predictions
 python skills/intent-translator/scripts/evaluate_predictions.py --cases evals/cases.jsonl --write-template work/predictions.jsonl
 python skills/intent-translator/scripts/evaluate_predictions.py --cases evals/cases.jsonl --predictions work/predictions.jsonl --threshold 0.85
+
+# Compare a naive baseline with the deterministic compiler
+intent-translator-eval --cases evals/cases.jsonl --output work/ab-report.json
 ```
 
 ## Test
 
 ```bash
 python -m unittest discover -s tests -v
-python -m compileall -q skills tests
+python -m compileall -q skills src tests
 ```
 
 The GitHub Actions matrix is configured for Windows, macOS, and Linux with Python 3.10 and 3.12.
+
+### Current deterministic A/B
+
+On the isolated 24-case regression set, the naive baseline scores 60.4% across routing fields and misses 7 required confirmations. The compiler scores 100% and misses 0 required confirmations, with about 11.5 ms mean local latency on the development machine. This is a regression result, not a claim of 100% real-user understanding; live-model and out-of-distribution evaluation remain required before a stable release.
 
 ## Privacy And Safety
 

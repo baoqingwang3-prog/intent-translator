@@ -4,14 +4,29 @@ param(
     [string]$TargetHost = "Auto",
     [string]$Destination,
     [switch]$Replace,
-    [switch]$SkipProfile
+    [switch]$SkipProfile,
+    [switch]$CheckOnly
 )
 
 $ErrorActionPreference = "Stop"
+
+function Assert-DirectChildPath {
+    param([string]$Root, [string]$Child)
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+    $childFull = [IO.Path]::GetFullPath($Child)
+    if ((Split-Path -Parent $childFull).TrimEnd('\') -ne $rootFull) {
+        throw "Refusing filesystem operation outside target root: $childFull"
+    }
+}
+
 $source = Join-Path $PSScriptRoot "skills\intent-translator"
 if (-not (Test-Path -LiteralPath (Join-Path $source "SKILL.md"))) {
     throw "Skill source not found: $source"
 }
+if (-not (Test-Path -LiteralPath (Join-Path $source "VERSION"))) {
+    throw "Skill version file not found: $source\VERSION"
+}
+$sourceVersion = (Get-Content -LiteralPath (Join-Path $source "VERSION") -Raw).Trim()
 
 $userHome = [Environment]::GetFolderPath("UserProfile")
 $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $userHome ".codex" }
@@ -37,52 +52,93 @@ $targets = [System.Collections.Generic.List[string]]::new()
 if ($Destination) {
     $targets.Add($Destination)
 } elseif ($TargetHost -eq "All") {
-    foreach ($root in $hostRoots.Values) {
-        $targets.Add($root)
-    }
+    foreach ($root in $hostRoots.Values) { $targets.Add($root) }
 } elseif ($TargetHost -ne "Auto") {
     $targets.Add($hostRoots[$TargetHost])
 } else {
     foreach ($name in @("Codex", "Claude", "Cursor", "Gemini", "Copilot", "OpenCode")) {
         $configHome = Split-Path -Parent $hostRoots[$name]
-        if (Test-Path -LiteralPath $configHome) {
-            $targets.Add($hostRoots[$name])
-        }
+        if (Test-Path -LiteralPath $configHome) { $targets.Add($hostRoots[$name]) }
     }
-    if ($targets.Count -eq 0) {
-        $targets.Add($hostRoots["Shared"])
-    }
+    if ($targets.Count -eq 0) { $targets.Add($hostRoots["Shared"]) }
 }
 
 $uniqueTargets = @($targets | Select-Object -Unique)
 foreach ($targetRoot in $uniqueTargets) {
     $destinationPath = Join-Path $targetRoot "intent-translator"
+    $installedVersionPath = Join-Path $destinationPath "VERSION"
+    $installedVersion = if (Test-Path -LiteralPath $installedVersionPath) {
+        (Get-Content -LiteralPath $installedVersionPath -Raw).Trim()
+    } elseif (Test-Path -LiteralPath (Join-Path $destinationPath "SKILL.md")) {
+        "legacy-unversioned"
+    } else {
+        "not-installed"
+    }
+    Write-Host "intent-translator: installed=$installedVersion available=$sourceVersion target=$destinationPath"
+    if ($CheckOnly) { continue }
     if ((Test-Path -LiteralPath (Join-Path $destinationPath "SKILL.md")) -and -not $Replace) {
-        throw "Skill already exists at $destinationPath. Re-run with -Replace to overwrite it."
+        throw "Skill already exists at $destinationPath. Re-run with -Replace to upgrade it."
     }
 }
 
+if ($CheckOnly) { return }
+
 foreach ($targetRoot in $uniqueTargets) {
+    New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
     $destinationPath = Join-Path $targetRoot "intent-translator"
-    New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
-    $sourceFiles = Get-ChildItem -LiteralPath $source -Recurse -File | Where-Object {
-        $_.FullName -notmatch '[\\/]__pycache__[\\/]'
+    $operationId = [Guid]::NewGuid().ToString("N")
+    $stagePath = Join-Path $targetRoot ".intent-translator.stage.$operationId"
+    $rollbackPath = Join-Path $targetRoot ".intent-translator.rollback.$operationId"
+    Assert-DirectChildPath -Root $targetRoot -Child $destinationPath
+    Assert-DirectChildPath -Root $targetRoot -Child $stagePath
+    Assert-DirectChildPath -Root $targetRoot -Child $rollbackPath
+    try {
+        New-Item -ItemType Directory -Path $stagePath -Force | Out-Null
+        $sourceFiles = Get-ChildItem -LiteralPath $source -Recurse -File | Where-Object {
+            $_.FullName -notmatch '[\\/]__pycache__[\\/]'
+        }
+        foreach ($file in $sourceFiles) {
+            $relative = $file.FullName.Substring($source.Length + 1)
+            $targetFile = Join-Path $stagePath $relative
+            $targetDirectory = Split-Path -Parent $targetFile
+            New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $file.FullName -Destination $targetFile -Force
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $stagePath "SKILL.md"))) {
+            throw "Staged installation is missing SKILL.md"
+        }
+        $stagedVersion = (Get-Content -LiteralPath (Join-Path $stagePath "VERSION") -Raw).Trim()
+        if ($stagedVersion -ne $sourceVersion) {
+            throw "Staged version mismatch: expected $sourceVersion, got $stagedVersion"
+        }
+        if (Test-Path -LiteralPath $destinationPath) {
+            Move-Item -LiteralPath $destinationPath -Destination $rollbackPath
+        }
+        if ($env:INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP -eq "1") {
+            throw "Simulated failure after backup"
+        }
+        Move-Item -LiteralPath $stagePath -Destination $destinationPath
+        if (Test-Path -LiteralPath $rollbackPath) {
+            Remove-Item -LiteralPath $rollbackPath -Recurse -Force
+        }
+        Write-Host "Installed intent-translator $sourceVersion to $destinationPath"
+    } catch {
+        if ((Test-Path -LiteralPath $destinationPath) -and (Test-Path -LiteralPath $rollbackPath)) {
+            Remove-Item -LiteralPath $destinationPath -Recurse -Force
+        }
+        if (Test-Path -LiteralPath $rollbackPath) {
+            Move-Item -LiteralPath $rollbackPath -Destination $destinationPath
+        }
+        if (Test-Path -LiteralPath $stagePath) {
+            Remove-Item -LiteralPath $stagePath -Recurse -Force
+        }
+        throw "Installation failed and the previous version was restored: $($_.Exception.Message)"
     }
-    foreach ($file in $sourceFiles) {
-        $relative = $file.FullName.Substring($source.Length + 1)
-        $targetFile = Join-Path $destinationPath $relative
-        $targetDirectory = Split-Path -Parent $targetFile
-        New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
-        Copy-Item -LiteralPath $file.FullName -Destination $targetFile -Force
-    }
-    Write-Host "Installed intent-translator to $destinationPath"
 }
 
 if (-not $SkipProfile) {
     $python = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $python) {
-        $python = Get-Command python3 -ErrorAction SilentlyContinue
-    }
+    if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
     if ($python) {
         $profilePath = if ($env:INTENT_TRANSLATOR_PROFILE) {
             $env:INTENT_TRANSLATOR_PROFILE

@@ -1,0 +1,59 @@
+"""Typed MCP request models."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class CompileRequest(BaseModel):
+    utterance: str = Field(min_length=1, description="The user's latest exact wording.")
+    context: str = Field(default="", description="Compact recent conversation context.")
+    pending_action: str = Field(default="", description="Last explicitly proposed unfinished action.")
+    scope: str = Field(default="global", min_length=1)
+    authorization: Literal["granted", "unknown", "denied"] = "unknown"
+    available_files: list[str] = Field(default_factory=list)
+    include_prompt: bool = True
+
+
+class CheckRequest(BaseModel):
+    goal: str = Field(min_length=1)
+    scope: str = "global"
+    impact: Literal["low", "medium", "high"] = "low"
+    reversible: Literal["yes", "no", "unknown"] = "yes"
+    external: bool = False
+    sensitive: bool = False
+    authorization: Literal["granted", "unknown", "denied"] = "unknown"
+
+
+class RecallRequest(BaseModel):
+    query: str = Field(min_length=1)
+    scope: str = "global"
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+class CorrectionRequest(BaseModel):
+    trigger_text: str = Field(min_length=1)
+    correction: str = Field(min_length=1)
+    scope: str = "global"
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    evidence: str = ""
+
+
+class CorrectionSuggestionRequest(BaseModel):
+    message: str = Field(min_length=1, description="The user's brief correction, such as '太复杂了'.")
+    scope: str = "global"
+    previous_behavior: str = ""
+    replacement: str = ""
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+
+
+class PendingCorrectionRequest(BaseModel):
+    pending_id: int = Field(ge=1)
+
+
+class OutcomeRequest(BaseModel):
+    correction_id: int = Field(ge=1)
+    outcome: Literal["heeded", "recurred", "unknown"]
+    context: str = ""

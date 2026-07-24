@@ -20,10 +20,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install package
+        run: python -m pip install .
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Compile Python
-        run: python -m compileall -q skills tests
+        run: python -m compileall -q skills src tests
+      - name: MCP import smoke test
+        run: python -c "from intent_translator_mcp.server import mcp; print('MCP import passed')"
       - name: Environment smoke test
         run: python skills/intent-translator/scripts/detect_environment.py --compact
       - name: Skill discovery smoke test
@@ -37,6 +41,9 @@ jobs:
           sh ./install.sh --destination "$RUNNER_TEMP/intent-compiler-skills" --skip-profile
           test -f "$RUNNER_TEMP/intent-compiler-skills/intent-translator/SKILL.md"
           sh ./install.sh --destination "$RUNNER_TEMP/intent-compiler-skills" --skip-profile --replace
+          touch "$RUNNER_TEMP/intent-compiler-skills/intent-translator/rollback-marker"
+          if INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP=1 sh ./install.sh --destination "$RUNNER_TEMP/intent-compiler-skills" --skip-profile --replace; then exit 1; fi
+          test -f "$RUNNER_TEMP/intent-compiler-skills/intent-translator/rollback-marker"
       - name: Windows installer smoke test
         if: runner.os == 'Windows'
         shell: pwsh
@@ -44,3 +51,14 @@ jobs:
           ./install.ps1 -Destination "$env:RUNNER_TEMP\intent-compiler-skills" -SkipProfile
           if (-not (Test-Path "$env:RUNNER_TEMP\intent-compiler-skills\intent-translator\SKILL.md")) { exit 1 }
           ./install.ps1 -Destination "$env:RUNNER_TEMP\intent-compiler-skills" -SkipProfile -Replace
+          Set-Content "$env:RUNNER_TEMP\intent-compiler-skills\intent-translator\rollback-marker" "present"
+          $env:INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP = "1"
+          try {
+            ./install.ps1 -Destination "$env:RUNNER_TEMP\intent-compiler-skills" -SkipProfile -Replace
+            exit 1
+          } catch {
+            Write-Host "Expected rollback test failure: $($_.Exception.Message)"
+          } finally {
+            Remove-Item Env:INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP
+          }
+          if (-not (Test-Path "$env:RUNNER_TEMP\intent-compiler-skills\intent-translator\rollback-marker")) { exit 1 }
