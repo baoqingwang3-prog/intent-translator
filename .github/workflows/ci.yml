@@ -28,13 +28,15 @@ jobs:
         run: python -m compileall -q skills src tests
       - name: MCP import smoke test
         run: python -c "from intent_translator_mcp.server import mcp; print('MCP import passed')"
+      - name: Release metadata
+        run: python tests/check_release_metadata.py
       - name: Environment smoke test
         run: python skills/intent-translator/scripts/detect_environment.py --compact
       - name: Skill discovery smoke test
         run: python skills/intent-translator/scripts/discover_skills.py --root skills --compact
       - name: Unix installer syntax
         if: runner.os != 'Windows'
-        run: sh -n install.sh
+        run: sh -n install.sh install-mcp.sh uninstall.sh uninstall-mcp.sh
       - name: Unix installer smoke test
         if: runner.os != 'Windows'
         run: |
@@ -62,3 +64,11 @@ jobs:
             Remove-Item Env:INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP
           }
           if (-not (Test-Path "$env:RUNNER_TEMP\intent-compiler-skills\intent-translator\rollback-marker")) { exit 1 }
+      - name: Windows script parse check
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\install-mcp.ps1", [ref]$null, [ref]$errors)
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\uninstall-mcp.ps1", [ref]$null, [ref]$errors)
+          if ($errors) { $errors | Format-List; exit 1 }

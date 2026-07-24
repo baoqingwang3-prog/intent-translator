@@ -15,13 +15,13 @@ from .models import CompileRequest
 
 
 MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
-    ("remember", ("记住", "记一下", "存下来", "remember")),
-    ("recall", ("之前", "老样子", "回忆", "recall", "之前定的")),
-    ("search", ("查一下", "搜索", "搜一下", "调研", "search", "look up")),
-    ("diagnose", ("报错", "原因", "装好了吗", "为什么", "diagnose")),
+    ("remember", ("记住", "记一下", "存下来", "remember", "save this", "note this")),
+    ("recall", ("之前", "老样子", "回忆", "recall", "之前定的", "as before", "previous setting")),
+    ("search", ("查一下", "搜索", "搜一下", "调研", "search", "look up", "research", "find out")),
+    ("diagnose", ("报错", "原因", "装好了吗", "为什么", "diagnose", "why is this failing", "explain the error")),
     ("route", ("提示词", "prompt", "另一个 agent", "另一个agent")),
-    ("build", ("做一个", "整一个", "搞个", "创建", "设计", "上架", "发布", "发到 github", "妙招", "中枢", "build", "creating")),
-    ("change", ("修改", "修复", "安装", "装好", "接一下", "旋转", "删除", "全删", "改文件", "整利索", "change", "validation")),
+    ("build", ("做一个", "整一个", "搞个", "创建", "设计", "上架", "发布", "发到 github", "妙招", "中枢", "build", "create", "creating", "implement", "publish")),
+    ("change", ("修改", "修复", "安装", "装好", "接一下", "旋转", "删除", "全删", "改文件", "整利索", "change", "edit", "fix", "install", "delete", "rotate", "validation")),
 ]
 
 SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
@@ -35,12 +35,16 @@ SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
     ("prompt-lookup", ("提示词", "prompt", "另一个 agent", "另一个agent")),
 ]
 
-HIGH_STAKES = ("处方药", "诊断", "投资", "贷款", "法律意见", "手术")
-EXTERNAL_TERMS = ("github", "发布", "上架", "上传", "发给外部", "外部搜索", "部署", "公开")
-DESTRUCTIVE_TERMS = ("全删", "全部删除", "永久删除", "覆盖", "销毁")
-SENSITIVE_TERMS = ("过敏", "身份证", "密码", "token", "api key", "病史", "完整用户画像")
-APPROVAL_TERMS = {"可以", "好", "确认了", "行", "可以的"}
-CONTINUE_TERMS = {"继续", "往下", "再往下", "好了", "已登录", "已安装"}
+HIGH_STAKES = ("处方药", "诊断", "投资", "贷款", "法律意见", "手术", "prescription", "diagnosis", "investment advice", "legal advice", "surgery")
+EXTERNAL_TERMS = ("github", "发布", "上架", "上传", "发给外部", "外部搜索", "部署", "公开", "publish", "upload", "send externally", "deploy", "make public")
+DESTRUCTIVE_TERMS = ("全删", "全部删除", "永久删除", "覆盖", "销毁", "delete all", "permanently delete", "overwrite", "destroy")
+SENSITIVE_TERMS = ("过敏", "身份证", "密码", "token", "api key", "病史", "完整用户画像", "allergy", "identity number", "password", "medical history", "full user profile")
+APPROVAL_TERMS = {"可以", "好", "确认了", "行", "可以的", "yes", "okay", "ok", "approved", "sounds good"}
+CONTINUE_TERMS = {"继续", "往下", "再往下", "好了", "已登录", "已安装", "continue", "go on", "next", "done", "logged in", "installed"}
+ROUTING_STOPWORDS = {
+    "about", "after", "agent", "also", "another", "before", "from", "have", "into",
+    "need", "that", "this", "tool", "user", "using", "with", "your",
+}
 
 
 def _candidate_skill_dirs() -> list[Path]:
@@ -116,7 +120,7 @@ def _classify_mode(text: str, pending: str) -> str:
     lowered = text.strip().casefold()
     if lowered in APPROVAL_TERMS | CONTINUE_TERMS and pending:
         return _classify_mode(pending, "")
-    if "只解释" in lowered or "别改" in lowered:
+    if "只解释" in lowered or "别改" in lowered or "explain only" in lowered or "do not change" in lowered:
         return "diagnose"
     if "以后" in lowered and _contains(lowered, ("别问", "直接做", "默认")):
         return "remember"
@@ -129,9 +133,9 @@ def _classify_mode(text: str, pending: str) -> str:
 def _memory_action(text: str, mode: str) -> str:
     if mode == "remember":
         return "write"
-    if mode == "recall" or _contains(text, ("按上次", "还是按", "完整用户画像")):
+    if mode == "recall" or _contains(text, ("按上次", "还是按", "完整用户画像", "same as last time", "full user profile")):
         return "read"
-    if _contains(text, ("删除记忆", "记忆全删", "清空记忆")):
+    if _contains(text, ("删除记忆", "记忆全删", "清空记忆", "delete my memory", "clear all memory")):
         return "update"
     return "none"
 
@@ -139,7 +143,7 @@ def _memory_action(text: str, mode: str) -> str:
 def _risk(text: str, authorization: str) -> dict[str, Any]:
     external = _contains(text, EXTERNAL_TERMS)
     sensitive = _contains(text, SENSITIVE_TERMS)
-    irreversible = _contains(text, DESTRUCTIVE_TERMS) or (external and _contains(text, ("发布", "公开", "上架")))
+    irreversible = _contains(text, DESTRUCTIVE_TERMS) or (external and _contains(text, ("发布", "公开", "上架", "publish", "make public")))
     high_stakes = _contains(text, HIGH_STAKES)
     impact = "high" if high_stakes or irreversible or (external and sensitive) else "medium" if external or sensitive else "low"
     reasons: list[str] = []
@@ -174,6 +178,17 @@ def _route_skill(text: str, discovered: dict[str, Any]) -> tuple[str | None, lis
         matched = [term for term in terms if term.casefold() in text.casefold()]
         if matched and (not installed or name in installed):
             scores.append((len(matched) * 100 + max(map(len, matched)), name, matched))
+    request_tokens = {
+        token for token in re.findall(r"[a-z0-9_-]+", text.casefold())
+        if len(token) >= 4 and token not in ROUTING_STOPWORDS
+    }
+    for name, item in installed.items():
+        searchable = f"{name} {item.get('description', '')}".casefold()
+        matched = sorted(token for token in request_tokens if token in searchable)
+        exact_name = name.casefold() in text.casefold()
+        if exact_name or len(matched) >= 2:
+            score = 80 if exact_name else 40 + len(matched) * 5
+            scores.append((score, name, [name] if exact_name else matched))
     best: dict[str, tuple[int, list[str]]] = {}
     for score, name, matched in scores:
         if name not in best or score > best[name][0]:
@@ -187,10 +202,10 @@ def _route_skill(text: str, discovered: dict[str, Any]) -> tuple[str | None, lis
 
 
 def _path_and_clarification(text: str, mode: str, risk: dict[str, Any], memories: list[dict[str, Any]]) -> tuple[str, bool]:
-    review_terms = ("我想到", "我认为", "反驳", "提示词", "小学老师", "人格类型", "老样子", "之前定的")
+    review_terms = ("我想到", "我认为", "反驳", "提示词", "小学老师", "人格类型", "老样子", "之前定的", "my idea", "I think", "challenge my claim", "as before")
     stale = any(item.get("stale") for item in memories)
-    unsafe_default = _contains(text, ("所有操作都别问", "以后都别问", "直接做"))
-    deletion = _contains(text, ("记忆全删", "删除记忆", "清空记忆"))
+    unsafe_default = _contains(text, ("所有操作都别问", "以后都别问", "直接做", "never ask me again", "always do it without asking"))
+    deletion = _contains(text, ("记忆全删", "删除记忆", "清空记忆", "delete all my memory", "clear all memory"))
     stale = stale or _contains(text, ("marked stale", "120 days old", "已过期"))
     clarification = risk["confirmation_required"] or stale or unsafe_default or deletion
     review = clarification or risk["high_stakes"] or mode in {"remember", "recall", "route"} or _contains(text, review_terms)

@@ -10,6 +10,10 @@ The default memory and profile paths are local and excluded from version control
 
 The privacy scanner is a pattern-based guard, not a complete data-loss-prevention system. Review context before external transmission, especially when it contains health, financial, identity, employment, legal, or confidential business information.
 
+The project collects no telemetry. `intent-translator-doctor` hides exact home-directory paths unless `--show-paths` is supplied. Diagnostic output can still reveal host names, installed components, and error types, so review it before posting publicly.
+
+Before a release, scan the current tree, staged diff, and reachable Git history. A clean pattern scan reduces risk but does not prove that all sensitive information has been removed.
+
 ## Supported Versions
 
 Until the first stable release, only the latest commit on the default branch receives security fixes.

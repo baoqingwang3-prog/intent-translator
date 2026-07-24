@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a general user outcome or integration
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the real workflow problem before proposing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: users
+    attributes:
+      label: Who benefits
+      description: Include language, accessibility, profession, or host context only when relevant; avoid stereotypes.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Authorization, privacy, and failure modes
+      description: Explain what could be read, written, sent, published, or misunderstood.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

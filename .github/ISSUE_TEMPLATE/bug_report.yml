@@ -1,0 +1,67 @@
+name: Bug report
+description: Report reproducible behavior without sharing private data
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach profiles, memory databases, credentials, private files, or unredacted home paths.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Skill workflow
+        - MCP server
+        - Memory or correction store
+        - Installer or uninstaller
+        - Host configuration
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: 0.3.0 or commit hash
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows 11, Python 3.12, Codex
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic wording and temporary paths where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted doctor output
+      description: Paste `intent-translator-doctor --json` output after checking it for private data.
+      render: json
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed credentials, profiles, memory contents, private files, and exact home paths.
+          required: true
