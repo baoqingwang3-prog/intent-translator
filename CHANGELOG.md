@@ -4,6 +4,14 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+### Added
+
+- A clean-room Playwright Studio gate for desktop and mobile, with redacted reproducible evidence and a prepared GitHub CI job.
+
+### Fixed
+
+- Studio hidden states no longer leave large blank result areas, and clean first runs now state that no personal memory is loaded.
+
 ## [0.7.0a2] - 2026-07-25
 
 ### Added

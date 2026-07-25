@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "evidence_type": "clean-room-studio-browser-smoke",
+  "data_classification": "synthetic-examples-only",
+  "package_version": "0.7.0a2",
+  "tested_on": "2026-07-25",
+  "browser_driver": "playwright-1.61.1",
+  "browser": "chromium-compatible-edge",
+  "passed": true,
+  "clean_room": true,
+  "creator_profile_loaded": false,
+  "git_publish_performed": false,
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "horizontal_overflow": false,
+      "scenario_results": {
+        "continue": "local action executable; upload remains prohibited",
+        "negative": "answer-only; publish remains prohibited",
+        "route": "agent-reach selected; external search waits for confirmation",
+        "correction": "corrected interpretation and source comparison visible"
+      }
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "horizontal_overflow": false,
+      "scenario_results": {
+        "continue": "local action executable; upload remains prohibited",
+        "negative": "answer-only; publish remains prohibited",
+        "route": "agent-reach selected; external search waits for confirmation",
+        "correction": "corrected interpretation and source comparison visible"
+      }
+    }
+  ],
+  "metrics": {
+    "viewport_failures": 0,
+    "scenario_failures": 0,
+    "horizontal_overflow_count": 0,
+    "first_view_internal_term_count": 0,
+    "unsafe_execution_count": 0,
+    "creator_shadow_leakage": 0
+  },
+  "remaining_external_evidence": [
+    "first GitHub-hosted browser job",
+    "3-5 consenting stranger-user trials"
+  ]
+}

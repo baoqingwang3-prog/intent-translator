@@ -79,3 +79,21 @@ jobs:
           [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\uninstall.ps1", [ref]$null, [ref]$errors)
           [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\setup-codex.ps1", [ref]$null, [ref]$errors)
           if ($errors) { $errors | Format-List; exit 1 }
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install package and pinned browser driver
+        run: |
+          python -m pip install .
+          npm install --no-save --package-lock=false playwright@1.61.1
+          npx playwright install --with-deps chromium
+      - name: Studio desktop and mobile smoke
+        run: python scripts/studio_browser_smoke.py --node-modules node_modules

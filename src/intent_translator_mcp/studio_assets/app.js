@@ -41,6 +41,7 @@ const copy = {
     runtimeStale: "运行版本已过期",
     runtimeDegraded: "基础模式",
     disconnected: "本地接口未连接，当前保护未启用",
+    genericLocal: "通用模式 · 无个人记忆",
     localOnly: "本地处理 · 无云增强",
     localEnhanced: "本地处理 · 可选增强已配置",
     allWrong: "都不是，用一句话纠正",
@@ -92,6 +93,7 @@ const copy = {
     runtimeStale: "Running version is stale",
     runtimeDegraded: "Base mode",
     disconnected: "Local interface is disconnected; protection is not active",
+    genericLocal: "Generic mode · no personal memory",
     localOnly: "Local processing · no cloud enhancement",
     localEnhanced: "Local processing · optional enhancement configured",
     allWrong: "None of these; correct in one sentence",
@@ -188,9 +190,11 @@ async function loadStatus() {
     if (!response.ok) throw new Error("status unavailable");
     const status = await response.json();
     setRuntime(status.runtime);
-    $("#local-mode-label").textContent = status.semantic_enhancement.configured
-      ? t("localEnhanced")
-      : t("localOnly");
+    $("#local-mode-label").textContent = status.personalization === "generic"
+      ? t("genericLocal")
+      : status.semantic_enhancement.configured
+        ? t("localEnhanced")
+        : t("localOnly");
     $("#connection-alert").hidden = true;
   } catch (error) {
     $("#runtime-dot").className = "status-dot error";
