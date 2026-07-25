@@ -1,5 +1,4 @@
 import sys
-import tomllib
 import unittest
 from pathlib import Path
 
@@ -18,13 +17,12 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(check_versions("v0.7.0a3"), [])
 
     def test_project_urls_point_to_public_repository(self):
-        metadata = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-        urls = metadata["project"]["urls"]
+        metadata = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         repository = "https://github.com/baoqingwang3-prog/intent-translator"
-        self.assertEqual(urls["Homepage"], repository)
-        self.assertEqual(urls["Repository"], repository)
-        self.assertEqual(urls["Issues"], f"{repository}/issues")
-        self.assertEqual(urls["Documentation"], f"{repository}/blob/main/README.md")
+        self.assertIn(f'Homepage = "{repository}"', metadata)
+        self.assertIn(f'Repository = "{repository}"', metadata)
+        self.assertIn(f'Issues = "{repository}/issues"', metadata)
+        self.assertIn(f'Documentation = "{repository}/blob/main/README.md"', metadata)
 
 
 if __name__ == "__main__":
