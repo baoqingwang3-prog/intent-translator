@@ -51,7 +51,7 @@ Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the curre
 
 ## Status
 
-GitHub Alpha candidate, version `0.7.0a1`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+GitHub Alpha candidate, version `0.7.0a2`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -139,16 +139,18 @@ sh ./uninstall.sh --host codex
 The MCP runtime makes the deterministic preflight callable instead of relying on prompt instructions alone. It uses local stdio transport and does not call a model or cloud service.
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mcp.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mcp.ps1 -ConfigureCodex
 ```
 
 ```bash
-sh ./install-mcp.sh
+sh ./install-mcp.sh --configure-codex
 ```
 
 For an isolated test or a portable environment, pass `-HomeDirectory`, `-RuntimeRoot`, and `-ConfigDir`. Keep a custom Windows runtime root short because transitive dependency paths may still be subject to the system path-length limit. The POSIX installer accepts the equivalent `INTENT_TRANSLATOR_HOME`, `INTENT_TRANSLATOR_RUNTIME`, and `INTENT_TRANSLATOR_CONFIG_DIR` environment variables.
 
-Installers create a versioned isolated venv under `~/.intent-translator/mcp/runtimes/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Each snippet points at that host's own Skill directory instead of assuming one shared Codex or Agents path. Install the Skill for a host before applying its snippet. Versioned runtimes avoid Windows upgrade failures when an older MCP process is still running. Windows users may pass `-ConfigureCodex` to add or update the Codex entry after the new runtime passes its smoke test.
+Installers create a versioned isolated venv under `~/.intent-translator/mcp/runtimes/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Each snippet points at that host's own Skill directory instead of assuming one shared Codex or Agents path. Install the Skill for a host before applying its snippet. Versioned runtimes avoid Windows upgrade failures when an older MCP process is still running.
+
+Codex registration uses the native `codex mcp add` command with an explicit `CODEX_HOME`; the installer never rewrites `config.toml` itself. If Codex is open, registration is deliberately skipped so shutdown cannot overwrite the change. Close Codex, run the single repair command printed by the installer, and reopen Codex. The repair is idempotent and restores the previous registration when a replacement add fails.
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
@@ -166,7 +168,7 @@ intent-translator-doctor --json
 intent-translator-doctor --json > intent-translator-diagnostic.json
 ```
 
-The JSON form is a shareable redacted diagnostic: it includes versions, host snippets, restart need, and configuration health without profile text or exact private paths. The doctor lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and recommends upgrading both plus restarting the host when they drift. A newly installed runtime does not replace an MCP process already held open by a running host.
+The JSON form is a shareable redacted diagnostic: it includes versions, host snippets, restart need, and configuration health without profile text or exact private paths. The doctor distinguishes `not-installed`, `installed-not-registered`, `registered-pending-restart`, `registered-stale`, and the active runtime reported by a connected MCP call. It lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and prints one repair command when registration is missing or stale. A newly installed runtime does not replace an MCP process already held open by a running host.
 
 Remove only the MCP runtime and generated snippets while preserving profile and memory:
 

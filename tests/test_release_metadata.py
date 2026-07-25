@@ -14,7 +14,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(check_versions(), [])
 
     def test_matching_tag_passes(self):
-        self.assertEqual(check_versions("v0.7.0a1"), [])
+        self.assertEqual(check_versions("v0.7.0a2"), [])
 
 
 if __name__ == "__main__":

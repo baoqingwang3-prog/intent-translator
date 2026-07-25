@@ -27,7 +27,7 @@ The full gate checks version agreement, Python compilation, all tests, the versi
 
 Studio binds to loopback by default. A non-loopback bind is rejected unless the operator supplies `--allow-network`; this opt-in is intended only for a trusted test network and is not required for normal Alpha use.
 
-Source and package success do not prove that a long-running host has reloaded the new MCP. After a local upgrade, verify the compile receipt reports the expected actual runtime version and `active` state. A `stale` result requires restarting or reloading the host before host-level acceptance is complete.
+Source and package success do not prove that a long-running host has reloaded the new MCP. The installer must refuse Codex registration changes while Codex is open, use the native Codex CLI after exit, and pass the registration overwrite regressions. After a local upgrade, verify the compile receipt reports the expected actual runtime version and `active` state. A `stale` result requires restarting or reloading the host before host-level acceptance is complete.
 
 ## CI Requirements
 

@@ -8,7 +8,9 @@ Intent Translator starts in generic mode. A generated profile file alone does no
 intent-translator-doctor
 ```
 
-Restart or reload the agent host once after installing or upgrading MCP. A running host may keep the previous MCP process until restart.
+The doctor reports installation and Codex registration separately. If it says `installed-not-registered` or `registered-stale`, close Codex and run the repair command shown in the report. If it says `registered-pending-restart`, reopen Codex and verify the compile receipt reports `active` with the expected version.
+
+The installer does not change Codex registration while Codex is running. This prevents the desktop app from overwriting a concurrent configuration update on shutdown.
 
 ## 2. Choose Three Local Preferences
 

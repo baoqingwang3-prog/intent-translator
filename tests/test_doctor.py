@@ -117,7 +117,7 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(alignment["status"], "warn")
             self.assertTrue(alignment["details"]["restart_host"])
             self.assertEqual(report["runtime_status"]["state"], "stale")
-            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], "0.7.0a1")
+            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], "0.7.0a2")
             self.assertEqual(report["runtime_status"]["versions"]["profile_schema"], None)
             self.assertIn(
                 "active Skill and installed MCP runtime differ",
@@ -138,6 +138,54 @@ class DoctorTests(unittest.TestCase):
             skill = next(item for item in report["checks"] if item["id"] == "skill")
             self.assertEqual(skill["status"], "pass")
             self.assertFalse(skill["details"]["versions_differ"])
+
+    def test_installed_runtime_without_codex_registration_is_degraded(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            runtime = home / ".intent-translator" / "mcp" / "runtimes" / "0.7.0a2" / "venv" / "Scripts"
+            runtime.mkdir(parents=True)
+            command = runtime / "intent-translator-mcp.exe"
+            command.touch()
+            (home / ".intent-translator" / "mcp" / "current.json").write_text(
+                json.dumps({"version": "0.7.0a2", "command": str(command)}),
+                encoding="utf-8",
+            )
+            registration = {
+                "host": "codex",
+                "state": "installed-not-registered",
+                "message": "Runtime is installed but Codex MCP registration is missing",
+                "repair_command": "intent-translator-host repair --host codex",
+                "installed": True,
+                "registered": False,
+                "matches_runtime": False,
+                "host_running": False,
+                "restart_required": False,
+            }
+            with patch("intent_translator_mcp.doctor.codex_registration_status", return_value=registration):
+                report = run_doctor(home=home, env={})
+        check = next(item for item in report["checks"] if item["id"] == "codex_registration")
+        self.assertEqual(check["details"]["state"], "installed-not-registered")
+        self.assertEqual(report["runtime_status"]["state"], "degraded")
+        self.assertFalse(report["runtime_status"]["active"])
+
+    def test_matching_registration_exposes_pending_restart(self):
+        with tempfile.TemporaryDirectory() as temp:
+            registration = {
+                "host": "codex",
+                "state": "registered-pending-restart",
+                "message": "Registration matches disk; restart Codex",
+                "repair_command": "intent-translator-host repair --host codex",
+                "installed": True,
+                "registered": True,
+                "matches_runtime": True,
+                "host_running": True,
+                "restart_required": True,
+            }
+            with patch("intent_translator_mcp.doctor.codex_registration_status", return_value=registration):
+                report = run_doctor(home=Path(temp), env={})
+        check = next(item for item in report["checks"] if item["id"] == "codex_registration")
+        self.assertEqual(check["status"], "warn")
+        self.assertTrue(check["details"]["restart_required"])
 
 
 if __name__ == "__main__":

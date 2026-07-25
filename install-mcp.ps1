@@ -64,36 +64,20 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to generate MCP host configurations" }
 & $venvPython -c "from intent_translator_mcp.server import mcp; print('MCP import smoke test passed')"
 if ($LASTEXITCODE -ne 0) { throw "MCP import smoke test failed" }
 
-if ($ConfigureCodex) {
-    $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $userHome ".codex" }
-    $codexConfig = Join-Path $codexHome "config.toml"
-    $snippet = @(Get-Content -LiteralPath (Join-Path $ConfigDir "codex-mcp.toml") -Encoding utf8)
-    $existingLines = if (Test-Path -LiteralPath $codexConfig) { @(Get-Content -LiteralPath $codexConfig -Encoding utf8) } else { @() }
-    $result = [System.Collections.Generic.List[string]]::new()
-    $skipping = $false
-    $found = $false
-    foreach ($line in $existingLines) {
-        if ($line -match '^\[mcp_servers\.intent-translator(?:\.env)?\]$') {
-            $skipping = $true
-            $found = $true
-            continue
-        }
-        if ($skipping -and $line -match '^\[') { $skipping = $false }
-        if (-not $skipping) { $result.Add($line) }
-    }
-    New-Item -ItemType Directory -Path (Split-Path -Parent $codexConfig) -Force | Out-Null
-    if ($found) {
-        $backup = "$codexConfig.bak-intent-translator-$(Get-Date -Format 'yyyyMMddTHHmmss')"
-        Copy-Item -LiteralPath $codexConfig -Destination $backup
-        Write-Host "Backed up previous Codex config to $backup"
-    }
-    if ($result.Count -gt 0 -and $result[$result.Count - 1] -ne "") { $result.Add("") }
-    foreach ($line in $snippet) { $result.Add($line) }
-    [IO.File]::WriteAllLines($codexConfig, $result, $utf8)
-    Write-Host "Configured Codex MCP $version in $codexConfig"
-}
-
 $state = @{ version = $version; runtime = $versionRoot; command = $command; installed_at = [DateTime]::UtcNow.ToString('o') }
 [IO.File]::WriteAllText((Join-Path $RuntimeRoot "current.json"), ($state | ConvertTo-Json), $utf8)
+
+if ($ConfigureCodex) {
+    & $venvPython -m intent_translator_mcp.host_registration repair --host codex --home $userHome
+    $registrationExit = $LASTEXITCODE
+    if ($registrationExit -eq 3) {
+        Write-Warning "Codex is running, so its MCP configuration was not changed."
+        Write-Host "After closing Codex, run:"
+        Write-Host "& '$venvPython' -m intent_translator_mcp.host_registration repair --host codex --home '$userHome'"
+    } elseif ($registrationExit -ne 0) {
+        throw "Failed to register the MCP runtime with Codex by using the native Codex CLI"
+    }
+}
+
 Write-Host "Installed MCP runtime $version to $versionRoot"
 Write-Host "Generated host configurations in $ConfigDir"

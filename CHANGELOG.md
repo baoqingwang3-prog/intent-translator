@@ -4,15 +4,19 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.0a2] - 2026-07-25
+
 ### Added
 
 - A real local bilingual Studio for inspecting understanding, source mapping, Skill routing, memory sources, authorization boundaries, and runtime freshness without an API key.
 - An explicit host support matrix, first-Alpha audience, Agent Reach complement, shareable redacted diagnostic workflow, and final Alpha checklist.
 - Loopback-only Studio binding by default, with explicit opt-in required for trusted-network exposure.
+- Native Codex MCP registration management with running-host protection, explicit repair status, idempotent updates, and rollback to the previous registration when replacement fails.
 
 ### Changed
 
 - Skill listing metadata now describes understanding, authorization, local memory, and routing instead of only prompt rewriting.
+- MCP installers no longer edit Codex TOML directly; doctor now separates runtime installation from host registration and restart state.
 
 ## [0.7.0a1] - 2026-07-25
 

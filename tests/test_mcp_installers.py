@@ -15,6 +15,12 @@ class McpInstallerTests(unittest.TestCase):
             self.assertIsNotNone(re.fullmatch(pattern.group(1), version), version)
         self.assertIn("MCP runtime path is too long", script)
 
+    def test_windows_installer_uses_host_manager_instead_of_editing_codex_toml(self):
+        script = (REPO_ROOT / "install-mcp.ps1").read_text(encoding="utf-8")
+        self.assertIn("intent_translator_mcp.host_registration", script)
+        self.assertNotIn("[mcp_servers.intent-translator]", script)
+        self.assertNotIn("WriteAllLines($codexConfig", script)
+
     def test_posix_installer_accepts_pep440_prereleases(self):
         script = (REPO_ROOT / "install-mcp.sh").read_text(encoding="utf-8")
         pattern = re.search(r"grep -Eq '([^']+)'", script)

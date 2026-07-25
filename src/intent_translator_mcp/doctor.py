@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from .version import __version__
 from .core import _candidate_skill_dirs
+from .host_registration import codex_registration_status
 from .runtime_status import build_runtime_status
 
 
@@ -67,6 +68,30 @@ def run_doctor(
             "pass" if supported else "fail",
             "Python version is supported" if supported else "Python 3.10 or newer is required",
             version=".".join(str(part) for part in sys.version_info[:3]),
+        )
+    )
+
+    codex_registration = codex_registration_status(home=home, env=env)
+    registration_state = codex_registration["state"]
+    registration_status = (
+        "pass"
+        if registration_state in {"active", "registered"}
+        else "fail"
+        if registration_state == "installed-invalid"
+        else "warn"
+    )
+    checks.append(
+        _check(
+            "codex_registration",
+            registration_status,
+            codex_registration["message"],
+            state=registration_state,
+            installed=codex_registration["installed"],
+            registered=codex_registration["registered"],
+            matches_runtime=codex_registration["matches_runtime"],
+            host_running=codex_registration["host_running"],
+            restart_required=codex_registration["restart_required"],
+            repair_command=codex_registration["repair_command"],
         )
     )
 
@@ -317,11 +342,29 @@ def run_doctor(
         env=env,
         skill_dirs=skill_dirs,
     )
+    if registration_state in {
+        "installed-not-registered",
+        "registered-stale",
+        "registration-unknown",
+        "installed-invalid",
+    } and runtime_status["state"] != "stale":
+        runtime_status = {
+            **runtime_status,
+            "state": "degraded",
+            "active": False,
+            "degraded": True,
+            "reasons": [
+                *runtime_status["reasons"],
+                f"Codex host registration is {registration_state}",
+            ],
+            "message": "The runtime is installed, but Codex host registration is not active and aligned.",
+        }
     return {
         "schema_version": 1,
         "status": overall,
         "privacy": "Home-relative paths are shown by default; use --show-paths for exact locations.",
         "runtime_status": runtime_status,
+        "host_registration": codex_registration,
         "checks": checks,
     }
 
