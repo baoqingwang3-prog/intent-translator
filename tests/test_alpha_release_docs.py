@@ -10,9 +10,10 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
     def test_readme_exposes_alpha_value_studio_and_complementary_routing(self):
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn(
-            "Make the agent understand the request, preserve authorization boundaries, and choose the right Skill before it acts.",
+            "It provides bounded interpretations, routing recommendations, and authorization preflight results.",
             readme,
         )
+        self.assertIn("mandatory gate only when the Agent host actually integrates", readme)
         self.assertIn("intent-translator-studio", readme)
         self.assertIn("Agent Reach", readme)
         self.assertIn("docs/support-matrix.md", readme)

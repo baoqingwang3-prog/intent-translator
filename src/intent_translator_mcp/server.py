@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import json
+import os
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from .core import IntentCompiler, _load_skill_script, _memory_path
+from .core import (
+    IntentCompiler,
+    _candidate_skill_dirs,
+    _load_skill_script,
+    _memory_enabled,
+    _memory_path,
+    _profile_path,
+)
 from .models import (
     CheckRequest,
     CompileRequest,
@@ -65,8 +75,101 @@ mcp = FastMCP(
 )
 
 
-def compiler() -> IntentCompiler:
+def _path_signature(path: Path) -> tuple[str, int, int]:
+    try:
+        stat = path.stat()
+        return str(path), stat.st_mtime_ns, stat.st_size
+    except OSError:
+        return str(path), 0, 0
+
+
+def _compiler_cache_key() -> tuple[Any, ...]:
+    semantic_env = tuple(
+        os.environ.get(name, "")
+        for name in (
+            "INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON",
+            "INTENT_TRANSLATOR_SEMANTIC_PROVIDER",
+            "INTENT_TRANSLATOR_SEMANTIC_BASE_URL",
+            "INTENT_TRANSLATOR_SEMANTIC_MODEL",
+            "INTENT_TRANSLATOR_SEMANTIC_EXTERNAL",
+        )
+    )
+    return (
+        _path_signature(_profile_path()),
+        tuple(_path_signature(path) for path in _candidate_skill_dirs()),
+        semantic_env,
+    )
+
+
+@lru_cache(maxsize=4)
+def _cached_compiler(cache_key: tuple[Any, ...]) -> IntentCompiler:
     return IntentCompiler(entrypoint="mcp")
+
+
+def compiler() -> IntentCompiler:
+    return _cached_compiler(_compiler_cache_key())
+
+
+def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
+    routing = envelope.get("routing", {})
+    runtime = envelope.get("runtime_status", {})
+    compact = {
+        key: envelope[key]
+        for key in (
+            "schema_version",
+            "normalized_goal",
+            "path",
+            "mode",
+            "memory_action",
+            "clarification_required",
+            "preserve_voice",
+            "confidence",
+            "confidence_calibration",
+            "phrase_match",
+            "short_confirmation_status",
+            "risk",
+            "constraints",
+            "semantic_fidelity",
+            "interpretation_gate",
+            "prompt_source_map",
+            "intent_contract",
+            "current_status",
+            "completion_contract",
+            "host_prompt",
+            "decision_receipt",
+        )
+        if key in envelope
+    }
+    compact["routing"] = {
+        "primary_skill": routing.get("primary_skill"),
+        "route_reason": (
+            envelope.get("decision_receipt", {}) or {}
+        ).get("route_reason", ""),
+        "acquisition_policy": routing.get("acquisition_policy", []),
+    }
+    compact["semantic"] = {
+        key: envelope.get("semantic", {}).get(key)
+        for key in ("status", "provider", "proposal", "error")
+        if envelope.get("semantic", {}).get(key) is not None
+    }
+    study = envelope.get("study_context", {})
+    if study.get("enabled"):
+        compact["study_context"] = study
+        compact["state_status"] = envelope.get("state_status", {})
+    if envelope.get("adaptive_autonomy", {}).get("mode") == "cautious":
+        compact["adaptive_autonomy"] = envelope["adaptive_autonomy"]
+    compact["runtime_status"] = {
+        "state": runtime.get("state"),
+        "restart_required": runtime.get("restart_required", False),
+        "version": runtime.get("versions", {}).get("actual_runtime"),
+    }
+    diagnostic_refs = {
+        "correction_ids": [item.get("id") for item in envelope.get("corrections", [])],
+        "memory_ids": [item.get("id") for item in envelope.get("memories", [])],
+    }
+    if any(diagnostic_refs.values()):
+        compact["diagnostic_refs"] = diagnostic_refs
+    return compact
 
 
 @mcp.tool(
@@ -76,7 +179,8 @@ def compiler() -> IntentCompiler:
 )
 def intent_compile(request: CompileRequest) -> dict[str, Any]:
     """Compile wording into an envelope, optionally using an explicitly configured semantic adapter."""
-    return compiler().compile(request)
+    envelope = compiler().compile(request)
+    return envelope if request.include_diagnostics else _compact_envelope(envelope)
 
 
 @mcp.tool(
@@ -116,11 +220,17 @@ def intent_check(request: CheckRequest) -> dict[str, Any]:
     """Check authorization, reversibility, external effects, and correction history without writing."""
     instance = compiler()
     memory = _load_skill_script("memory_store")
-    connection = memory.connect(_memory_path(instance.profile))
+    path = _memory_path(instance.profile)
+    connection = (
+        memory.connect_readonly(path)
+        if _memory_enabled(instance.profile) and path.exists()
+        else None
+    )
     try:
         return memory.check_intent(connection, record=False, **request.model_dump())
     finally:
-        connection.close()
+        if connection is not None:
+            connection.close()
 
 
 @mcp.tool(
@@ -142,8 +252,27 @@ def intent_memory_defense(request: MemoryDefenseRequest) -> dict[str, Any]:
     """Report memory trust counts and quarantine metadata without exposing quarantined text."""
     instance = compiler()
     memory = _load_skill_script("memory_store")
-    connection = memory.connect(_memory_path(instance.profile))
+    path = _memory_path(instance.profile)
+    if not _memory_enabled(instance.profile) or not path.exists():
+        return {
+            "scope": request.scope or "all",
+            "counts": {"trusted": 0, "quarantined": 0, "untrusted": 0},
+            "quarantined": [],
+            "quarantined_text_exposed": False,
+            "instruction_execution_allowed": False,
+            "memory_mode": "off" if not _memory_enabled(instance.profile) else "empty",
+        }
+    connection = memory.connect_readonly(path)
     try:
+        if not memory.table_exists(connection, "memories"):
+            return {
+                "scope": request.scope or "all",
+                "counts": {"trusted": 0, "quarantined": 0, "untrusted": 0},
+                "quarantined": [],
+                "quarantined_text_exposed": False,
+                "instruction_execution_allowed": False,
+                "memory_mode": "empty",
+            }
         return memory.memory_defense_status(connection, **request.model_dump())
     finally:
         connection.close()

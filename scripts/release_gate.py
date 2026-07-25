@@ -43,10 +43,7 @@ def run_step(
 def installed_wheel_steps(
     wheel: Path, root: Path, python: str, *, sbom_path: Path
 ) -> list[dict[str, Any]]:
-    venv = root / "installed-wheel"
-    scripts = venv / ("Scripts" if os.name == "nt" else "bin")
-    installed_python = scripts / ("python.exe" if os.name == "nt" else "python")
-    executable_suffix = ".exe" if os.name == "nt" else ""
+    target = root / "installed-wheel"
     env = dict(os.environ)
     env.update(
         {
@@ -56,30 +53,29 @@ def installed_wheel_steps(
             "INTENT_TRANSLATOR_MEMORY_DB": str(root / "data" / "memory.db"),
             "PIP_CACHE_DIR": str(root / "pip-cache"),
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-            "PIP_DEFAULT_TIMEOUT": "60",
+            "PIP_NO_INDEX": "1",
             "PYTHONUTF8": "1",
+            "PYTHONPATH": str(target)
+            + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""),
         }
     )
-    steps = [run_step("wheel-venv", [python, "-m", "venv", str(venv)])]
-    if not steps[-1]["passed"]:
-        return steps
-    steps.append(
+    steps = [
         run_step(
-            "wheel-install",
+            "wheel-target-install",
             [
-                str(installed_python),
+                python,
                 "-m",
                 "pip",
                 "install",
-                "--retries",
-                "5",
-                "--timeout",
-                "60",
+                "--no-index",
+                "--no-deps",
+                "--target",
+                str(target),
                 str(wheel),
             ],
             env=env,
         )
-    )
+    ]
     if not steps[-1]["passed"]:
         return steps
     steps.append(
@@ -89,7 +85,7 @@ def installed_wheel_steps(
                 python,
                 "scripts/generate_sbom.py",
                 "--python",
-                str(installed_python),
+                python,
                 "--output",
                 str(sbom_path),
             ],
@@ -102,13 +98,15 @@ def installed_wheel_steps(
         [
             run_step(
                 "wheel-doctor",
-                [str(scripts / f"intent-translator-doctor{executable_suffix}"), "--json"],
+                [python, "-m", "intent_translator_mcp.doctor", "--json"],
                 env=env,
             ),
             run_step(
                 "wheel-onboarding",
                 [
-                    str(scripts / f"intent-translator-onboard{executable_suffix}"),
+                    python,
+                    "-m",
+                    "intent_translator_mcp.onboarding",
                     "--memory",
                     "local",
                     "--interpretation",
@@ -121,7 +119,7 @@ def installed_wheel_steps(
             ),
             run_step(
                 "wheel-mcp-import",
-                [str(installed_python), "-c", "from intent_translator_mcp.server import mcp; assert mcp"],
+                [python, "-c", "from intent_translator_mcp.server import mcp; assert mcp"],
                 env=env,
             ),
         ]
@@ -157,7 +155,10 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
     if mode == "full" and all(step["passed"] for step in steps):
         with tempfile.TemporaryDirectory() as temp:
             dist = Path(temp) / "dist"
-            build = run_step("package-build", [python, "-m", "build", "--outdir", str(dist)])
+            build = run_step(
+                "package-build",
+                [python, "-m", "build", "--no-isolation", "--outdir", str(dist)],
+            )
             steps.append(build)
             if build["passed"]:
                 wheel = next(dist.glob("*.whl"))

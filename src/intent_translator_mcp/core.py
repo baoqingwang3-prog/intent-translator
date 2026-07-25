@@ -13,11 +13,14 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from .authorization import issue_confirmation_receipt, verify_confirmation_receipt
+from .intent_contract import build_typed_contract
 from .models import CompileRequest
 from .local_policy import assess_local_risk, autonomy_status, conditional_review, sparse_source_map
 from .onboarding import interpretation_gate, personalization_status
 from .runtime_status import build_runtime_status, candidate_skill_dirs
 from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
+from .skill_integrity import verify_skill_script
 from .student_state import read_state_summary, state_db_path
 from .version import __version__
 
@@ -28,12 +31,13 @@ MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("search", ("查一下", "搜索", "搜一下", "调研", "search", "look up", "research", "find out")),
     ("diagnose", ("报错", "原因", "装好了吗", "为什么", "diagnose", "why is this failing", "explain the error")),
     ("route", ("提示词", "prompt", "另一个 agent", "另一个agent")),
-    ("build", ("做一个", "整一个", "搞个", "创建", "设计", "上架", "发布", "发到 github", "build", "create", "creating", "implement", "publish")),
-    ("change", ("修改", "修复", "安装", "装好", "接一下", "旋转", "删除", "全删", "改文件", "change", "edit", "fix", "install", "delete", "rotate", "validation")),
+    ("build", ("做一个", "整一个", "搞个", "创建", "设计", "上架", "发布", "发到 github", "build", "create", "creating", "implement", "publish", "push")),
+    ("change", ("修改", "修复", "完善", "安装", "装好", "接一下", "旋转", "删除", "删掉", "全删", "清空", "整理", "运行", "测试", "发送", "发到", "改文件", "change", "edit", "fix", "improve", "refine", "install", "delete", "remove", "drop", "rotate", "validation", "send", "run", "test")),
 ]
 
 SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
     ("obsidian-cli", ("obsidian", "文件记", "知识库")),
+    ("skill-lookup", ("现成 skill", "已有 skill", "找 skill", "skill registry", "prompts.chat")),
     ("skill-creator", ("skill", "技能", "创建并验证", "reusable helper", "小工具")),
     ("domain-modeling", ("产品架构", "设计不变量", "编译器", "方案", "architecture", "metaphor")),
     ("diagnosing-bugs", ("报错", "失败命令", "诊断")),
@@ -44,16 +48,41 @@ SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 HIGH_STAKES = ("处方药", "诊断", "投资", "贷款", "法律意见", "手术", "prescription", "diagnosis", "investment advice", "legal advice", "surgery")
-EXTERNAL_TERMS = ("github", "发布", "上架", "上传", "发给外部", "外部搜索", "部署", "公开", "publish", "upload", "send externally", "deploy", "make public")
-DESTRUCTIVE_TERMS = ("全删", "全部删除", "永久删除", "覆盖", "销毁", "delete all", "permanently delete", "overwrite", "destroy")
-SENSITIVE_TERMS = ("过敏", "身份证", "密码", "token", "api key", "病史", "完整用户画像", "allergy", "identity number", "password", "medical history", "full user profile")
-APPROVAL_TERMS = {"可以", "好", "确认了", "行", "可以的", "yes", "okay", "ok", "approved", "sounds good"}
+EXTERNAL_TERMS = ("github", "gitlab", "发布", "上架", "上传", "外发", "发送", "发到", "发给", "收件人", "部署", "公开", "推送", "发给外部", "外部搜索", "publish", "upload", "send", "email", "recipient", "push", "origin", "remote", "deploy", "make public")
+DESTRUCTIVE_TERMS = ("删除", "删掉", "清空", "销毁", "覆盖", "抹掉", "移除", "全删", "全部删除", "永久删除", "delete", "remove", "drop", "truncate", "purge", "erase", "overwrite", "destroy", "rm -")
+SENSITIVE_TERMS = ("过敏", "身份证", "密码", "凭据", "密钥", "令牌", "token", "api key", "病史", "完整用户画像", "credentials", "secret", "allergy", "identity number", "password", "medical history", "full user profile")
+SAFE_LOCAL_TERMS = ("本地", "测试", "整理", "修改", "修复", "完善", "更新", "创建", "构建", "实现", "编辑", "生成", "重命名", "运行", "验证", "skill", "local", "test", "change", "edit", "fix", "improve", "refine", "update", "create", "creating", "build", "implement", "write", "generate", "rename", "run", "validate", "validation")
+APPROVAL_TERMS = {"可以", "好", "确认", "确认了", "同意", "行", "可以的", "是", "yes", "okay", "ok", "approved", "sounds good"}
 CONTINUE_TERMS = {"继续", "往下", "再往下", "好了", "已登录", "已安装", "continue", "go on", "next", "done", "logged in", "installed"}
 ROUTING_STOPWORDS = {
     "about", "after", "agent", "also", "another", "before", "from", "have", "into",
     "need", "that", "this", "tool", "user", "using", "with", "your",
 }
 SHORT_CONFIRMATION_TERMS = {term.casefold() for term in APPROVAL_TERMS | CONTINUE_TERMS}
+AMBIGUOUS_ACTION_PATTERNS = (
+    re.compile(r"(?:把|将)(?:这个|那个|它|东西|文件)?\s*(?:发|传|推)(?:了|出去|过去|一下|吧)", re.I),
+    re.compile(r"\b(?:send|push|upload|publish)\s+(?:it|that|this)\b", re.I),
+)
+INSTALL_ACTION_PATTERNS = (
+    re.compile(r"(?:安装|装上|你自己装|自动安装|自动装|缺什么.{0,12}装)", re.I),
+    re.compile(r"\b(?:install|set up)\b", re.I),
+)
+PROTECTED_DATA_PATTERNS = (
+    re.compile(
+        r"(?P<text>(?P<action>(?:原始文件|源文件|配置|记忆数据|记忆|备份)"
+        r"(?:(?:\s*[、，,]\s*|\s*(?:和|以及)\s*)"
+        r"(?:原始文件|源文件|配置|记忆数据|记忆|备份))*)"
+        r"(?:都)?(?:不能动|不要动|别动|必须保留))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?P<action>(?:source files?|original files?|configuration|memory data|memory|backups?)"
+        r"(?:(?:\s*,\s*(?:(?:or|and)\s+)?|\s+(?:or|and)\s+)"
+        r"(?:source files?|original files?|configuration|memory data|memory|backups?))*)"
+        r"\s+(?:must not be touched|must be preserved|do not touch))",
+        re.I,
+    ),
+)
 NEGATED_ACTION_PATTERNS = (
     re.compile(
         r"(?P<text>(?:不要|不得|无需|禁止)\s*"
@@ -85,6 +114,39 @@ NEGATED_ACTION_PATTERNS = (
         r"(?P<text>without\s+(?P<action>publishing|uploading|deploying|sending\s+externally))",
         re.I,
     ),
+    re.compile(
+        r"(?P<text>(?:暂时|现在|先)?\s*(?:不要|别|无需)\s*"
+        r"(?P<action>安装|创建|新建|改写|重写))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:do\s+not|don't|not\s+yet|without)\s+"
+        r"(?P<action>install|create|rewrite))",
+        re.I,
+    ),
+)
+FUTURE_COMPATIBILITY_PATTERNS = (
+    re.compile(
+        r"(?P<text>留足\s*(?P<action>公开|发布|开源)\s*的(?:空间|余地|可能性))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:leave|keep|preserve)\s+(?:room|space|the option)\s+to\s+"
+        r"(?P<action>publish|upload|open[- ]source))",
+        re.I,
+    ),
+)
+DEFERRED_ACTION_PATTERNS = (
+    re.compile(
+        r"(?P<text>(?:之后|以后|完成后|准备好后)\s*再\s*"
+        r"(?P<action>公开|发布|上传|推送|部署|外发))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?P<action>publish|upload|push|deploy|send externally)\s+"
+        r"(?:later|after (?:it is|we are|I am)?\s*ready))",
+        re.I,
+    ),
 )
 ACTION_NAMES = {
     "上传": "upload",
@@ -103,6 +165,17 @@ ACTION_NAMES = {
     "send externally": "external-transfer",
     "sending externally": "external-transfer",
     "make public": "publish",
+    "开源": "publish",
+    "open-source": "publish",
+    "open source": "publish",
+    "安装": "install",
+    "install": "install",
+    "创建": "create",
+    "新建": "create",
+    "create": "create",
+    "改写": "rewrite",
+    "重写": "rewrite",
+    "rewrite": "rewrite",
 }
 
 
@@ -118,6 +191,7 @@ def _load_skill_script(name: str) -> ModuleType:
         script = skill_dir / "scripts" / f"{name}.py"
         if not script.exists():
             continue
+        verify_skill_script(script)
         spec = importlib.util.spec_from_file_location(f"intent_translator_{name}", script)
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
@@ -147,6 +221,11 @@ def _memory_path(profile: dict[str, Any]) -> Path:
     return Path(location).expanduser() if location else Path.home() / ".intent-translator" / "memory.db"
 
 
+def _memory_enabled(profile: dict[str, Any]) -> bool:
+    memory = profile.get("memory", {})
+    return isinstance(memory, dict) and memory.get("adapter", "sqlite") not in {"none", "off"}
+
+
 def _contains(text: str, terms: tuple[str, ...]) -> bool:
     folded = text.casefold()
     return any(term.casefold() in folded for term in terms)
@@ -156,9 +235,43 @@ def _is_short_confirmation(text: str) -> bool:
     return text.strip().casefold() in SHORT_CONFIRMATION_TERMS
 
 
+def _action_text_for_classification(text: str) -> str:
+    return re.sub(r"(?:旧|历史|本地)?发布包", "构建产物", text, flags=re.I)
+
+
+def _installation_requested(text: str) -> bool:
+    return any(pattern.search(text) for pattern in INSTALL_ACTION_PATTERNS)
+
+
 def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
     spans: list[tuple[int, int]] = []
     constraints: list[dict[str, Any]] = []
+    for constraint_type, patterns in (
+        ("protected-data", PROTECTED_DATA_PATTERNS),
+        ("future-compatibility", FUTURE_COMPATIBILITY_PATTERNS),
+        ("deferred-action", DEFERRED_ACTION_PATTERNS),
+    ):
+        for pattern in patterns:
+            for match in pattern.finditer(text):
+                if any(match.start() < end and start < match.end() for start, end in spans):
+                    continue
+                raw_action = " ".join(match.group("action").casefold().split())
+                normalized_action = (
+                    "preserve-protected-data"
+                    if constraint_type == "protected-data"
+                    else ACTION_NAMES.get(raw_action, raw_action)
+                )
+                constraints.append(
+                    {
+                        "type": constraint_type,
+                        "text": match.group("text").strip(),
+                        "action": normalized_action,
+                        "external": constraint_type == "deferred-action",
+                        "active_now": constraint_type == "protected-data",
+                        "source": "explicit-user-wording",
+                    }
+                )
+                spans.append((match.start(), match.end()))
     for pattern in NEGATED_ACTION_PATTERNS:
         for match in pattern.finditer(text):
             if any(match.start() < end and start < match.end() for start, end in spans):
@@ -213,14 +326,30 @@ def _phrase_mapping(profile: dict[str, Any], utterance: str, scope: str) -> dict
 
 
 def _classify_mode(text: str, pending: str) -> str:
-    lowered = text.strip().casefold()
+    lowered = _action_text_for_classification(text).strip().casefold()
     if lowered in APPROVAL_TERMS | CONTINUE_TERMS and pending:
         return _classify_mode(pending, "")
     if "只解释" in lowered or "别改" in lowered or "explain only" in lowered or "do not change" in lowered:
         return "diagnose"
-    if "以后" in lowered and _contains(lowered, ("别问", "直接做", "默认")):
+    if "以后" in lowered and _contains(
+        lowered,
+        ("别问", "不用问", "不用再问", "直接做", "直接提交", "默认"),
+    ):
         return "remember"
+    if "skill" in lowered:
+        if _contains(
+            lowered,
+            ("从头创建", "从零创建", "定制 skill", "自定义 skill", "custom skill", "build a skill from scratch"),
+        ):
+            return "build"
+        if _contains(
+            lowered,
+            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "existing skill", "available skill", "skill registry"),
+        ):
+            return "search"
     if any(lowered.startswith(term) for term in ("继续", "往下", "再往下", "continue", "go on")):
+        return "change"
+    if _installation_requested(lowered):
         return "change"
     for mode, terms in MODE_RULES:
         if _contains(lowered, terms):
@@ -238,22 +367,56 @@ def _memory_action(text: str, mode: str) -> str:
     return "none"
 
 
-def _risk(text: str, authorization: str) -> dict[str, Any]:
-    external = _contains(text, EXTERNAL_TERMS)
-    sensitive = _contains(text, SENSITIVE_TERMS)
-    irreversible = _contains(text, DESTRUCTIVE_TERMS) or (external and _contains(text, ("发布", "公开", "上架", "publish", "make public")))
-    high_stakes = _contains(text, HIGH_STAKES)
-    impact = "high" if high_stakes or irreversible or (external and sensitive) else "medium" if external or sensitive else "low"
+def _risk(
+    text: str,
+    authorization: str,
+    *,
+    mode: str = "answer",
+    receipt_verified: bool = False,
+) -> dict[str, Any]:
+    security_text = _action_text_for_classification(text)
+    ambiguous_action = any(pattern.search(security_text) for pattern in AMBIGUOUS_ACTION_PATTERNS)
+    external = _contains(security_text, EXTERNAL_TERMS) or ambiguous_action
+    sensitive = _contains(security_text, SENSITIVE_TERMS)
+    irreversible = _contains(security_text, DESTRUCTIVE_TERMS) or (
+        external and _contains(security_text, ("发布", "公开", "上架", "publish", "make public"))
+    )
+    high_stakes = _contains(security_text, HIGH_STAKES)
+    system_change = mode in {"build", "change"} and _installation_requested(security_text)
+    known_action = bool(
+        external
+        or irreversible
+        or sensitive
+        or high_stakes
+        or system_change
+        or _contains(security_text, SAFE_LOCAL_TERMS)
+    )
+    unknown_executable = mode in {"build", "change"} and not known_action
+    impact = (
+        "high"
+        if high_stakes or irreversible or (external and sensitive)
+        else "medium"
+        if external or sensitive or ambiguous_action or unknown_executable or system_change
+        else "low"
+    )
     reasons: list[str] = []
     if authorization == "denied":
         reasons.append("authorization is denied")
-    elif authorization == "unknown":
+    elif not receipt_verified:
         if external:
-            reasons.append("external action lacks explicit authorization")
+            reasons.append("external action lacks an action-bound confirmation receipt")
         if irreversible:
-            reasons.append("irreversible action lacks explicit authorization")
+            reasons.append("irreversible action lacks an action-bound confirmation receipt")
         if external and sensitive:
-            reasons.append("sensitive external transfer lacks explicit authorization")
+            reasons.append("sensitive external transfer lacks an action-bound confirmation receipt")
+        if ambiguous_action:
+            reasons.append("executable action has an ambiguous object or destination")
+        if unknown_executable:
+            reasons.append("unknown executable action fails closed")
+        if system_change:
+            reasons.append("local dependency installation requires an action-bound confirmation receipt")
+        if authorization == "granted" and (external or irreversible or ambiguous_action or system_change):
+            reasons.append("caller-provided authorization is not trusted for consequential actions")
     if high_stakes:
         reasons.append("high-stakes request requires verified evidence and bounded guidance")
     return {
@@ -262,7 +425,12 @@ def _risk(text: str, authorization: str) -> dict[str, Any]:
         "external": external,
         "sensitive": sensitive,
         "high_stakes": high_stakes,
+        "system_change": system_change,
+        "ambiguous_action": ambiguous_action,
+        "unknown_executable": unknown_executable,
         "authorization": authorization,
+        "authorization_source": "action-bound-receipt" if receipt_verified else "untrusted-caller-hint",
+        "receipt_verified": receipt_verified,
         "blocked": authorization == "denied",
         "confirmation_required": bool(reasons) and authorization != "denied",
         "reasons": reasons,
@@ -274,10 +442,21 @@ def _route_skill(
 ) -> tuple[str | None, list[dict[str, Any]]]:
     installed = {item["name"]: item for item in discovered.get("skills", [])}
     scores: list[tuple[int, str, list[str]]] = []
+    folded = text.casefold()
+    existing_skill_search = bool(
+        "skill" in folded
+        and _contains(
+            folded,
+            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "existing skill", "available skill", "skill registry"),
+        )
+    )
+    github_search = _contains(folded, ("github", "gitlab", "仓库", "repository"))
+    if mode == "search" and existing_skill_search and "skill-lookup" in installed and not github_search:
+        scores.append((1200, "skill-lookup", ["existing-skill-first"]))
     if mode == "search" and "agent-reach" in installed:
         action_terms = [
             term
-            for term in ("搜索", "查", "调研", "search", "research", "look up", "github", "互联网", "web")
+            for term in ("搜索", "查", "找", "现成", "调研", "search", "research", "look up", "github", "互联网", "web")
             if term.casefold() in text.casefold()
         ]
         if action_terms:
@@ -364,6 +543,36 @@ def _study_profile_context(
     )
 
 
+def _study_request_relevant(
+    profile: dict[str, Any],
+    text: str,
+    *,
+    continuation: bool,
+    allow_state_fallback: bool,
+) -> bool:
+    study = profile.get("study", {})
+    if not isinstance(study, dict) or not study.get("enabled", False):
+        return False
+    if continuation and allow_state_fallback:
+        return True
+    folded = text.casefold()
+    terms = [
+        "学习",
+        "复习",
+        "考试",
+        "作业",
+        "课程",
+        "study",
+        "exam",
+        "course",
+        *[str(goal) for goal in study.get("goals", [])],
+    ]
+    for route in study.get("routing", []):
+        if isinstance(route, dict):
+            terms.extend(str(term) for term in route.get("terms", []))
+    return any(term.strip() and term.casefold() in folded for term in terms)
+
+
 def _path_and_clarification(text: str, mode: str, risk: dict[str, Any], memories: list[dict[str, Any]]) -> tuple[str, bool]:
     review_terms = ("我想到", "我认为", "反驳", "提示词", "人格类型", "老样子", "之前定的", "my idea", "I think", "challenge my claim", "as before")
     stale = any(item.get("stale") for item in memories)
@@ -373,6 +582,60 @@ def _path_and_clarification(text: str, mode: str, risk: dict[str, Any], memories
     clarification = risk["confirmation_required"] or stale or unsafe_default or deletion
     review = clarification or risk["high_stakes"] or mode in {"remember", "recall", "route"} or _contains(text, review_terms)
     return ("review" if review else "fast"), clarification
+
+
+def _calibrated_confidence(
+    *,
+    profile: dict[str, Any],
+    mapping: dict[str, Any] | None,
+    has_context: bool,
+    primary_skill: str | None,
+    corrections: list[dict[str, Any]],
+    autonomy: dict[str, Any],
+    clarification: bool,
+    gate_required: bool,
+) -> tuple[float, dict[str, Any]]:
+    metrics = profile.get("evaluation_metrics", {})
+    route_accuracy = metrics.get("route_accuracy") if isinstance(metrics, dict) else None
+    candidate_hit_rate = metrics.get("candidate_hit_rate") if isinstance(metrics, dict) else None
+    route_accuracy = float(route_accuracy) if isinstance(route_accuracy, (int, float)) else None
+    candidate_hit_rate = (
+        float(candidate_hit_rate) if isinstance(candidate_hit_rate, (int, float)) else None
+    )
+    recurred = sum(int(item.get("recurred_count", 0)) for item in corrections)
+    heeded = sum(int(item.get("heeded_count", 0)) for item in corrections)
+    recurrence_rate = recurred / max(1, recurred + heeded)
+
+    score = 0.55
+    if mapping and mapping.get("confidence") == "confirmed":
+        score += 0.1
+    if has_context:
+        score += 0.06
+    if primary_skill:
+        score += ((route_accuracy - 0.5) * 0.25) if route_accuracy is not None else -0.03
+        score += (
+            ((candidate_hit_rate - 0.5) * 0.15)
+            if candidate_hit_rate is not None
+            else -0.02
+        )
+    score -= min(0.25, recurrence_rate * 0.25)
+    if clarification:
+        score -= 0.18
+    if gate_required:
+        score -= 0.12
+    if autonomy.get("mode") == "cautious":
+        score = min(score, 0.45)
+    score = round(max(0.2, min(0.9, score)), 3)
+    return score, {
+        "method": "correction-and-routing-calibration",
+        "semantic_self_report_used": False,
+        "route_accuracy": route_accuracy,
+        "candidate_hit_rate": candidate_hit_rate,
+        "matched_correction_recurrence_rate": round(recurrence_rate, 3),
+        "misunderstanding_count": int(autonomy.get("misunderstanding_count", 0)),
+        "autonomy_mode": autonomy.get("mode", "normal"),
+        "metrics_source": "local-profile-eval" if route_accuracy is not None or candidate_hit_rate is not None else "unavailable",
+    }
 
 
 class IntentCompiler:
@@ -402,9 +665,14 @@ class IntentCompiler:
             self.semantic_config_error = str(exc)
 
     def recall_corrections(self, query: str, scope: str = "global", limit: int = 5) -> list[dict[str, Any]]:
+        path = _memory_path(self.profile)
+        if not _memory_enabled(self.profile) or not path.exists():
+            return []
         memory = _load_skill_script("memory_store")
-        connection = memory.connect(_memory_path(self.profile))
+        connection = memory.connect_readonly(path)
         try:
+            if not memory.table_exists(connection, "corrections"):
+                return []
             return memory.search_corrections(
                 connection, query=query, scope=scope, limit=limit, track_access=False
             )
@@ -412,9 +680,14 @@ class IntentCompiler:
             connection.close()
 
     def recall_memories(self, query: str, scope: str = "global", limit: int = 5) -> list[dict[str, Any]]:
+        path = _memory_path(self.profile)
+        if not _memory_enabled(self.profile) or not path.exists():
+            return []
         memory = _load_skill_script("memory_store")
-        connection = memory.connect(_memory_path(self.profile))
+        connection = memory.connect_readonly(path)
         try:
+            if not memory.table_exists(connection, "memories"):
+                return []
             return memory.search_memories(
                 connection, query=query, scope=scope, limit=limit, track_access=False
             )
@@ -437,7 +710,17 @@ class IntentCompiler:
         source_text = " ".join(
             part for part in (utterance, expanded, request.context, request.pending_action) if part
         )
-        state_context = read_state_summary(state_db_path(self.profile), self.profile)
+        study_relevant = _study_request_relevant(
+            self.profile,
+            source_text,
+            continuation=continuation or short_confirmation,
+            allow_state_fallback=not request.context and not request.pending_action,
+        )
+        state_context = (
+            read_state_summary(state_db_path(self.profile), self.profile)
+            if study_relevant
+            else {"enabled": False}
+        )
         active_state = state_context.get("active_focus") if state_context.get("enabled") else None
         short_action_source = (
             "pending-action"
@@ -462,11 +745,69 @@ class IntentCompiler:
             mode = "build" if _contains(request.context, ("create", "build", "设计", "创建")) else "change"
         deterministic_mode = mode
         memory_action = _memory_action(source_text, mode)
-        risk = _risk(action_text, request.authorization)
+        preliminary_risk = _risk(action_text, request.authorization, mode=mode)
+        required_grants: list[str] = []
+        if preliminary_risk["external"]:
+            required_grants.append("external")
+        if preliminary_risk["reversible"] == "no":
+            required_grants.append("destructive")
+        if preliminary_risk["sensitive"]:
+            required_grants.append("sensitive")
+        if preliminary_risk["system_change"]:
+            required_grants.append("install")
+        receipt_status = (
+            verify_confirmation_receipt(
+                request.confirmation_receipt,
+                action_text,
+                request.scope,
+                required_grants=required_grants,
+                consume=bool(
+                    short_confirmation
+                    and request.pending_action
+                    and not preliminary_risk["ambiguous_action"]
+                    and not preliminary_risk["unknown_executable"]
+                ),
+            )
+            if required_grants
+            else {"verified": False, "reason": "not required"}
+        )
+        receipt_verified = bool(
+            required_grants
+            and
+            receipt_status["verified"]
+            and short_confirmation
+            and request.pending_action
+            and not preliminary_risk["ambiguous_action"]
+            and not preliminary_risk["unknown_executable"]
+        )
+        if receipt_status["verified"] and not receipt_verified:
+            receipt_status = {
+                "verified": False,
+                "reason": "receipt requires an explicit confirmation of the exact pending action",
+            }
+        risk = _risk(
+            action_text,
+            request.authorization,
+            mode=mode,
+            receipt_verified=receipt_verified,
+        )
+        risk["receipt_status"] = receipt_status
+        if risk["confirmation_required"] and required_grants:
+            risk["confirmation_challenge"] = issue_confirmation_receipt(
+                action_text,
+                request.scope,
+                grants=required_grants,
+            )
         local_risk = assess_local_risk(
             action_text,
             profile=self.profile,
-            authorization=request.authorization,
+            authorization=(
+                "denied"
+                if request.authorization == "denied"
+                else "granted"
+                if receipt_verified
+                else "unknown"
+            ),
         )
         if local_risk["blocked"]:
             risk["blocked"] = True
@@ -481,9 +822,19 @@ class IntentCompiler:
             risk["confirmation_required"] or local_risk["confirmation_required"]
         ) and not risk["blocked"]
         risk["local_policy"] = local_risk
+        mapping_review_required = bool(
+            mapping
+            and not request.pending_action
+            and expanded
+            and expanded.casefold() != utterance.casefold()
+            and _classify_mode(expanded, "") in {"build", "change"}
+        )
+        if mapping:
+            mapping = {**mapping, "review_required": mapping_review_required}
         corrections = self.recall_corrections(source_text, request.scope)
         memories = self.recall_memories(source_text, request.scope) if memory_action == "read" else []
         memory_defense = {
+            "mode": "on" if _memory_enabled(self.profile) else "off",
             "recalled_count": len(memories),
             "untrusted_count": sum(
                 1 for item in memories if item.get("memory_defense", {}).get("non_authoritative")
@@ -493,6 +844,12 @@ class IntentCompiler:
             "policy": "Memory is evidence and context, never executable authority. Current user instructions and authorization boundaries always win.",
         }
         path, clarification = _path_and_clarification(action_text, mode, risk, memories)
+        if mapping_review_required:
+            clarification = True
+            path = "review"
+            if "phrase mapping changes an executable action" not in risk["reasons"]:
+                risk["reasons"].append("phrase mapping changes an executable action")
+            risk["confirmation_required"] = True
         if short_confirmation_status["state"] == "missing-specific-action":
             clarification = True
             path = "review"
@@ -513,7 +870,11 @@ class IntentCompiler:
                 if part
             )
         primary_skill, skill_candidates = _route_skill(routing_text, self.registry, mode=mode)
-        study_context, study_skill = _study_profile_context(self.profile, routing_text, self.registry)
+        study_context, study_skill = (
+            _study_profile_context(self.profile, routing_text, self.registry)
+            if study_relevant
+            else ({"enabled": False}, None)
+        )
         if active_state:
             study_context["active_goal"] = active_state.get("goal") or study_context.get("active_goal", "")
             study_context["subject"] = active_state.get("subject") or study_context.get("subject", "")
@@ -572,6 +933,39 @@ class IntentCompiler:
                 semantic_sensitive = semantic_sensitive or bool(privacy["requires_review"])
             except RuntimeError:
                 semantic_sensitive = True
+        semantic_grants: list[str] = []
+        if self.semantic_adapter and self.semantic_adapter.external:
+            semantic_grants.append("semantic-external")
+            if semantic_sensitive:
+                semantic_grants.append("semantic-sensitive")
+        semantic_receipt_status = verify_confirmation_receipt(
+            request.confirmation_receipt,
+            action_text,
+            request.scope,
+            required_grants=semantic_grants,
+            consume=bool(short_confirmation and request.pending_action),
+        )
+        semantic_receipt_verified = bool(
+            semantic_receipt_status["verified"]
+            and short_confirmation
+            and request.pending_action
+        )
+        if semantic_receipt_status["verified"] and not semantic_receipt_verified:
+            semantic_receipt_status = {
+                "verified": False,
+                "reason": "semantic egress receipt requires explicit confirmation of the exact pending input",
+            }
+        if semantic_grants and not semantic_receipt_verified:
+            risk["semantic_confirmation_challenge"] = issue_confirmation_receipt(
+                action_text,
+                request.scope,
+                grants=semantic_grants,
+            )
+        risk["semantic_authorization"] = {
+            "required": bool(semantic_grants),
+            "receipt_verified": semantic_receipt_verified,
+            "receipt_status": semantic_receipt_status,
+        }
         draft = {
             "normalized_goal": normalized,
             "mode": mode,
@@ -596,10 +990,19 @@ class IntentCompiler:
                 skills=self.registry.get("skills", []),
             ),
             semantic_mode=request.semantic_mode,
-            allow_external=request.allow_external_semantic,
-            allow_sensitive=request.allow_sensitive_semantic,
+            allow_external=request.allow_external_semantic and semantic_receipt_verified,
+            allow_sensitive=request.allow_sensitive_semantic and semantic_receipt_verified,
             sensitive=semantic_sensitive,
         )
+        if semantic_grants and not semantic_receipt_verified and semantic["status"] == "blocked":
+            semantic = {
+                **semantic,
+                "error": (
+                    "sensitive external semantic interpretation lacks an action-bound confirmation receipt"
+                    if semantic_sensitive and request.allow_external_semantic
+                    else "external semantic interpretation lacks an action-bound confirmation receipt"
+                ),
+            }
         if self.semantic_config_error and semantic["status"] == "unavailable":
             semantic = {
                 **semantic,
@@ -624,24 +1027,39 @@ class IntentCompiler:
             "similarity": 1.0,
         }
         proposal_rejected = False
+        proposal_as_alternative = False
         proposed_goal = ""
         if proposal:
-            semantic_confidence = float(proposal["confidence"])
             proposed_goal = str(proposal["normalized_goal"]).strip()
             similarity = difflib.SequenceMatcher(
                 None, utterance.casefold(), proposed_goal.casefold()
             ).ratio()
+            has_semantic_rationale = bool(str(proposal.get("interpretation", "")).strip())
             reliable_support = bool(
-                semantic_confidence >= 0.8
-                and str(proposal.get("interpretation", "")).strip()
+                has_semantic_rationale
+                and (similarity >= 0.55 or proposed_goal.casefold() == utterance.casefold())
+            )
+            proposed_mode = str(proposal.get("mode") or mode)
+            proposal_as_alternative = bool(
+                proposed_goal
+                and proposed_goal.casefold() != str(semantic_baseline["normalized"]).casefold()
+                and (
+                    deterministic_mode in {"build", "change"}
+                    or (
+                        deterministic_mode in {"answer", "diagnose"}
+                        and proposed_mode not in {"answer", "diagnose"}
+                        and has_semantic_rationale
+                    )
+                )
             )
             proposal_rejected = bool(
                 proposed_goal
                 and proposed_goal.casefold() != utterance.casefold()
                 and similarity < 0.22
                 and not reliable_support
+                and not proposal_as_alternative
             )
-            if semantic_confidence >= 0.55:
+            if reliable_support and not proposal_as_alternative:
                 normalized = proposed_goal or normalized
                 if mode == "answer" and proposal.get("mode"):
                     mode = str(proposal["mode"])
@@ -655,13 +1073,22 @@ class IntentCompiler:
                 )
 
             normalized_action, _ = _extract_constraints(normalized)
-            normalized_risk = _risk(normalized_action, request.authorization)
+            normalized_risk = _risk(
+                normalized_action,
+                request.authorization,
+                mode=mode,
+                receipt_verified=receipt_verified,
+            )
+            if proposal_as_alternative:
+                normalized_risk = semantic_baseline["risk"]
             if normalized_risk["external"]:
                 risk["external"] = True
             if normalized_risk["sensitive"]:
                 risk["sensitive"] = True
             if normalized_risk["high_stakes"]:
                 risk["high_stakes"] = True
+            if normalized_risk["system_change"]:
+                risk["system_change"] = True
             if normalized_risk["reversible"] == "no":
                 risk["reversible"] = "no"
             for reason in normalized_risk["reasons"]:
@@ -697,15 +1124,33 @@ class IntentCompiler:
             risk["confirmation_required"] = bool(risk["reasons"]) and not risk["blocked"]
             semantic_clarification = (
                 bool(proposal.get("clarification_recommended"))
-                or semantic_confidence < 0.55
+                or not reliable_support
                 or bool(proposal.get("alternatives"))
+                or proposal_as_alternative
                 or (deterministic_mode == "answer" and mode not in {"answer", "diagnose"})
             )
             clarification = clarification or risk["confirmation_required"] or semantic_clarification
             if clarification or proposal.get("assumptions") or proposal.get("alternatives"):
                 path = "review"
-            confidence = min(confidence, semantic_confidence) if clarification else max(confidence, semantic_confidence)
-            if proposal_rejected:
+            if clarification:
+                confidence = min(confidence, 0.5)
+            if proposal_as_alternative:
+                normalized = semantic_baseline["normalized"]
+                mode = semantic_baseline["mode"]
+                primary_skill = semantic_baseline["primary_skill"]
+                skill_candidates = semantic_baseline["skill_candidates"]
+                risk = semantic_baseline["risk"]
+                clarification = True
+                path = "review"
+                confidence = min(float(semantic_baseline["confidence"]), 0.55)
+                semantic_fidelity = {
+                    "status": "proposed-alternative",
+                    "original_preserved": True,
+                    "similarity": round(similarity, 3),
+                    "proposed_goal": proposed_goal,
+                    "reason": "semantic adapters cannot replace an executable action identity",
+                }
+            elif proposal_rejected:
                 normalized = semantic_baseline["normalized"]
                 mode = semantic_baseline["mode"]
                 primary_skill = semantic_baseline["primary_skill"]
@@ -733,11 +1178,11 @@ class IntentCompiler:
             confidence = min(confidence, 0.5)
 
         gate_alternatives = list(proposal.get("alternatives", [])) if proposal else []
-        if proposal_rejected and proposed_goal:
+        if (proposal_rejected or proposal_as_alternative) and proposed_goal:
             gate_alternatives.insert(0, proposed_goal)
         gate = interpretation_gate(
             primary=normalized
-            if proposal_rejected
+            if proposal_rejected or proposal_as_alternative
             else str(proposal.get("interpretation") or normalized)
             if proposal
             else normalized,
@@ -766,15 +1211,24 @@ class IntentCompiler:
                 }
             )
         for constraint in constraints:
+            compiled_constraint = (
+                f"defer action until a later explicit request: {constraint['action']}"
+                if constraint["type"] == "deferred-action"
+                else f"preserve future compatibility without executing now: {constraint['action']}"
+                if constraint["type"] == "future-compatibility"
+                else "preserve original files, configuration, memory data, and backups"
+                if constraint["type"] == "protected-data"
+                else f"禁止动作：{constraint['action']}"
+            )
             transformations.append(
                 {
                     "original": constraint["text"],
-                    "compiled": f"禁止动作：{constraint['action']}",
-                    "kind": "negative-constraint",
+                    "compiled": compiled_constraint,
+                    "kind": constraint["type"],
                     "obvious": False,
                 }
             )
-        if proposal and normalized and normalized.casefold() != utterance.casefold():
+        if proposal and not proposal_as_alternative and normalized and normalized.casefold() != utterance.casefold():
             transformations.append(
                 {
                     "original": utterance,
@@ -784,7 +1238,50 @@ class IntentCompiler:
                 }
             )
         source_map = sparse_source_map(transformations)
+        typed_contract = build_typed_contract(
+            utterance=utterance,
+            goal=normalized,
+            mode=mode,
+            action_text=action_text,
+            primary_skill=primary_skill,
+            skill_candidates=skill_candidates,
+            constraints=constraints,
+            available_files=request.available_files,
+            scope=request.scope,
+            pending_action=request.pending_action,
+            short_confirmation_missing=(
+                short_confirmation_status["state"] == "missing-specific-action"
+            ),
+            risk=risk,
+            authorization_hint=request.authorization,
+            alternatives=[
+                str(item.get("text", ""))
+                for item in gate.get("candidates", [])
+                if str(item.get("text", "")).strip()
+            ],
+            source_map=source_map,
+        )
+        if typed_contract.required_slots:
+            clarification = True
+            path = "review"
+            risk["confirmation_required"] = True
+            reason = "typed intent contract is missing required slots: " + ", ".join(
+                typed_contract.required_slots
+            )
+            if reason not in risk["reasons"]:
+                risk["reasons"].append(reason)
+            typed_contract.risk.confirmation_required = True
         autonomy = autonomy_status(_memory_path(self.profile), scope=request.scope)
+        confidence, confidence_calibration = _calibrated_confidence(
+            profile=self.profile,
+            mapping=mapping,
+            has_context=bool(request.context or request.pending_action),
+            primary_skill=primary_skill,
+            corrections=corrections,
+            autonomy=autonomy,
+            clarification=clarification,
+            gate_required=bool(gate.get("required")),
+        )
         runtime_status = build_runtime_status(
             actual_version=__version__,
             profile=self.profile if profile_exists else None,
@@ -832,6 +1329,7 @@ class IntentCompiler:
             "clarification_required": clarification,
             "preserve_voice": True,
             "confidence": confidence,
+            "confidence_calibration": confidence_calibration,
             "phrase_match": mapping,
             "short_confirmation_status": short_confirmation_status,
             "risk": risk,
@@ -844,6 +1342,11 @@ class IntentCompiler:
                 "candidates": skill_candidates,
                 "discovered_skill_count": len(self.registry.get("skills", [])),
                 "discovery_errors": len(self.registry.get("errors", [])),
+                "acquisition_policy": (
+                    ["reuse-installed", "search-existing", "create-custom-last"]
+                    if "skill" in source_text.casefold()
+                    else []
+                ),
             },
             "semantic": semantic,
             "semantic_fidelity": semantic_fidelity,
@@ -853,6 +1356,7 @@ class IntentCompiler:
             "personalization_status": personalization_status(profile_exists=profile_exists, profile=self.profile),
             "interpretation_gate": gate,
             "prompt_source_map": source_map,
+            "intent_contract": typed_contract.model_dump(mode="json"),
             "adaptive_autonomy": autonomy,
             "current_status": current_status,
             "runtime_status": runtime_status,

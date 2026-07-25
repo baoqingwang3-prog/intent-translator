@@ -60,7 +60,7 @@ def compile_with(adapter, utterance, **kwargs):
 
 
 class SemanticLayerTests(unittest.TestCase):
-    def test_helpful_model_can_explain_metaphor_but_cannot_auto_execute_new_action(self):
+    def test_helpful_model_can_propose_metaphor_interpretation_but_cannot_replace_action(self):
         adapter = FakeAdapter(
             {
                 "normalized_goal": "Publish the project publicly",
@@ -73,9 +73,13 @@ class SemanticLayerTests(unittest.TestCase):
         )
         result = compile_with(adapter, "Put this project on the shelf where everyone can see it")
         self.assertEqual(result["semantic"]["status"], "applied")
-        self.assertEqual(result["mode"], "build")
-        self.assertEqual(result["routing"]["primary_skill"], "release-manager")
-        self.assertTrue(result["risk"]["external"])
+        self.assertEqual(result["mode"], "answer")
+        self.assertIsNone(result["routing"]["primary_skill"])
+        self.assertEqual(result["semantic_fidelity"]["status"], "proposed-alternative")
+        self.assertIn(
+            "Publish the project publicly",
+            [item["text"] for item in result["interpretation_gate"]["candidates"]],
+        )
         self.assertTrue(result["clarification_required"])
         self.assertFalse(result["completion_contract"]["execute"])
 

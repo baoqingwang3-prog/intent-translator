@@ -2,15 +2,23 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-**Make the agent understand the request, preserve authorization boundaries, and choose the right Skill before it acts.**
+**Before an Agent acts, turn conversational wording into a visible task contract: resume the pending action, preserve prohibitions, choose a Skill, and show the local compiler state and this preflight result.**
 
 A local-first Agent Skill that turns terse, implicit, or context-dependent language into a compact execution contract. It recovers recent context, preserves personal voice, challenges consequential assumptions, uses local memory with consent, discovers installed Skills, and routes the task to the smallest capable tool set.
 
+It provides bounded interpretations, routing recommendations, and authorization preflight results. It becomes a mandatory gate only when the Agent host actually integrates and calls the MCP tools.
+
 The project does not claim to read minds or understand every profession by itself. It provides a general intent and routing layer; domain Skills, trusted sources, and high-stakes policies provide specialized judgment.
 
-The first Alpha is for people who frequently use Codex, Claude Code, or similar agents, keep several Skills installed, continue work with short natural-language messages, and want visible protection against misunderstanding, wrong routing, or over-broad authorization.
+The first Alpha is for people who frequently use Codex, Claude Code, or similar agents, keep several Skills installed, continue work with short natural-language messages, and want visible preflight signals intended to reduce misunderstanding, wrong routing, or over-broad authorization.
 
-| What the user says | What the control layer proves |
+| You are... | Start here | What you get |
+|---|---|---|
+| A user | [Start Here](#start-here) | Install, onboarding, Studio, and plain-language limits |
+| An Agent or host integrator | [Integration Contract](docs/integration-contract.md) | Request fields, response contract, confirmation state machine, and failure behavior |
+| A contributor or release engineer | [Release Gate](docs/release-gate.md) and [Launch Readiness](docs/launch-readiness.md) | Tests, packaging, evidence boundaries, and remaining release P0s |
+
+| What the user says | What the preflight should report |
 |---|---|
 | `Continue` | Restores the specific pending action and its constraints |
 | `Okay, compare the options; do not publish` | Keeps the prohibition and does not treat `Okay` as broader permission |
@@ -25,7 +33,7 @@ Choose the smallest setup that matches your goal:
 |---|---|---|
 | Let an agent follow the intent workflow | Skill only | Copies one Skill folder and creates a local profile on first setup |
 | Let a host call deterministic intent tools | Skill + MCP | Also creates an isolated Python venv and host configuration snippets |
-| Inspect compatibility first | Nothing | `detect_environment.py` and `intent-translator-doctor` are read-only |
+| Inspect compatibility first | Nothing | These checks read local environment and configuration without modifying the profile, database, or runtime |
 
 For most first-time users, install the Skill only. Add MCP after the basic workflow behaves as expected. No account, API key, cloud model, or Obsidian vault is required.
 
@@ -41,17 +49,17 @@ Every question can be skipped. See [First Three Minutes](docs/first-run.md).
 
 ### Try the local Studio
 
-After installing the optional MCP package, start the real local compiler UI:
+After installing the optional MCP package, start the local compiler inspection UI:
 
 ```bash
 intent-translator-studio --host 127.0.0.1 --port 8765
 ```
 
-Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current understanding, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. If the local compiler is unavailable, the page reports degraded status instead of pretending protection is active.
+Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current interpretation, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. It inspects the compiler and does not execute the task. A healthy Studio does not prove that another Agent host calls MCP on every turn. If the local compiler is unavailable, the page reports degraded status.
 
 ## Status
 
-GitHub Alpha candidate, version `0.7.0a2`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Local Alpha candidate, version `0.7.0a2`. GitHub Alpha evidence is still blocked on the documented stranger-user trial and first green GitHub-hosted CI. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -66,7 +74,7 @@ Host support is intentionally narrower than the installer list. See the explicit
 | Obsidian | Optional | SQLite remains available |
 | Domain expertise | Installed domain Skills and trusted sources | Base-agent response with explicit limitations |
 
-Run the read-only environment report before installation:
+Run the non-modifying environment report before installation. It reads local environment and configuration but does not change them:
 
 ```bash
 python skills/intent-translator/scripts/detect_environment.py
@@ -74,7 +82,7 @@ python skills/intent-translator/scripts/detect_environment.py
 
 ## Install
 
-Clone or download this repository, then run one installer from the repository root.
+Clone or download this repository, ensure Python 3.10 or newer is available, then enter the directory containing `pyproject.toml` before running an installer.
 
 Windows PowerShell:
 
@@ -134,6 +142,16 @@ Uninstalling preserves local profile and memory unless an explicit purge confirm
 sh ./uninstall.sh --host codex
 ```
 
+To remove the Skill and the complete local profile and memory store, use the explicit destructive confirmation:
+
+```powershell
+.\uninstall.ps1 -TargetHost Codex -PurgeData -ConfirmPurge DELETE-LOCAL-DATA
+```
+
+```bash
+sh ./uninstall.sh --host codex --purge-data --confirm-purge DELETE-LOCAL-DATA
+```
+
 ### Optional MCP runtime
 
 The MCP runtime makes the deterministic preflight callable instead of relying on prompt instructions alone. It uses local stdio transport and does not call a model or cloud service.
@@ -154,7 +172,7 @@ Codex registration uses the native `codex mcp add` command with an explicit `COD
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
-The server exposes fourteen tools, including onboarding status/application, memory defense, and student state. Onboarding choices stay local and are all skippable. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only compilation and recall do not mutate memory access counters.
+The server exposes fourteen tools, including onboarding status/application, memory defense, and student state. Onboarding choices stay local and are all skippable. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only recall uses an existing database without writes; `memory.adapter=none` creates and recalls no memory database.
 
 When the same Skill exists in multiple roots, discovery uses the first configured root. Explicit `INTENT_TRANSLATOR_SKILL_ROOTS` entries win, followed by host-specific roots such as Codex, then shared roots such as `~/.agents/skills`. `discover_skills.py` reports alternates so duplicate installations are visible instead of silently merged.
 
@@ -169,6 +187,13 @@ intent-translator-doctor --json > intent-translator-diagnostic.json
 ```
 
 The JSON form is a shareable redacted diagnostic: it includes versions, host snippets, restart need, and configuration health without profile text or exact private paths. The doctor distinguishes `not-installed`, `installed-not-registered`, `registered-pending-restart`, `registered-stale`, and the active runtime reported by a connected MCP call. It lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and prints one repair command when registration is missing or stale. A newly installed runtime does not replace an MCP process already held open by a running host.
+
+### One-minute verification
+
+1. Restart or reload the Agent host, then run `intent-translator-doctor`.
+2. Start Studio and submit `Okay, compare the options; do not publish`.
+3. Verify that `publish` appears as a prohibited action and that Studio labels itself as an inspection surface.
+4. Ask the Agent host to check the same sentence with Intent Translator. If it cannot show a current decision receipt or MCP result, the compiler may be installed but that host turn was not preflighted.
 
 Remove only the MCP runtime and generated snippets while preserving profile and memory:
 
@@ -197,7 +222,7 @@ export INTENT_TRANSLATOR_SEMANTIC_BASE_URL='http://127.0.0.1:11434/v1'
 export INTENT_TRANSLATOR_SEMANTIC_MODEL='your-local-model'
 ```
 
-Mark a wrapper that sends data off-device with `INTENT_TRANSLATOR_SEMANTIC_EXTERNAL=1`. Each compile request must then separately set `allow_external_semantic`; sensitive content also requires `allow_sensitive_semantic`. Model output may raise risk or request clarification, but cannot lower deterministic risk or grant authorization. A model-inferred action that was not found by deterministic rules always enters review before execution.
+Mark a wrapper that sends data off-device with `INTENT_TRANSLATOR_SEMANTIC_EXTERNAL=1`. The first compile returns a short-lived semantic confirmation challenge. After the user confirms the exact pending input, the host resubmits that action with the one-time `confirmation_receipt` and the relevant semantic allow flag. Caller booleans alone never authorize egress. Model output may raise risk or request clarification, but cannot lower deterministic risk, grant authorization, or replace the identity of an executable objective; a materially different model goal is exposed only as a review alternative.
 
 See [docs/semantic-layer.md](docs/semantic-layer.md) for the JSON contract and threat model.
 
@@ -205,19 +230,25 @@ See [docs/semantic-layer.md](docs/semantic-layer.md) for the JSON contract and t
 
 1. Recover the active objective from the latest message, unfinished action, local profile, and relevant memory.
 2. Choose a fast path for clear reversible work or a review path for ambiguity, consequential assumptions, and high-impact actions.
-3. Compile an internal execution envelope with scope, authorization, context pointers, routing, and completion criteria.
+3. Compile an internal execution envelope with scope, action-bound authorization, context pointers, routing, and completion criteria.
 4. Discover installed Skills dynamically and select one primary owner.
 5. Execute and verify the task, then write memory only with appropriate authorization.
 
-For complex or consequential actions, an intent preflight also retrieves relevant past corrections and checks reversibility, external effects, sensitive data, and authorization. Search uses SQLite FTS5 plus Chinese n-grams. Memory conflicts remain visible, project rules can shadow global defaults, and sensitive memories require a retention period. Every memory carries provenance and a trust level: explicit user memory is trusted, model/file/web memory is non-authoritative evidence, and instruction-like or authority-claiming content is quarantined. Recalled memory is never executable authority.
+For complex or consequential actions, an intent preflight also retrieves relevant past corrections and checks reversibility, external effects, sensitive data, and authorization. Search uses SQLite FTS5 plus Chinese n-grams. Memory conflicts remain visible, project rules can shadow global defaults, and sensitive memories require a retention period. Every memory carries provenance and a trust level: explicit user memory has trusted provenance but is still context evidence, not guaranteed fact or permission. Model/file/web memory is non-authoritative evidence, and instruction-like or authority-claiming content is quarantined. Recalled memory is never executable authority.
 
 Brief feedback such as `太复杂了` becomes a pending correction and is stored durably only after one short confirmation. Decision receipts can show the resolved meaning, memory IDs, selected Skill, and confirmation boundary without exposing hidden model reasoning.
+
+Consequential actions use a short-lived, one-time confirmation receipt bound to the exact normalized action and scope. Changing a file, branch, recipient, destination, or operation invalidates the receipt. The legacy `authorization` request field is an untrusted compatibility hint and cannot authorize publication, external transfer, destructive work, or sensitive egress by itself.
+
+MCP responses are compact by default: full corrections, memories, student state, routing candidates, and runtime diagnostics stay behind `include_diagnostics=true`. Unrelated requests do not receive study goals or student state. Set `include_prompt=false` when the host consumes the structured envelope directly.
+
+Each response also includes a validated `intent_contract` with the original wording, goal, action owner, object, constraints, artifacts, destination, scope, required slots, risk, authorization state, alternatives, and source map. Missing required slots keep execution disabled. Final confidence is calibrated from local correction and routing evidence rather than a semantic model's self-reported confidence.
 
 The system adapts to task-specific expertise, plain-language needs, accessibility preferences, and confirmed phrase meanings. It avoids treating occupation, personality type, age, dialect, or spelling as a deterministic model of the person.
 
 Routing uses explicit aliases for known Skills and conservative multi-keyword matching against installed Skill descriptions. This allows third-party professional Skills to participate without adding every profession to this repository.
 
-Intent Translator and Agent Reach are complementary. Intent Translator decides **what the user actually wants, whether it is authorized, and which Skill owns the action**. Agent Reach decides **where on the internet to search and how to retrieve the result**. The control layer can route a search to Agent Reach; it does not replace an internet-access layer.
+Intent Translator and Agent Reach are complementary. Intent Translator proposes **a bounded interpretation, validates action-bound confirmation receipts, and recommends which Skill owns the action**. Agent Reach decides **where on the internet to search and how to retrieve the result**. The control layer can route a search to Agent Reach; it does not replace an internet-access layer.
 
 ## Optional Plugins
 
@@ -299,7 +330,7 @@ python -m compileall -q skills src tests scripts
 python scripts/release_gate.py --mode quick
 ```
 
-The GitHub Actions matrix is configured for Windows, macOS, and Linux with Python 3.10 and 3.12.
+The GitHub Actions matrix is configured for Windows, macOS, and Linux with Python 3.10 and 3.12, but remains remotely unproven until its first GitHub-hosted run passes.
 
 ### Current deterministic A/B
 
@@ -320,6 +351,9 @@ On the isolated 24-case regression set, the naive baseline scores 63.2% across r
 - New languages, dialects, professions, and third-party Skills need out-of-distribution evaluation.
 - Host auto-invocation behavior varies; installing the MCP server does not guarantee every host will call it on every message.
 - No model is bundled. Real semantic quality depends on the configured adapter and still needs held-out live-model evaluation.
+- Public read-only network searches may still request confirmation because the current risk model conservatively groups some network reads with external actions.
+- Browser-test requests phrased indirectly, such as "use Playwright to test it," may need to be restated as an explicit local test command for reliable routing.
+- Adaptive-autonomy restore metadata is experimental. It never grants execution authority, and a cautious mode must be restored only after a user-facing confirmation.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
 See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, host support, and high-star comparison.

@@ -12,12 +12,20 @@ class CompileRequest(BaseModel):
     context: str = Field(default="", description="Compact recent conversation context.")
     pending_action: str = Field(default="", description="Last explicitly proposed unfinished action.")
     scope: str = Field(default="global", min_length=1)
-    authorization: Literal["granted", "unknown", "denied"] = "unknown"
+    authorization: Literal["granted", "unknown", "denied"] = Field(
+        default="unknown",
+        description="Untrusted caller hint. Consequential actions require an action-bound confirmation receipt.",
+    )
+    confirmation_receipt: str = Field(
+        default="",
+        description="Short-lived receipt returned by a prior review of the exact pending action.",
+    )
     available_files: list[str] = Field(default_factory=list)
     include_prompt: bool = True
     semantic_mode: Literal["off", "auto", "required"] = "auto"
     allow_external_semantic: bool = False
     allow_sensitive_semantic: bool = False
+    include_diagnostics: bool = False
 
 
 class OnboardingStatusRequest(BaseModel):

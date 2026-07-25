@@ -121,9 +121,11 @@ def connect(db_path: Path) -> sqlite3.Connection:
     db_path = db_path.expanduser().resolve()
     existed = db_path.exists() and db_path.stat().st_size > 0
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(db_path)
+    connection = sqlite3.connect(db_path, timeout=5.0)
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA busy_timeout = 5000")
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA journal_mode = WAL")
     old_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     backup_path = ""
     if existed and old_version < DB_SCHEMA_VERSION:
@@ -286,6 +288,29 @@ def connect(db_path: Path) -> sqlite3.Connection:
     rebuild_indexes(connection)
     connection.commit()
     return connection
+
+
+def connect_readonly(db_path: Path) -> sqlite3.Connection:
+    """Open an existing memory database without migrations, expiry, or index writes."""
+    db_path = db_path.expanduser().resolve()
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+    connection = sqlite3.connect(
+        f"file:{db_path.as_posix()}?mode=ro",
+        uri=True,
+        timeout=5.0,
+    )
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA busy_timeout = 5000")
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
+
+
+def table_exists(connection: sqlite3.Connection, table: str) -> bool:
+    return connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table,),
+    ).fetchone() is not None
 
 
 def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
@@ -1019,7 +1044,7 @@ def reject_pending_correction(connection: sqlite3.Connection, pending_id: int) -
 
 
 def check_intent(
-    connection: sqlite3.Connection,
+    connection: sqlite3.Connection | None,
     *,
     scope: str,
     goal: str,
@@ -1036,8 +1061,10 @@ def check_intent(
         raise ValueError("reversible must be yes, no, or unknown")
     if authorization not in {"granted", "unknown", "denied"}:
         raise ValueError("authorization must be granted, unknown, or denied")
-    corrections = search_corrections(
-        connection, query=goal, scope=scope, limit=5, track_access=record
+    corrections = (
+        search_corrections(connection, query=goal, scope=scope, limit=5, track_access=record)
+        if connection is not None and table_exists(connection, "corrections")
+        else []
     )
     reasons: list[str] = []
     blocked = authorization == "denied"
@@ -1067,7 +1094,7 @@ def check_intent(
         "blocked": blocked,
         "reasons": reasons,
     }
-    if record:
+    if record and connection is not None:
         connection.execute(
             """
             INSERT INTO intent_checks(

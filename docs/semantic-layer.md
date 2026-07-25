@@ -7,7 +7,7 @@ The semantic layer helps with unfamiliar metaphors, ellipsis, indirect wording, 
 - The model proposes `normalized_goal`, `interpretation`, `mode`, assumptions, alternatives, confidence, a Skill candidate, and risk hints.
 - Deterministic code owns authorization, external-transfer checks, irreversible-action checks, memory policy, and the final execute/confirm decision.
 - Model output can raise risk but cannot erase deterministic risk.
-- A model-only action inference enters review before execution.
+- A model-only action inference enters review before execution. A semantic adapter cannot replace an already executable objective; a different goal is returned only as an alternative.
 - The normalized model goal is scanned again by deterministic risk rules.
 - The adapter returns concise structured interpretation, not chain-of-thought or hidden reasoning.
 
@@ -27,7 +27,7 @@ For an adapter that sends data off-device:
 export INTENT_TRANSLATOR_SEMANTIC_EXTERNAL='1'
 ```
 
-External adapters are not called unless the individual compile request sets `allow_external_semantic=true`. If deterministic or pattern-based privacy checks find sensitive content, the request must also set `allow_sensitive_semantic=true`.
+External adapters are not called from caller allow flags alone. The first compile returns `risk.semantic_confirmation_challenge.receipt`, bound to the exact pending input and scope. After the user explicitly confirms, the host resubmits the exact action in `pending_action`, the confirmation in `utterance`, the one-time value in `confirmation_receipt`, and the corresponding allow flag. Sensitive content binds both external and sensitive semantic grants into the receipt. Any changed input, scope, expired receipt, or replay is rejected.
 
 ## Configure A Chat-Completions Endpoint
 

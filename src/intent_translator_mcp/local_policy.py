@@ -140,15 +140,27 @@ def record_correct_restatement(db_path: Path, *, scope: str = "global") -> dict[
 
 
 def autonomy_status(db_path: Path, *, scope: str = "global") -> dict[str, Any]:
-    if not Path(db_path).expanduser().exists():
-        return {
-            "scope": scope,
-            "mode": "normal",
-            "misunderstanding_count": 0,
-            "correct_restatement_count": 0,
-            "automatic_restore_allowed": True,
-        }
-    connection = _connect(db_path)
+    path = Path(db_path).expanduser().resolve()
+    default = {
+        "scope": scope,
+        "mode": "normal",
+        "misunderstanding_count": 0,
+        "correct_restatement_count": 0,
+        "automatic_restore_allowed": True,
+    }
+    if not path.exists():
+        return default
+    try:
+        connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=5.0)
+        connection.row_factory = sqlite3.Row
+        table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='local_policy_events'"
+        ).fetchone()
+        if table is None:
+            connection.close()
+            return default
+    except sqlite3.Error:
+        return default
     try:
         row = connection.execute(
             """

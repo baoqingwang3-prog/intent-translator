@@ -1,15 +1,30 @@
 # GitHub Launch Readiness
 
-This document separates repository readiness from product intelligence. A green CI badge does not prove that the compiler understands unfamiliar people.
+This document separates local engineering evidence, remote repository evidence, and real-user evidence. A local green gate does not prove that GitHub-hosted jobs pass or that unfamiliar people can use the product.
 
-| Priority | Risk | Why it matters | Current mitigation | Exit condition |
+## Current GitHub Alpha P0 Board
+
+These are the two remaining external evidence blockers for the GitHub Alpha label. This does not waive unresolved engineering risks or authorize publication. Product philosophy, private creator preferences, future enterprise controls, and additional audience packs are not Alpha P0 work.
+
+| P0 | State | Exit condition | Evidence owner |
+|---|---|---|---|
+| P0-1 Stranger-user usability proof | Protocol ready; synthetic rehearsal passed; real-user evidence incomplete | 3-5 consenting first-audience users complete README-only install, onboarding, five request classes, one correction, one decision-receipt check, and uninstall; dangerous confirmation misses = 0, cross-profile contamination = 0, creator-default leakage = 0 | Human trial record with redacted metrics |
+| P0-2 GitHub remote reproducibility proof | Local workflows ready; no remote configured; remote evidence incomplete | Explicit owner/name/visibility/branch/tag authorization, clean pre-push scans, first green GitHub-hosted Windows/macOS/Linux CI, independent Playwright job, lifecycle/version verification, and branch protection | GitHub Actions, repository settings, and release checklist |
+
+Until P0-1 is completed, say **"protocol prepared and synthetic rehearsal passed"**, not "real users passed." Until P0-2 is completed, say **"local workflows passed"**, not "remote CI passed."
+
+## Local Risk Register
+
+The following engineering risks are tracked separately from the two remaining GitHub Alpha P0 items. Items with local regression evidence retain that evidence; future enterprise hardening does not silently become an Alpha release blocker.
+
+| Status | Risk | Why it matters | Current mitigation | Evidence |
 |---|---|---|---|---|
-| P0 | Users cannot diagnose or fully remove the installation | A local-first trust claim fails if setup is opaque or leaves broken host configuration | Privacy-conscious doctor, Skill and MCP uninstallers, installer rollback | Clean install, doctor, and uninstall pass in isolated Windows/macOS/Linux environments |
-| P0 | A brief approval expands into publication or sensitive transfer | One wrong authorization can cause irreversible harm | Explicit risk preflight, correction ledger, confirmation tests | Zero missed confirmations in regression and adversarial authorization suites |
-| P0 | Real profile, memory, path, or credential reaches GitHub | Public history is difficult to erase and may require credential rotation | Ignore rules, local data boundary, secret scan, private vulnerability reporting | Current tree, staged diff, and history scan are clean before first push |
-| P0 | A file, web page, model output, or import poisons durable memory | Persistent hostile instructions can outlive the original context and silently alter future behavior | Provenance, trust levels, non-authoritative recall, injection quarantine, poisoning-resistant updates | Adversarial import and migration suites show zero quarantined recall and zero authority escalation |
-| P0 | Sensitive state leaks through summaries or an Obsidian mirror | Local-first storage still fails if private details are copied into routine agent context or human-readable indexes | Explicit retention, default exclusion, redacted write responses, and public-only Markdown refresh | Sensitive-state fixtures show zero context or mirror exposure and no deletion during public refresh |
-| P0 | Package, Skill, and documentation versions disagree | Users cannot reproduce or support installations | Root and Skill VERSION files plus package metadata | Automated metadata test and tag build agree on one version |
+| Local regression evidence present | Users cannot diagnose or fully remove the installation | A local-first trust claim fails if setup is opaque or leaves broken host configuration | Privacy-conscious doctor, Skill and MCP uninstallers, installer rollback | Clean-room install, doctor, rollback, and uninstall tests |
+| Closed locally | A brief approval expands into publication or sensitive transfer | One wrong authorization can cause irreversible harm | Explicit risk preflight, correction ledger, confirmation tests | Regression and adversarial authorization suites |
+| Recheck before push | Real profile, memory, path, or credential reaches GitHub | Public history is difficult to erase and may require credential rotation | Ignore rules, local data boundary, secret scan, private vulnerability reporting | Current tree, staged diff, history, private-path, and creator-contamination scans |
+| Closed locally | A file, web page, model output, or import poisons durable memory | Persistent hostile instructions can outlive the original context and silently alter future behavior | Provenance, trust levels, non-authoritative recall, injection quarantine | Memory-defense and migration tests |
+| Closed locally | Sensitive state leaks through summaries or an Obsidian mirror | Private details must not enter routine context or public indexes | Explicit retention, default exclusion, redacted write responses | Sensitive-state fixtures and mirror tests |
+| Closed locally | Package, Skill, and documentation versions disagree | Users cannot reproduce or support installations | Root and Skill VERSION files plus package metadata | Automated metadata and build checks |
 | P1 | Rules overfit Chinese wording and bundled Skills | A public tool must not require every profession to be hard-coded | English safety vocabulary and conservative description-based routing | Multilingual, third-party Skill, and out-of-distribution eval suites meet published thresholds |
 | P1 | MCP is installed but the host does not call it | Users may believe safety checks are active when they are not | Host snippets, doctor output, explicit fallback Skill workflow | Per-host integration tests and visible invocation receipts |
 | P1 | Small regression set is mistaken for general understanding | Inflated claims damage trust and hide product risk | README limitations, deterministic-eval label, and adversarial semantic fixtures | Hundreds of held-out, consented, diverse cases plus live-model evaluation |
@@ -22,19 +37,19 @@ Automated evidence is available through `python scripts/release_gate.py --mode f
 
 ## Release Rule
 
-Do not call a release stable until P0 exit conditions are met and the real-user evaluation design is published. Alpha releases may ship with P1 gaps when the limitation is visible and the default remains local and reversible.
+Do not call the product stable from Alpha evidence. The GitHub Alpha evidence claim requires both current P0 items. P1 and P2 gaps may remain when they are visible and defaults stay local and reversible.
 
 ## Alpha Preparation Matrix
 
 | Area | State | Evidence | Remaining external proof |
 |---|---|---|---|
 | Creator-shadow isolation | Complete locally | Generic-profile firewall, tracked-content audit, private-term scan support | Re-run immediately before first push |
-| Clean-room install and first use | Complete locally | Cross-platform acceptance test covers install, generic first use, third-party Skill routing, onboarding, uninstall, and retained local data | GitHub-hosted macOS/Linux/Windows run |
-| Core release acceptance | Complete locally | Unit, protocol, semantic safety, memory defense, student-state, metadata, and doctor suites | First remote CI run |
-| Beginner onboarding | Complete for local Studio/CLI/MCP alpha | Three skippable choices, redacted summary, first-run guide, and plain-language Studio | Host-native buttons remain host-dependent |
-| Visible runtime trust | Complete locally | Compile receipt, doctor, onboarding, and Studio show active/stale/degraded plus actual version and restart need | Restarted-host acceptance after local install |
+| Clean-room install and first use | Locally exercised in the documented environments | Cross-platform acceptance test covers install, generic first use, third-party Skill routing, onboarding, uninstall, and retained local data | GitHub-hosted macOS/Linux/Windows run |
+| Core release acceptance | Local regression evidence present | Unit, protocol, semantic safety, memory defense, student-state, metadata, and doctor suites | First remote CI run |
+| Beginner onboarding | Locally exercised for Studio/CLI/MCP alpha | Three skippable choices, redacted summary, first-run guide, and plain-language Studio | Host-native buttons remain host-dependent |
+| Visible runtime trust | Local regression evidence present | Compile receipt, doctor, onboarding, and Studio show active/stale/degraded plus actual version and restart need | Restarted-host acceptance after local install |
 | Shareable diagnostics | Complete locally | Redacted doctor JSON contains version alignment and configuration health without profile text or exact paths | Reproduce one stranger-user report |
-| Release quality gates | Complete locally | CI matrix, compile/import checks, rollback tests, metadata check, secret and contamination audits | Artifact attestation and remote branch protection |
+| Release quality gates | Local workflow evidence present | CI matrix, compile/import checks, rollback tests, metadata check, secret and contamination audits | Artifact attestation and remote branch protection |
 | Stranger-user evidence | Planned, not complete | Trial protocol below | 3-5 consented users who did not help build the project |
 
 ## Stranger-User Trial
@@ -51,9 +66,31 @@ Each participant should:
 
 Record only consented, redacted outcomes: successful task completion, wrong Skill, unnecessary interruption, missed confirmation, correction recurrence, install time, and uninstall success. Do not store full utterances by default. Alpha exit requires zero missed publication/deletion/privacy confirmations and no creator-specific default appearing in any participant profile.
 
+Zero misses is an exit criterion for this small Alpha sample, not an estimate or guarantee of population-level safety.
+
 ## Publication Hold
 
 Preparation does not authorize publication. Before creating a remote or pushing, confirm the destination owner, repository name, visibility, and exact branch/tag. Run current-tree, staged, and history secret scans plus the local private-term contamination scan immediately before that confirmation.
+
+Record the authorization as a concrete release contract:
+
+| Field | Required value before remote work |
+|---|---|
+| Repository owner | Pending explicit authorization |
+| Repository name | Pending explicit authorization |
+| Visibility | Pending explicit authorization |
+| Branch | Pending explicit authorization |
+| Tag | Pending explicit authorization |
+
+After authorization, the remote proof sequence is:
+
+1. Re-run current-tree, staged-diff, history, secret, private-path, and creator-contamination scans.
+2. Create only the authorized repository and remote, then push only the authorized branch/tag.
+3. Require the first GitHub-hosted Windows, macOS, and Linux matrix to pass.
+4. Require the independent Playwright Studio job to pass.
+5. Verify install, upgrade, rollback, uninstall, package metadata, and version agreement from hosted artifacts.
+6. Configure branch protection for the required CI and Playwright checks.
+7. Record failures as remote evidence; do not replace them with local reruns.
 
 ## Final Alpha Checklist
 
@@ -64,3 +101,19 @@ Preparation does not authorize publication. Before creating a remote or pushing,
 5. Complete the 3-5 stranger-user protocol with zero missed publication, deletion, or privacy confirmations.
 6. Obtain explicit repository owner, name, visibility, branch, and tag authorization before any remote creation or push.
 7. Treat the first remote CI matrix and branch protection as external evidence that cannot be completed locally.
+
+## Required Status Report
+
+Every release-readiness report must use these three headings:
+
+### Locally Proven
+
+List only automated or directly observed local evidence, including the exact test/gate result.
+
+### Remotely Unproven
+
+List GitHub-hosted CI, independent Playwright, hosted lifecycle, repository settings, and artifact evidence that has not run remotely.
+
+### Real-User Unproven
+
+List the remaining 3-5 person protocol evidence. Synthetic users and fixtures must remain labeled synthetic.
