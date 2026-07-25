@@ -36,6 +36,18 @@ def studio_asset_dir() -> Path:
     return Path(__file__).resolve().parent / "studio_assets"
 
 
+def _studio_asset_manifest() -> dict[str, tuple[Path, str]]:
+    root = studio_asset_dir().resolve()
+    manifest: dict[str, tuple[Path, str]] = {}
+    for candidate in root.rglob("*"):
+        target = candidate.resolve()
+        mime_type = MIME_TYPES.get(target.suffix.casefold())
+        if mime_type is None or root not in target.parents or not target.is_file():
+            continue
+        manifest[candidate.relative_to(root).as_posix()] = (target, mime_type)
+    return manifest
+
+
 def _runtime_payload(compiler: IntentCompiler, *, entrypoint: str = "studio") -> dict[str, Any]:
     runtime = build_runtime_status(
         actual_version=__version__,
@@ -274,12 +286,11 @@ class StudioHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        root = studio_asset_dir().resolve()
-        target = (root / requested).resolve()
-        target_mime_type = MIME_TYPES.get(target.suffix.casefold())
-        if root not in target.parents or not target.is_file() or target_mime_type is None:
+        asset = _studio_asset_manifest().get("/".join(segments))
+        if asset is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
+        target, target_mime_type = asset
         body = target.read_bytes()
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", target_mime_type)
