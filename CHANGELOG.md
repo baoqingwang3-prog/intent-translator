@@ -20,6 +20,9 @@ All notable changes are recorded here. The project follows semantic versioning a
 - Cross-process profile locks, crash-safe JSON replacement, and concurrent correction regression tests.
 - Legacy profile migration with pre-migration backups and future-schema downgrade protection.
 - Deterministic CycloneDX SBOM generation from the clean installed wheel environment.
+- Runtime version handshakes in compile receipts, doctor, and onboarding status, including stale-host restart guidance.
+- Versioned Alpha adversarial regressions for short confirmations, negative publication scope, continuation recovery, and action-owned Skill routing.
+- A public, redacted postmortem for repeated short-confirmation hijacking failures.
 - Host-specific MCP configuration paths for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode.
 - Doctor version alignment diagnostics for active Skill copies, the installed runtime, and the doctor package.
 
@@ -29,6 +32,10 @@ All notable changes are recorded here. The project follows semantic versioning a
 - Confirmed phrase mappings use exact matching unless a profile explicitly opts into `match_mode: contains`.
 - Public student profile packs use generic managed-note names instead of names reused by the creator's local setup.
 - Skill installers migrate and validate existing profiles before completing an upgrade.
+- Dangerous short-confirmation `contains` mappings are repaired to `exact` during a backed-up profile upgrade.
+- Explicit prohibitions are retained as constraints instead of being classified as requested external actions.
+- Search and research action ownership outranks artifact words such as `Skill` during routing.
+- Unsupported large semantic compression preserves the original wording and requires review.
 - MCP installers accept PEP 440 alpha, beta, and release-candidate versions, retry transient package downloads, preserve readable UTF-8 paths, and reject unsafe Windows runtime path lengths early.
 
 ## [0.6.0] - 2026-07-25

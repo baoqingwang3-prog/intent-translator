@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from .atomic_io import locked_json_document
+from .runtime_status import build_runtime_status, candidate_skill_dirs
+from .version import __version__
 
 
 MAX_RULE_TEXT = 1000
@@ -95,7 +97,18 @@ def personalization_status(*, profile_exists: bool, profile: dict[str, Any] | No
     }
 
 
-def onboarding_status(*, profile_exists: bool, profile: dict[str, Any] | None = None) -> dict[str, Any]:
+def onboarding_status(
+    *,
+    profile_exists: bool,
+    profile: dict[str, Any] | None = None,
+    entrypoint: str = "onboarding",
+) -> dict[str, Any]:
+    runtime = build_runtime_status(
+        actual_version=__version__,
+        profile=profile if profile_exists else None,
+        entrypoint=entrypoint,
+        skill_dirs=candidate_skill_dirs(),
+    )
     return {
         "mode": personalization_status(profile_exists=profile_exists, profile=profile)["mode"],
         "skippable": True,
@@ -118,6 +131,14 @@ def onboarding_status(*, profile_exists: bool, profile: dict[str, Any] | None = 
         ],
         "real_button_ui": False,
         "selection_protocol": "choice-id",
+        "runtime_status": {
+            "state": runtime["state"],
+            "restart_required": runtime["restart_required"],
+            "entrypoint": runtime["entrypoint"],
+            "versions": runtime["versions"],
+            "sources": runtime["sources"],
+            "message": runtime["message"],
+        },
     }
 
 

@@ -58,6 +58,8 @@ def build_receipt(envelope: dict[str, Any]) -> dict[str, Any]:
         or risk.get("confirmation_required")
     )
     reasons = envelope.get("confirmation_reasons") or risk.get("reasons") or []
+    runtime = envelope.get("runtime_status") if isinstance(envelope.get("runtime_status"), dict) else {}
+    runtime_versions = runtime.get("versions") if isinstance(runtime.get("versions"), dict) else {}
     receipt = {
         "understood_as": understood_as,
         "mode": compact_text(envelope.get("mode"), 40),
@@ -67,6 +69,11 @@ def build_receipt(envelope: dict[str, Any]) -> dict[str, Any]:
         "route_reason": route_reason,
         "confirmation_required": confirmation_required,
         "confirmation_reasons": [compact_text(item, 140) for item in reasons][:5],
+        "runtime_state": compact_text(runtime.get("state"), 20) if runtime else None,
+        "runtime_version": compact_text(runtime_versions.get("actual_runtime"), 40)
+        if runtime_versions.get("actual_runtime")
+        else None,
+        "restart_required": bool(runtime.get("restart_required", False)),
     }
     receipt["summary"] = render_summary(receipt)
     return receipt
@@ -81,6 +88,8 @@ def render_summary(receipt: dict[str, Any]) -> str:
         parts.append(f"调用：{receipt['selected_skill']}")
     if receipt.get("confirmation_required"):
         parts.append("需要确认后再执行高影响部分")
+    if receipt.get("restart_required"):
+        parts.append("当前运行版本已过期，需要重启宿主")
     return "；".join(parts) + "。"
 
 

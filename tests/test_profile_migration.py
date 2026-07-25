@@ -57,6 +57,42 @@ class ProfileMigrationTests(unittest.TestCase):
             self.assertEqual(result["backup"], "")
             self.assertEqual(list(Path(temp).glob("*.bak-profile-*")), [])
 
+    def test_current_profile_repairs_dangerous_short_confirmation_contains_mapping(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "profile.json"
+            profile = {
+                "schema_version": SCHEMA_VERSION,
+                "profile_id": "current-with-legacy-match",
+                "language": "zh-CN",
+                "response_style": {"verbosity": "adaptive", "result_first": True},
+                "autonomy": {"reversible_actions": "proceed", "high_impact_actions": "confirm"},
+                "adaptation": {},
+                "risk_policy": {"high_stakes": "verify"},
+                "optional_adapters": {},
+                "phrase_mappings": {
+                    "继续": {
+                        "meaning": "继续当前尚未完成的流程",
+                        "scope": "global",
+                        "match_mode": "contains",
+                        "confidence": "confirmed",
+                    }
+                },
+                "memory": {"adapter": "sqlite", "location": "memory.db"},
+            }
+            path.write_text(json.dumps(profile, ensure_ascii=False), encoding="utf-8")
+
+            result = migrate_profile_file(path)
+            migrated = json.loads(path.read_text(encoding="utf-8"))
+
+            self.assertTrue(result["changed"])
+            self.assertEqual(result["safety_repairs"], 1)
+            self.assertTrue(Path(result["backup"]).is_file())
+            self.assertEqual(
+                migrated["phrase_mappings"]["继续"]["meaning"],
+                "继续当前尚未完成的流程",
+            )
+            self.assertEqual(migrated["phrase_mappings"]["继续"]["match_mode"], "exact")
+
     def test_future_profile_is_rejected_without_modification(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "profile.json"

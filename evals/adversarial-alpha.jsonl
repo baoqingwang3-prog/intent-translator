@@ -1,0 +1,7 @@
+{"id":"long_contains_can","utterance":"或者你可以用playWright mcp去测一下","phrase_mappings":{"可以":{"meaning":"只同意上一条已经明确提出的下一步","scope":"global","match_mode":"contains","confidence":"confirmed"}},"expected":{"normalized_goal":"或者你可以用playWright mcp去测一下","phrase_match":false,"execute":false}}
+{"id":"negative_publish","utterance":"好，我们先比较方案，不要发布","context":"上一条提到以后可能发布到 GitHub","expected":{"mode":"answer","external":false,"execute":false,"constraint":"不要发布"}}
+{"id":"search_skill_object","utterance":"帮我搜索 GitHub 上高星的 Agent Skill","expected":{"mode":"search","primary_skill":"agent-reach"}}
+{"id":"continue_specific_pending","utterance":"继续","pending_action":"继续完善本地测试，不上传 GitHub","authorization":"granted","phrase_mappings":{"继续":{"meaning":"继续当前流程","scope":"global","match_mode":"exact","confidence":"confirmed"}},"expected":{"normalized_goal":"继续完善本地测试，不上传 GitHub","external":false,"execute":true,"constraint":"不上传 GitHub"}}
+{"id":"explicit_local_no_upload","utterance":"继续完善本地测试，不上传 GitHub","authorization":"granted","expected":{"mode":"change","external":false,"execute":true,"constraint":"不上传 GitHub"}}
+{"id":"unresolved_confirmation","utterance":"OK","expected":{"clarification":true,"execute":false,"short_confirmation_state":"missing-specific-action"}}
+{"id":"long_continue_not_hijacked","utterance":"继续未完成任务","phrase_mappings":{"继续":{"meaning":"继续当前尚未完成的流程，从下一步恢复","scope":"global","match_mode":"contains","confidence":"confirmed"}},"expected":{"normalized_goal":"继续未完成任务","phrase_match":false,"mode":"change"}}

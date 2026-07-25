@@ -69,6 +69,9 @@ class OnboardingTests(unittest.TestCase):
         for technical_term in ("ExecutionEnvelope", "MCP", "SQLite", "prompt"):
             self.assertNotIn(technical_term, visible)
         self.assertTrue(status["skippable"])
+        self.assertIn("actual_runtime", status["runtime_status"]["versions"])
+        self.assertIn("active_skill", status["runtime_status"]["versions"])
+        self.assertIn("profile_schema", status["runtime_status"]["versions"])
 
     def test_two_users_keep_conflicting_language_rules_isolated(self):
         with tempfile.TemporaryDirectory() as temp:

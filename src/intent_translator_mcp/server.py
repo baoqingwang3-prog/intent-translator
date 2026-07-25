@@ -66,7 +66,7 @@ mcp = FastMCP(
 
 
 def compiler() -> IntentCompiler:
-    return IntentCompiler()
+    return IntentCompiler(entrypoint="mcp")
 
 
 @mcp.tool(
@@ -91,7 +91,9 @@ def intent_onboarding_status(request: OnboardingStatusRequest) -> dict[str, Any]
         profile = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
     except (OSError, UnicodeError, json.JSONDecodeError):
         profile = None
-    return onboarding_status(profile_exists=path.exists(), profile=profile)
+    return onboarding_status(
+        profile_exists=path.exists(), profile=profile, entrypoint="mcp:onboarding"
+    )
 
 
 @mcp.tool(

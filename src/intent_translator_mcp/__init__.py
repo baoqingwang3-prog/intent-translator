@@ -1,6 +1,6 @@
 """Local-first intent compiler MCP package."""
 
+from .version import __version__
 from .core import IntentCompiler
 
-__all__ = ["IntentCompiler"]
-__version__ = "0.7.0a1"
+__all__ = ["IntentCompiler", "__version__"]

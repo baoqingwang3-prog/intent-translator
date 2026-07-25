@@ -96,6 +96,29 @@ class SemanticLayerTests(unittest.TestCase):
         self.assertTrue(result["clarification_required"])
         self.assertFalse(result["completion_contract"]["execute"])
 
+    def test_unsupported_large_semantic_compression_preserves_original_and_blocks_execution(self):
+        utterance = "作为产品经理夸一夸目前的 skill 优点，并反测这些优点可不可以实现"
+        adapter = FakeAdapter(
+            {
+                "normalized_goal": "只同意上一条已经明确提出的下一步",
+                "mode": "change",
+                "confidence": 0.6,
+                "risk_hints": [],
+                "clarification_recommended": False,
+            },
+            name="unsupported-compression",
+        )
+        result = compile_with(adapter, utterance)
+        self.assertEqual(result["normalized_goal"], utterance)
+        self.assertEqual(result["semantic_fidelity"]["status"], "rejected-compression")
+        self.assertTrue(result["clarification_required"])
+        self.assertFalse(result["completion_contract"]["execute"])
+        self.assertTrue(result["interpretation_gate"]["required"])
+        self.assertIn(
+            "只同意上一条已经明确提出的下一步",
+            [item["text"] for item in result["interpretation_gate"]["candidates"]],
+        )
+
     def test_external_adapter_is_not_called_without_separate_authorization(self):
         adapter = FakeAdapter(
             {

@@ -25,13 +25,13 @@ def pyproject_version() -> str:
 
 
 def check_versions(tag: str = "") -> list[str]:
-    init_text = (REPO_ROOT / "src" / "intent_translator_mcp" / "__init__.py").read_text(encoding="utf-8")
-    init_match = re.search(r'^__version__\s*=\s*"([^"]+)"', init_text, re.MULTILINE)
+    version_text = (REPO_ROOT / "src" / "intent_translator_mcp" / "version.py").read_text(encoding="utf-8")
+    version_match = re.search(r'^__version__\s*=\s*"([^"]+)"', version_text, re.MULTILINE)
     versions = {
         "VERSION": read_version(),
         "Skill VERSION": (REPO_ROOT / "skills" / "intent-translator" / "VERSION").read_text(encoding="utf-8").strip(),
         "pyproject": pyproject_version(),
-        "package __version__": init_match.group(1) if init_match else "<missing>",
+        "package __version__": version_match.group(1) if version_match else "<missing>",
     }
     errors = []
     if len(set(versions.values())) != 1:

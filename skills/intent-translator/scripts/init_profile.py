@@ -18,6 +18,11 @@ from atomic_io import atomic_write_json, exclusive_file_lock, locked_json_docume
 
 
 SCHEMA_VERSION = 1
+SHORT_CONFIRMATIONS = {
+    "可以", "好", "确认了", "行", "可以的", "继续", "往下", "再往下",
+    "好了", "已登录", "已安装", "yes", "okay", "ok", "approved",
+    "sounds good", "continue", "go on", "next", "done", "logged in", "installed",
+}
 
 
 def now_iso() -> str:
@@ -229,6 +234,39 @@ def validate_profile(profile: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _short_confirmation_repair_count(profile: dict[str, Any]) -> int:
+    count = 0
+    for phrase, raw in profile.get("phrase_mappings", {}).items():
+        if phrase.strip().casefold() not in SHORT_CONFIRMATIONS:
+            continue
+        if not isinstance(raw, dict) or raw.get("match_mode") != "exact":
+            count += 1
+    return count
+
+
+def _repair_short_confirmation_mappings(profile: dict[str, Any]) -> int:
+    repairs = 0
+    mappings = profile.get("phrase_mappings", {})
+    if not isinstance(mappings, dict):
+        return repairs
+    for phrase, raw in list(mappings.items()):
+        if phrase.strip().casefold() not in SHORT_CONFIRMATIONS:
+            continue
+        if isinstance(raw, dict):
+            if raw.get("match_mode") == "exact":
+                continue
+            raw["match_mode"] = "exact"
+        else:
+            mappings[phrase] = {
+                "meaning": str(raw),
+                "scope": "global",
+                "match_mode": "exact",
+                "confidence": "confirmed",
+            }
+        repairs += 1
+    return repairs
+
+
 def migrate_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], int, bool]:
     raw_version = profile.get("schema_version", 0)
     if not isinstance(raw_version, int) or isinstance(raw_version, bool) or raw_version < 0:
@@ -237,14 +275,17 @@ def migrate_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], int, bool]
         raise ValueError(
             f"profile schema_version {raw_version} is newer than supported version {SCHEMA_VERSION}"
         )
-    if raw_version == SCHEMA_VERSION:
-        return copy.deepcopy(profile), raw_version, False
-    migrated = _merge_value(default_profile(str(profile.get("language", "auto"))), profile)
+    migrated = (
+        copy.deepcopy(profile)
+        if raw_version == SCHEMA_VERSION
+        else _merge_value(default_profile(str(profile.get("language", "auto"))), profile)
+    )
     migrated["schema_version"] = SCHEMA_VERSION
+    repairs = _repair_short_confirmation_mappings(migrated)
     errors = validate_profile(migrated)
     if errors:
         raise ValueError("profile migration produced invalid data: " + "; ".join(errors))
-    return migrated, raw_version, True
+    return migrated, raw_version, raw_version != SCHEMA_VERSION or repairs > 0
 
 
 def migrate_profile_file(path: Path) -> dict[str, Any]:
@@ -256,6 +297,7 @@ def migrate_profile_file(path: Path) -> dict[str, Any]:
         profile = json.loads(original.decode("utf-8-sig"))
         if not isinstance(profile, dict):
             raise ValueError("profile must contain a JSON object")
+        safety_repairs = _short_confirmation_repair_count(profile)
         migrated, from_version, changed = migrate_profile(profile)
         backup = None
         if changed:
@@ -268,6 +310,7 @@ def migrate_profile_file(path: Path) -> dict[str, Any]:
             "from_version": from_version,
             "to_version": SCHEMA_VERSION,
             "changed": changed,
+            "safety_repairs": safety_repairs,
             "backup": str(backup) if backup else "",
         }
 

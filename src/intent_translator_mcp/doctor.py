@@ -11,8 +11,9 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import __version__
+from .version import __version__
 from .core import _candidate_skill_dirs
+from .runtime_status import build_runtime_status
 
 
 def _display_path(path: Path, home: Path, show_paths: bool) -> str:
@@ -308,10 +309,19 @@ def run_doctor(
 
     statuses = {item["status"] for item in checks}
     overall = "fail" if "fail" in statuses else "warn" if "warn" in statuses else "pass"
+    runtime_status = build_runtime_status(
+        actual_version=__version__,
+        profile=profile if profile_path.exists() else None,
+        entrypoint="doctor",
+        home=home,
+        env=env,
+        skill_dirs=skill_dirs,
+    )
     return {
         "schema_version": 1,
         "status": overall,
         "privacy": "Home-relative paths are shown by default; use --show-paths for exact locations.",
+        "runtime_status": runtime_status,
         "checks": checks,
     }
 
