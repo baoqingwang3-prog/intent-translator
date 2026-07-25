@@ -219,6 +219,60 @@ class AlphaP0RegressionTests(unittest.TestCase):
             self.assertFalse(result["risk"]["external"])
             self.assertTrue(result["completion_contract"]["execute"])
 
+    def test_coordinated_negative_publish_clause_stays_a_constraint(self):
+        cases = (
+            (
+                "Update the five-user trial docs and run local tests; "
+                "do not create a remote, push, or publish.",
+                "publish",
+            ),
+            (
+                "更新五用户陌生用户彩排文档，运行本地测试；"
+                "不得创建 remote、push 或公开发布",
+                "公开发布",
+            ),
+        )
+        for pending, prohibited_text in cases:
+            with self.subTest(pending=pending), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(
+                            utterance="Continue",
+                            pending_action=pending,
+                            authorization="granted",
+                            semantic_mode="off",
+                        )
+                    )
+                self.assertEqual(result["normalized_goal"], pending)
+                self.assertFalse(result["risk"]["external"])
+                self.assertTrue(result["completion_contract"]["execute"])
+                self.assertTrue(
+                    any(
+                        item["type"] == "prohibited-action"
+                        and prohibited_text in item["text"]
+                        for item in result["constraints"]
+                    )
+                )
+
+    def test_negative_reminder_does_not_hide_a_publish_action(self):
+        cases = (
+            "Do not forget to publish the release.",
+            "不要忘记发布这个版本。",
+        )
+        for utterance in cases:
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertTrue(result["risk"]["external"])
+                self.assertTrue(result["clarification_required"])
+                self.assertFalse(result["completion_contract"]["execute"])
+
     def test_short_confirmation_without_a_specific_previous_action_never_executes(self):
         for utterance in ("可以", "好", "继续", "OK"):
             with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:

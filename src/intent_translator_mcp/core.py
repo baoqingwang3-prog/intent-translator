@@ -56,6 +56,20 @@ ROUTING_STOPWORDS = {
 SHORT_CONFIRMATION_TERMS = {term.casefold() for term in APPROVAL_TERMS | CONTINUE_TERMS}
 NEGATED_ACTION_PATTERNS = (
     re.compile(
+        r"(?P<text>(?:不要|不得|无需|禁止)\s*"
+        r"(?P<action>(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送)"
+        r"(?:(?:\s*[、，,]\s*|\s*(?:或|和|以及)\s*)"
+        r"(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送))*))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:do\s+not|don't|never|not\s+to)\s+"
+        r"(?P<action>(?:create\s+(?:a\s+)?remote|push|publish|upload|deploy|send\s+externally|make\s+public)"
+        r"(?:(?:\s*,\s*(?:(?:or|and)\s+)?|\s+(?:or|and)\s+)"
+        r"(?:create\s+(?:a\s+)?remote|push|publish|upload|deploy|send\s+externally|make\s+public))*))",
+        re.I,
+    ),
+    re.compile(
         r"(?P<text>(?:不要|不|别|无需|禁止)\s*(?:再\s*)?"
         r"(?P<action>上传|发布|公开|上架|部署|外发|发给外部)"
         r"(?:\s*(?:到|至|去|给)?\s*(?:GitHub|互联网|外部))?)",

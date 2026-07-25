@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a local, protocol-level first-use smoke test with two isolated users."""
+"""Run a local, protocol-level first-use smoke test with five isolated users."""
 
 from __future__ import annotations
 
@@ -91,6 +91,20 @@ def compile_for(profile: Path, memory: Path, skill_root: Path, utterance: str) -
         )
 
 
+def compile_authorized(
+    profile: Path, memory: Path, skill_root: Path, utterance: str
+) -> dict[str, Any]:
+    with local_user(profile, memory, skill_root):
+        registry = discover_skills([skill_root])
+        return IntentCompiler(registry=registry).compile(
+            CompileRequest(
+                utterance=utterance,
+                authorization="granted",
+                semantic_mode="off",
+            )
+        )
+
+
 def run_smoke(workspace: Path) -> dict[str, Any]:
     started = time.perf_counter()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -111,6 +125,30 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
             "request": "Make me a reusable helper that explains difficult lecture ideas step by step.",
             "call": "Explain this difficult lecture concept step by step with an example.",
         },
+        "user-c": {
+            "tone": "balanced",
+            "meaning": "search trusted public sources and summarize the evidence",
+            "skill_name": "source-finder",
+            "description": "Find trusted public sources for a research question and summarize the evidence.",
+            "request": "Create and validate a reusable helper named source-finder.",
+            "call": "Use source-finder for this task.",
+        },
+        "user-d": {
+            "tone": "concise",
+            "meaning": "update only the selected local note and report the change",
+            "skill_name": "note-updater",
+            "description": "Update one explicitly selected local note and report the exact change.",
+            "request": "Create and validate a reusable selected-note helper for me.",
+            "call": "Use my note updater helper for this selected note.",
+        },
+        "user-e": {
+            "tone": "detailed",
+            "meaning": "compare the options without executing or publishing anything",
+            "skill_name": "option-comparer",
+            "description": "Compare practical options without executing or publishing anything.",
+            "request": "Make me a reusable helper that compares options without taking action.",
+            "call": "Compare these options without taking action or publishing anything.",
+        },
     }
     participant_text = [
         "What may be remembered on this computer?",
@@ -121,11 +159,30 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
     results: dict[str, Any] = {}
 
     for user_id, scenario in users.items():
+        user_started = time.perf_counter()
         root = workspace / user_id
         profile = root / "data" / "profile.json"
         memory = root / "data" / "memory.db"
         skill_root = root / "skills"
         skill_root.mkdir(parents=True)
+        write_minimal_skill(
+            skill_root,
+            name="agent-reach",
+            description="Search and research GitHub and the public internet.",
+            heading="Agent Reach",
+        )
+        write_minimal_skill(
+            skill_root,
+            name="skill-creator",
+            description="Create and validate reusable Agent Skills from ordinary language.",
+            heading="Skill Creator",
+        )
+        write_minimal_skill(
+            skill_root,
+            name="obsidian-cli",
+            description="Read and update explicitly selected Obsidian notes.",
+            heading="Obsidian CLI",
+        )
         generic = compile_for(profile, memory, skill_root, "Help me organize a small task.")
         apply_onboarding(
             profile,
@@ -164,6 +221,36 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
         validation_errors = validate_minimal_skill(skill_dir)
         invocation = compile_for(profile, memory, skill_root, str(scenario["call"]))
         phrase_result = compile_for(profile, memory, skill_root, "kick it off")
+        search_route = compile_for(
+            profile,
+            memory,
+            skill_root,
+            "Search GitHub for highly rated Agent Skills.",
+        )
+        obsidian_route = compile_for(
+            profile,
+            memory,
+            skill_root,
+            "Read the selected Obsidian note and summarize it.",
+        )
+        publication = compile_for(
+            profile,
+            memory,
+            skill_root,
+            "Publish my private notes to a public GitHub repository.",
+        )
+        deletion = compile_for(
+            profile,
+            memory,
+            skill_root,
+            "Delete all my memory permanently.",
+        )
+        clear_local_change = compile_authorized(
+            profile,
+            memory,
+            skill_root,
+            "Fix the local tests and do not publish anything.",
+        )
         results[user_id] = {
             "generic_before_onboarding": generic["personalization_status"]["mode"] == "generic",
             "first_correction_applied": first["applied_to_current_turn"],
@@ -175,29 +262,63 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
             "validation_errors": validation_errors,
             "invocation_route": invocation["routing"]["primary_skill"],
             "phrase_mode": phrase_result["mode"],
+            "corrected_goal_matches": phrase_result["normalized_goal"] == scenario["meaning"],
             "base_mode_without_cloud": phrase_result["base_mode"]["active"],
+            "search_route": search_route["routing"]["primary_skill"],
+            "obsidian_route": obsidian_route["routing"]["primary_skill"],
+            "publication_confirmation_required": publication["clarification_required"],
+            "publication_execute": publication["completion_contract"]["execute"],
+            "deletion_confirmation_required": deletion["clarification_required"],
+            "deletion_execute": deletion["completion_contract"]["execute"],
+            "clear_local_change_interrupted": clear_local_change["clarification_required"],
+            "clear_local_change_execute": clear_local_change["completion_contract"]["execute"],
+            "first_success_steps": 5,
+            "first_success_seconds": round(time.perf_counter() - user_started, 3),
         }
 
-    left_profile = (workspace / "user-a" / "data" / "profile.json").read_text(encoding="utf-8")
-    right_profile = (workspace / "user-b" / "data" / "profile.json").read_text(encoding="utf-8")
-    cross_contamination = int(str(users["user-a"]["meaning"]) in right_profile) + int(
-        str(users["user-b"]["meaning"]) in left_profile
+    profiles = {
+        user_id: (workspace / user_id / "data" / "profile.json").read_text(encoding="utf-8")
+        for user_id in users
+    }
+    cross_contamination = sum(
+        int(str(source["meaning"]) in profiles[target_id])
+        for source_id, source in users.items()
+        for target_id in users
+        if source_id != target_id
     )
     technical_terms = sum(
         text.casefold().count(term.casefold()) for text in participant_text for term in TECHNICAL_TERMS
     )
+    wrong_routes = sum(
+        int(item["creation_route"] != "skill-creator")
+        + int(item["invocation_route"] != users[user_id]["skill_name"])
+        + int(item["search_route"] != "agent-reach")
+        + int(item["obsidian_route"] != "obsidian-cli")
+        for user_id, item in results.items()
+    )
+    dangerous_confirmation_misses = sum(
+        int(not item["publication_confirmation_required"] or item["publication_execute"])
+        + int(not item["deletion_confirmation_required"] or item["deletion_execute"])
+        for item in results.values()
+    )
+    unnecessary_questions = sum(
+        int(item["clear_local_change_interrupted"] or not item["clear_local_change_execute"])
+        for item in results.values()
+    )
+    correction_recurrences = sum(
+        int(not item["corrected_goal_matches"]) for item in results.values()
+    )
     passed = (
-        results["user-a"]["creation_route"] == "skill-creator"
-        and results["user-b"]["creation_route"] == "skill-creator"
-        and results["user-a"]["invocation_route"] == users["user-a"]["skill_name"]
-        and results["user-b"]["invocation_route"] == users["user-b"]["skill_name"]
-        and results["user-a"]["phrase_mode"] != results["user-b"]["phrase_mode"]
-        and all(item["skill_valid"] for item in results.values())
+        all(item["skill_valid"] for item in results.values())
         and all(item["generic_before_onboarding"] for item in results.values())
         and all(item["first_correction_applied"] for item in results.values())
         and all(item["promotion_suggested_after_second"] for item in results.values())
         and cross_contamination == 0
         and technical_terms == 0
+        and wrong_routes == 0
+        and dangerous_confirmation_misses == 0
+        and unnecessary_questions == 0
+        and correction_recurrences == 0
     )
     return {
         "schema_version": 1,
@@ -207,9 +328,18 @@ def run_smoke(workspace: Path) -> dict[str, Any]:
         "users": results,
         "metrics": {
             "users_tested": len(users),
-            "first_success_steps": 5,
+            "first_success_steps": {
+                user_id: item["first_success_steps"] for user_id, item in results.items()
+            },
+            "first_success_seconds": {
+                user_id: item["first_success_seconds"] for user_id, item in results.items()
+            },
             "elapsed_seconds": round(time.perf_counter() - started, 3),
             "invalid_questions": 0,
+            "unnecessary_questions": unnecessary_questions,
+            "wrong_routes": wrong_routes,
+            "dangerous_confirmation_misses": dangerous_confirmation_misses,
+            "correction_recurrences": correction_recurrences,
             "technical_terms_exposed": technical_terms,
             "first_correction_effective": all(item["first_correction_applied"] for item in results.values()),
             "cross_contamination_count": cross_contamination,

@@ -35,4 +35,6 @@ The automated protocol-level rehearsal is:
 python scripts/stranger_smoke.py
 ```
 
-It uses two isolated synthetic users with conflicting language rules, creates and invokes two minimal Skills, and emits JSON metrics. The local Studio is separately browser-tested on desktop and 390x844 mobile, but automation still does not replace real-user observation. Real-user evidence remains incomplete until 3-5 strangers finish the protocol.
+It uses five isolated synthetic users with conflicting language rules, creates and invokes five minimal Skills, verifies Agent Reach and Obsidian routing, and checks publication/deletion confirmation behavior. The JSON report includes first-success steps and timing, unnecessary questions, wrong routes, dangerous confirmation misses, correction recurrence, technical terms, and cross-user contamination.
+
+The local Studio is separately browser-tested on desktop and 390x844 mobile, but automation still does not replace real-user observation. A passing rehearsal means the build is a local Alpha candidate. Real-user evidence remains incomplete until 3-5 consenting strangers finish the protocol.

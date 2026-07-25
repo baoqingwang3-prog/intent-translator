@@ -12,6 +12,7 @@ All notable changes are recorded here. The project follows semantic versioning a
 - An explicit host support matrix, first-Alpha audience, Agent Reach complement, shareable redacted diagnostic workflow, and final Alpha checklist.
 - Loopback-only Studio binding by default, with explicit opt-in required for trusted-network exposure.
 - Native Codex MCP registration management with running-host protection, explicit repair status, idempotent updates, and rollback to the previous registration when replacement fails.
+- A reproducible five-user stranger rehearsal covering isolated corrections, downstream routing, risk confirmation, and Skill invocation metrics.
 
 ### Changed
 
