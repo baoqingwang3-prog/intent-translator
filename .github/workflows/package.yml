@@ -42,7 +42,7 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: intent-translator-distributions
           path: dist/*
