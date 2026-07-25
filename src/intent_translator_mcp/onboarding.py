@@ -8,11 +8,12 @@ import hashlib
 import os
 import re
 import sys
-import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from .atomic_io import locked_json_document
 
 
 MAX_RULE_TEXT = 1000
@@ -120,19 +121,6 @@ def onboarding_status(*, profile_exists: bool, profile: dict[str, Any] | None = 
     }
 
 
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            json.dump(payload, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
-
-
 def apply_onboarding(
     profile_path: Path,
     *,
@@ -148,39 +136,38 @@ def apply_onboarding(
     if tone not in {"concise", "balanced", "detailed", "skip"}:
         raise ValueError("tone must be concise, balanced, detailed, or skip")
     path = Path(profile_path).expanduser()
-    profile = json.loads(path.read_text(encoding="utf-8")) if path.exists() else generic_profile()
-    if memory == "off":
-        profile["memory"] = {"adapter": "none", "location": ""}
-    elif memory == "local":
-        profile["memory"] = {
-            "adapter": "sqlite",
-            "location": "~/.intent-translator/memory.db",
-            "local_only": True,
-            "write_policy": "confirmed-only",
-        }
-    interpretation_preferences = profile.setdefault("interpretation_preferences", {})
-    interpretation_preferences["material_ambiguity"] = (
-        "show-choices"
-        if interpretation == "choices"
-        else "ask"
-        if interpretation == "ask"
-        else interpretation_preferences.get("material_ambiguity", "neutral")
-    )
-    interpretation_preferences["natural_language_correction"] = True
-    verbosity = {
-        "concise": "concise",
-        "balanced": "adaptive",
-        "detailed": "detailed",
-        "skip": profile.get("response_style", {}).get("verbosity", "adaptive"),
-    }[tone]
-    profile.setdefault("response_style", {})["verbosity"] = verbosity
-    review_preferences = profile.setdefault("review_preferences", {})
-    if sharp_review is not None:
-        review_preferences["sharp_review"] = sharp_review
-    else:
-        review_preferences.setdefault("sharp_review", False)
-    profile["onboarding"] = {"completed_at": now_iso(), "skipped_fields_allowed": True}
-    _write_json(path, profile)
+    with locked_json_document(path, generic_profile) as profile:
+        if memory == "off":
+            profile["memory"] = {"adapter": "none", "location": ""}
+        elif memory == "local":
+            profile["memory"] = {
+                "adapter": "sqlite",
+                "location": "~/.intent-translator/memory.db",
+                "local_only": True,
+                "write_policy": "confirmed-only",
+            }
+        interpretation_preferences = profile.setdefault("interpretation_preferences", {})
+        interpretation_preferences["material_ambiguity"] = (
+            "show-choices"
+            if interpretation == "choices"
+            else "ask"
+            if interpretation == "ask"
+            else interpretation_preferences.get("material_ambiguity", "neutral")
+        )
+        interpretation_preferences["natural_language_correction"] = True
+        verbosity = {
+            "concise": "concise",
+            "balanced": "adaptive",
+            "detailed": "detailed",
+            "skip": profile.get("response_style", {}).get("verbosity", "adaptive"),
+        }[tone]
+        profile.setdefault("response_style", {})["verbosity"] = verbosity
+        review_preferences = profile.setdefault("review_preferences", {})
+        if sharp_review is not None:
+            review_preferences["sharp_review"] = sharp_review
+        else:
+            review_preferences.setdefault("sharp_review", False)
+        profile["onboarding"] = {"completed_at": now_iso(), "skipped_fields_allowed": True}
     return profile
 
 
@@ -230,15 +217,16 @@ def observe_language_correction(
 ) -> dict[str, Any]:
     phrase, corrected_meaning, scope = _validated_rule(phrase, corrected_meaning, scope)
     path = _observations_path(profile_path)
-    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"schema_version": 1, "observations": {}}
     key = hashlib.sha256(f"{scope}\0{phrase}\0{corrected_meaning}".encode("utf-8")).hexdigest()
-    item = data["observations"].setdefault(
-        key,
-        {"fingerprint": key, "scope": scope, "count": 0},
-    )
-    item["count"] = int(item.get("count", 0)) + 1
-    item["updated_at"] = now_iso()
-    _write_json(path, data)
+    with locked_json_document(
+        path, lambda: {"schema_version": 1, "observations": {}}
+    ) as data:
+        item = data["observations"].setdefault(
+            key,
+            {"fingerprint": key, "scope": scope, "count": 0},
+        )
+        item["count"] = int(item.get("count", 0)) + 1
+        item["updated_at"] = now_iso()
     return {
         "corrected_understanding": corrected_meaning,
         "applied_to_current_turn": True,
@@ -254,15 +242,14 @@ def confirm_language_rule(
 ) -> dict[str, Any]:
     phrase, corrected_meaning, scope = _validated_rule(phrase, corrected_meaning, scope)
     path = Path(profile_path).expanduser()
-    profile = json.loads(path.read_text(encoding="utf-8")) if path.exists() else generic_profile()
-    profile.setdefault("phrase_mappings", {})[phrase] = {
-        "meaning": corrected_meaning,
-        "scope": scope,
-        "match_mode": "exact",
-        "confidence": "confirmed",
-        "updated_at": now_iso(),
-    }
-    _write_json(path, profile)
+    with locked_json_document(path, generic_profile) as profile:
+        profile.setdefault("phrase_mappings", {})[phrase] = {
+            "meaning": corrected_meaning,
+            "scope": scope,
+            "match_mode": "exact",
+            "confidence": "confirmed",
+            "updated_at": now_iso(),
+        }
     return profile["phrase_mappings"][phrase]
 
 

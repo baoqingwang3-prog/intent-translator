@@ -23,7 +23,7 @@ python -m pip install build
 python scripts/release_gate.py --mode full
 ```
 
-The full gate checks version agreement, Python compilation, all tests, clean-room lifecycle behavior, the two-user stranger smoke, creator-profile contamination, secrets and private paths, source archives, wheels, and a fresh wheel install with doctor, onboarding, and MCP import. It does not create a Git remote, push a commit, publish a package, or make a release.
+The full gate checks version agreement, Python compilation, all tests, clean-room lifecycle behavior, concurrent and crash-safe profile writes, profile migration and rollback backups, the two-user stranger smoke, creator-profile contamination, secrets and private paths, source archives, wheels, a CycloneDX SBOM, and a fresh wheel install with doctor, onboarding, and MCP import. It does not create a Git remote, push a commit, publish a package, or make a release.
 
 ## CI Requirements
 

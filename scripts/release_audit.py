@@ -118,6 +118,9 @@ def audit_tree(repo_root: Path) -> dict[str, Any]:
 
 
 def _artifact_members(path: Path) -> Iterable[tuple[str, bytes]]:
+    if path.suffix.casefold() in TEXT_SUFFIXES:
+        yield path.name, path.read_bytes()
+        return
     if path.suffix == ".whl" or path.suffix == ".zip":
         with zipfile.ZipFile(path) as archive:
             for name in archive.namelist():
@@ -159,7 +162,10 @@ def run_audit(repo_root: Path, *, dist: Path | None = None, private_terms: list[
     personalization = audit_repository(repo_root, private_terms=private_terms or [])
     tree = audit_tree(repo_root)
     artifact_paths = [] if dist is None or not dist.exists() else sorted(
-        path for path in dist.iterdir() if path.suffix == ".whl" or path.name.endswith((".tar.gz", ".tgz", ".zip"))
+        path
+        for path in dist.iterdir()
+        if path.suffix == ".whl"
+        or path.name.endswith((".tar.gz", ".tgz", ".zip", ".cdx.json"))
     )
     artifacts = audit_artifacts(artifact_paths)
     total_findings = (

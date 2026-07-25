@@ -40,7 +40,9 @@ def run_step(
     return result
 
 
-def installed_wheel_steps(wheel: Path, root: Path, python: str) -> list[dict[str, Any]]:
+def installed_wheel_steps(
+    wheel: Path, root: Path, python: str, *, sbom_path: Path
+) -> list[dict[str, Any]]:
     venv = root / "installed-wheel"
     scripts = venv / ("Scripts" if os.name == "nt" else "bin")
     installed_python = scripts / ("python.exe" if os.name == "nt" else "python")
@@ -54,6 +56,7 @@ def installed_wheel_steps(wheel: Path, root: Path, python: str) -> list[dict[str
             "INTENT_TRANSLATOR_MEMORY_DB": str(root / "data" / "memory.db"),
             "PIP_CACHE_DIR": str(root / "pip-cache"),
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+            "PIP_DEFAULT_TIMEOUT": "60",
             "PYTHONUTF8": "1",
         }
     )
@@ -63,7 +66,33 @@ def installed_wheel_steps(wheel: Path, root: Path, python: str) -> list[dict[str
     steps.append(
         run_step(
             "wheel-install",
-            [str(installed_python), "-m", "pip", "install", str(wheel)],
+            [
+                str(installed_python),
+                "-m",
+                "pip",
+                "install",
+                "--retries",
+                "5",
+                "--timeout",
+                "60",
+                str(wheel),
+            ],
+            env=env,
+        )
+    )
+    if not steps[-1]["passed"]:
+        return steps
+    steps.append(
+        run_step(
+            "wheel-sbom",
+            [
+                python,
+                "scripts/generate_sbom.py",
+                "--python",
+                str(installed_python),
+                "--output",
+                str(sbom_path),
+            ],
             env=env,
         )
     )
@@ -131,15 +160,15 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
             build = run_step("package-build", [python, "-m", "build", "--outdir", str(dist)])
             steps.append(build)
             if build["passed"]:
+                wheel = next(dist.glob("*.whl"))
+                sbom = dist / "intent-translator-sbom.cdx.json"
+                steps.extend(installed_wheel_steps(wheel, Path(temp), python, sbom_path=sbom))
                 package_audit = run_step(
                     "package-audit",
                     [python, "scripts/release_audit.py", "--repo", str(REPO_ROOT), "--dist", str(dist)],
                 )
                 steps.append(package_audit)
                 package_report = {"artifacts": sorted(path.name for path in dist.iterdir())}
-                if package_audit["passed"]:
-                    wheel = next(dist.glob("*.whl"))
-                    steps.extend(installed_wheel_steps(wheel, Path(temp), python))
 
     passed = all(step["passed"] for step in steps)
     return {

@@ -11,6 +11,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from .host_paths import HOSTS, default_skill_dir
 from .models import CompileRequest
 from .local_policy import assess_local_risk, autonomy_status, conditional_review, sparse_source_map
 from .onboarding import interpretation_gate, personalization_status
@@ -51,17 +52,26 @@ ROUTING_STOPWORDS = {
 }
 
 
-def _candidate_skill_dirs() -> list[Path]:
-    configured = os.environ.get("INTENT_TRANSLATOR_SKILL_DIR")
+def _candidate_skill_dirs(
+    *, home: Path | None = None, env: dict[str, str] | None = None
+) -> list[Path]:
+    env = dict(os.environ if env is None else env)
+    configured = env.get("INTENT_TRANSLATOR_SKILL_DIR")
     package_repo = Path(__file__).resolve().parents[2]
-    home = Path.home()
+    home = (home or Path.home()).expanduser()
     candidates = [
         Path(configured).expanduser() if configured else None,
         package_repo / "skills" / "intent-translator",
-        home / ".codex" / "skills" / "intent-translator",
+        *(default_skill_dir(host, home=home, env=env) for host in HOSTS),
         home / ".agents" / "skills" / "intent-translator",
     ]
-    return [path.resolve() for path in candidates if path and path.exists()]
+    result: list[Path] = []
+    for path in candidates:
+        if path and path.exists():
+            resolved = path.resolve()
+            if resolved not in result:
+                result.append(resolved)
+    return result
 
 
 @lru_cache(maxsize=None)

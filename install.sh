@@ -139,6 +139,7 @@ if [ "$skip_profile" = "false" ]; then
   if [ -n "$python_command" ]; then
     profile_path="${INTENT_TRANSLATOR_PROFILE:-$HOME/.intent-translator/profile.json}"
     if [ -f "$profile_path" ]; then
+      "$python_command" "$source_dir/scripts/init_profile.py" migrate --profile "$profile_path"
       "$python_command" "$source_dir/scripts/init_profile.py" validate --profile "$profile_path"
     else
       "$python_command" "$source_dir/scripts/init_profile.py" init --profile "$profile_path"

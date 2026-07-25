@@ -86,6 +86,56 @@ class DoctorTests(unittest.TestCase):
             )
             self.assertEqual(check["details"]["duplicate_count"], 1)
 
+    def test_reports_skill_copy_and_runtime_version_drift(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            first = home / ".codex" / "skills" / "intent-translator"
+            second = home / ".agents" / "skills" / "intent-translator"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            (first / "VERSION").write_text("0.7.0a1\n", encoding="utf-8")
+            (second / "VERSION").write_text("0.6.0\n", encoding="utf-8")
+
+            runtime = home / ".intent-translator" / "mcp" / "runtimes" / "0.6.0" / "venv" / "Scripts"
+            runtime.mkdir(parents=True)
+            command = runtime / "intent-translator-mcp.exe"
+            command.touch()
+            state = home / ".intent-translator" / "mcp" / "current.json"
+            state.write_text(
+                json.dumps({"version": "0.6.0", "command": str(command)}),
+                encoding="utf-8",
+            )
+
+            with patch("intent_translator_mcp.doctor._candidate_skill_dirs", return_value=[first, second]):
+                report = run_doctor(home=home, env={})
+
+            skill = next(item for item in report["checks"] if item["id"] == "skill")
+            alignment = next(item for item in report["checks"] if item["id"] == "version_alignment")
+            self.assertEqual(skill["details"]["active_version"], "0.7.0a1")
+            self.assertTrue(skill["details"]["versions_differ"])
+            self.assertEqual([item["version"] for item in skill["details"]["copies"]], ["0.7.0a1", "0.6.0"])
+            self.assertEqual(alignment["status"], "warn")
+            self.assertTrue(alignment["details"]["restart_host"])
+            self.assertIn(
+                "active Skill and installed MCP runtime differ",
+                alignment["details"]["reasons"],
+            )
+
+    def test_matching_versioned_host_copies_do_not_create_a_false_warning(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            first = home / ".codex" / "skills" / "intent-translator"
+            second = home / ".claude" / "skills" / "intent-translator"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            (first / "VERSION").write_text("0.7.0a1\n", encoding="utf-8")
+            (second / "VERSION").write_text("0.7.0a1\n", encoding="utf-8")
+            with patch("intent_translator_mcp.doctor._candidate_skill_dirs", return_value=[first, second]):
+                report = run_doctor(home=home, env={})
+            skill = next(item for item in report["checks"] if item["id"] == "skill")
+            self.assertEqual(skill["status"], "pass")
+            self.assertFalse(skill["details"]["versions_differ"])
+
 
 if __name__ == "__main__":
     unittest.main()

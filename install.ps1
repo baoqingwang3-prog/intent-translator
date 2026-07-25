@@ -148,6 +148,8 @@ if (-not $SkipProfile) {
         if (-not (Test-Path -LiteralPath $profilePath)) {
             & $python.Source (Join-Path $source "scripts\init_profile.py") init --profile $profilePath
         } else {
+            & $python.Source (Join-Path $source "scripts\init_profile.py") migrate --profile $profilePath
+            if ($LASTEXITCODE -ne 0) { throw "Existing local profile migration failed" }
             & $python.Source (Join-Path $source "scripts\init_profile.py") validate --profile $profilePath
         }
     } else {

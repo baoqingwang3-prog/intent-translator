@@ -17,12 +17,19 @@ All notable changes are recorded here. The project follows semantic versioning a
 - Tracked-content creator-shadow scanning with local private-term fingerprints.
 - Disabled-by-default `memory-breathing` and `reversible-context` plugins with a host-neutral local JSON runner.
 - Bounded relevant handoff loading, decision and correction snapshots, source pointers, SHA-256 markers, and verified context expansion.
+- Cross-process profile locks, crash-safe JSON replacement, and concurrent correction regression tests.
+- Legacy profile migration with pre-migration backups and future-schema downgrade protection.
+- Deterministic CycloneDX SBOM generation from the clean installed wheel environment.
+- Host-specific MCP configuration paths for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode.
+- Doctor version alignment diagnostics for active Skill copies, the installed runtime, and the doctor package.
 
 ### Changed
 
 - A newly initialized but uncustomized profile remains generic and no longer claims personal knowledge.
 - Confirmed phrase mappings use exact matching unless a profile explicitly opts into `match_mode: contains`.
 - Public student profile packs use generic managed-note names instead of names reused by the creator's local setup.
+- Skill installers migrate and validate existing profiles before completing an upgrade.
+- MCP installers accept PEP 440 alpha, beta, and release-candidate versions, retry transient package downloads, preserve readable UTF-8 paths, and reject unsafe Windows runtime path lengths early.
 
 ## [0.6.0] - 2026-07-25
 

@@ -26,8 +26,6 @@ jobs:
           python scripts/release_gate.py --mode ci
       - name: Build distributions
         run: python -m build
-      - name: Inspect distributions
-        run: python scripts/release_audit.py --repo . --dist dist
       - name: Install wheel and run doctor
         run: |
           python -m venv "$RUNNER_TEMP/package-test"
@@ -35,6 +33,9 @@ jobs:
           "$RUNNER_TEMP/package-test/bin/intent-translator-doctor" --json
           "$RUNNER_TEMP/package-test/bin/intent-translator-onboard" --memory local --interpretation choices --tone concise --json
           "$RUNNER_TEMP/package-test/bin/python" -c "from intent_translator_mcp.server import mcp; assert mcp"
+          python scripts/generate_sbom.py --python "$RUNNER_TEMP/package-test/bin/python" --output dist/intent-translator-sbom.cdx.json
+      - name: Inspect distributions and SBOM
+        run: python scripts/release_audit.py --repo . --dist dist
       - name: Attest build provenance
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@v2

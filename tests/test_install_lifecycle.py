@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -66,7 +67,15 @@ class InstallLifecycleTests(unittest.TestCase):
             self.assertTrue((installed / "SKILL.md").exists())
             self.assertTrue(profile.exists())
 
+            legacy_profile = json.loads(profile.read_text(encoding="utf-8"))
+            legacy_profile["schema_version"] = 0
+            legacy_profile["phrase_mappings"]["private-upgrade-rule"] = "preserve me"
+            profile.write_text(json.dumps(legacy_profile), encoding="utf-8")
             self.run_command(replace, env)
+            migrated_profile = json.loads(profile.read_text(encoding="utf-8"))
+            self.assertEqual(migrated_profile["schema_version"], 1)
+            self.assertEqual(migrated_profile["phrase_mappings"]["private-upgrade-rule"], "preserve me")
+            self.assertEqual(len(list(data_root.glob("profile.json.bak-profile-v0-*"))), 1)
             marker.write_text("present", encoding="utf-8")
             failed_env = {**env, "INTENT_TRANSLATOR_TEST_FAIL_AFTER_BACKUP": "1"}
             self.run_command(replace, failed_env, expect_success=False)

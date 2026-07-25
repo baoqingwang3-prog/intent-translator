@@ -8,11 +8,13 @@ import copy
 import json
 import os
 import sys
-import tempfile
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+
+from atomic_io import atomic_write_json, exclusive_file_lock, locked_json_document
 
 
 SCHEMA_VERSION = 1
@@ -130,16 +132,26 @@ def configure_study_profile(
 
 
 def write_profile(path: Path, profile: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            json.dump(profile, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    with exclusive_file_lock(path):
+        atomic_write_json(path, profile)
+
+
+@contextmanager
+def profile_transaction(
+    path: Path, *, create: bool = False, language: str = "auto"
+) -> Iterator[dict[str, Any]]:
+    target = Path(path).expanduser()
+
+    def initial() -> dict[str, Any]:
+        if not create:
+            raise FileNotFoundError(f"profile does not exist: {target}")
+        return default_profile(language)
+
+    with locked_json_document(target, initial) as profile:
+        yield profile
+        errors = validate_profile(profile)
+        if errors:
+            raise ValueError("invalid profile after update: " + "; ".join(errors))
 
 
 def validate_profile(profile: dict[str, Any]) -> list[str]:
@@ -217,6 +229,49 @@ def validate_profile(profile: dict[str, Any]) -> list[str]:
     return errors
 
 
+def migrate_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], int, bool]:
+    raw_version = profile.get("schema_version", 0)
+    if not isinstance(raw_version, int) or isinstance(raw_version, bool) or raw_version < 0:
+        raise ValueError("profile schema_version must be a non-negative integer")
+    if raw_version > SCHEMA_VERSION:
+        raise ValueError(
+            f"profile schema_version {raw_version} is newer than supported version {SCHEMA_VERSION}"
+        )
+    if raw_version == SCHEMA_VERSION:
+        return copy.deepcopy(profile), raw_version, False
+    migrated = _merge_value(default_profile(str(profile.get("language", "auto"))), profile)
+    migrated["schema_version"] = SCHEMA_VERSION
+    errors = validate_profile(migrated)
+    if errors:
+        raise ValueError("profile migration produced invalid data: " + "; ".join(errors))
+    return migrated, raw_version, True
+
+
+def migrate_profile_file(path: Path) -> dict[str, Any]:
+    target = Path(path).expanduser()
+    with exclusive_file_lock(target):
+        if not target.exists():
+            raise FileNotFoundError(f"profile does not exist: {target}")
+        original = target.read_bytes()
+        profile = json.loads(original.decode("utf-8-sig"))
+        if not isinstance(profile, dict):
+            raise ValueError("profile must contain a JSON object")
+        migrated, from_version, changed = migrate_profile(profile)
+        backup = None
+        if changed:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            backup = target.with_name(f"{target.name}.bak-profile-v{from_version}-{stamp}")
+            backup.write_bytes(original)
+            atomic_write_json(target, migrated)
+        return {
+            "profile": str(target),
+            "from_version": from_version,
+            "to_version": SCHEMA_VERSION,
+            "changed": changed,
+            "backup": str(backup) if backup else "",
+        }
+
+
 def _is_positive_integer(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
@@ -238,7 +293,10 @@ def set_phrase_mapping(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init", "validate", "show", "set-phrase", "remove-phrase", "apply-pack"))
+    parser.add_argument(
+        "command",
+        choices=("init", "migrate", "validate", "show", "set-phrase", "remove-phrase", "apply-pack"),
+    )
     parser.add_argument("--profile", type=Path, default=default_profile_path())
     parser.add_argument("--language", default="auto")
     parser.add_argument("--force", action="store_true")
@@ -262,63 +320,67 @@ def main() -> int:
     path = args.profile.expanduser().resolve()
 
     if args.command == "init":
-        if path.exists() and not args.force:
-            raise SystemExit(f"profile already exists: {path}; use --force to replace it")
-        profile = default_profile(args.language)
-        write_profile(path, profile)
+        with exclusive_file_lock(path):
+            if path.exists() and not args.force:
+                raise SystemExit(f"profile already exists: {path}; use --force to replace it")
+            atomic_write_json(path, default_profile(args.language))
         print(json.dumps({"profile": str(path), "created": True}, ensure_ascii=False))
         return 0
 
     if not path.exists():
         raise SystemExit(f"profile does not exist: {path}")
-    profile = json.loads(path.read_text(encoding="utf-8"))
-    errors = validate_profile(profile)
-    if args.command == "validate":
+    if args.command == "migrate":
+        try:
+            result = migrate_profile_file(path)
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+            raise SystemExit(str(exc)) from exc
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command in {"validate", "show"}:
+        profile = json.loads(path.read_text(encoding="utf-8"))
+        errors = validate_profile(profile)
+        if args.command == "show" and not errors:
+            print(json.dumps(profile, ensure_ascii=False, indent=2))
+            return 0
         print(json.dumps({"profile": str(path), "valid": not errors, "errors": errors}, ensure_ascii=False, indent=2))
         return 0 if not errors else 2
-    if errors:
-        print(json.dumps({"profile": str(path), "valid": False, "errors": errors}, ensure_ascii=False, indent=2))
-        return 2
     if args.command == "apply-pack":
         try:
             pack = load_profile_pack(args.pack)
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
             raise SystemExit(str(exc)) from exc
-        profile = apply_profile_pack(profile, pack)
-        configure_study_profile(
-            profile,
-            goals=args.goal,
-            vault_name=args.vault_name,
-            vault_path=args.vault_path,
-            managed_note=args.managed_note,
-            enable_shadow=True if args.enable_shadow else None,
-            shadow_preview_chars=args.shadow_preview_chars,
-        )
-        errors = validate_profile(profile)
-        if errors:
-            print(json.dumps({"profile": str(path), "valid": False, "errors": errors}, ensure_ascii=False, indent=2))
-            return 2
-        write_profile(path, profile)
+        with profile_transaction(path) as profile:
+            merged = apply_profile_pack(profile, pack)
+            profile.clear()
+            profile.update(merged)
+            configure_study_profile(
+                profile,
+                goals=args.goal,
+                vault_name=args.vault_name,
+                vault_path=args.vault_path,
+                managed_note=args.managed_note,
+                enable_shadow=True if args.enable_shadow else None,
+                shadow_preview_chars=args.shadow_preview_chars,
+            )
         print(json.dumps({"profile": str(path), "pack": pack["name"], "goals": profile.get("study", {}).get("goals", [])}, ensure_ascii=False, indent=2))
         return 0
     if args.command == "set-phrase":
         if not args.phrase or not args.meaning:
             raise SystemExit("set-phrase requires --phrase and --meaning")
-        mapping = set_phrase_mapping(
-            profile, phrase=args.phrase, meaning=args.meaning, scope=args.scope
-        )
-        write_profile(path, profile)
+        with profile_transaction(path) as profile:
+            mapping = set_phrase_mapping(
+                profile, phrase=args.phrase, meaning=args.meaning, scope=args.scope
+            )
         print(json.dumps({"profile": str(path), "phrase": args.phrase, "mapping": mapping}, ensure_ascii=False, indent=2))
         return 0
     if args.command == "remove-phrase":
         if not args.phrase:
             raise SystemExit("remove-phrase requires --phrase")
-        removed = profile.get("phrase_mappings", {}).pop(args.phrase, None) is not None
-        write_profile(path, profile)
+        with profile_transaction(path) as profile:
+            removed = profile.get("phrase_mappings", {}).pop(args.phrase, None) is not None
         print(json.dumps({"profile": str(path), "phrase": args.phrase, "removed": removed}, ensure_ascii=False, indent=2))
         return 0
-    print(json.dumps(profile, ensure_ascii=False, indent=2))
-    return 0
+    raise SystemExit(f"unsupported command: {args.command}")
 
 
 if __name__ == "__main__":

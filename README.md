@@ -123,7 +123,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mcp.ps1
 sh ./install-mcp.sh
 ```
 
-Installers create a versioned isolated venv under `~/.intent-translator/mcp/runtimes/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Versioned runtimes avoid Windows upgrade failures when an older MCP process is still running. Windows users may pass `-ConfigureCodex` to add or update the Codex entry after the new runtime passes its smoke test.
+For an isolated test or a portable environment, pass `-HomeDirectory`, `-RuntimeRoot`, and `-ConfigDir`. Keep a custom Windows runtime root short because transitive dependency paths may still be subject to the system path-length limit. The POSIX installer accepts the equivalent `INTENT_TRANSLATOR_HOME`, `INTENT_TRANSLATOR_RUNTIME`, and `INTENT_TRANSLATOR_CONFIG_DIR` environment variables.
+
+Installers create a versioned isolated venv under `~/.intent-translator/mcp/runtimes/` and generate configuration snippets for Codex, Claude, Cursor, Gemini, Copilot, and OpenCode under `~/.intent-translator/mcp-configs/`. Each snippet points at that host's own Skill directory instead of assuming one shared Codex or Agents path. Install the Skill for a host before applying its snippet. Versioned runtimes avoid Windows upgrade failures when an older MCP process is still running. Windows users may pass `-ConfigureCodex` to add or update the Codex entry after the new runtime passes its smoke test.
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
@@ -139,6 +141,8 @@ Check an installation without exposing exact home-directory paths:
 intent-translator-doctor
 intent-translator-doctor --json
 ```
+
+The doctor lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and recommends upgrading both plus restarting the host when they drift. A newly installed runtime does not replace an MCP process already held open by a running host.
 
 Remove only the MCP runtime and generated snippets while preserving profile and memory:
 
@@ -200,6 +204,12 @@ Both use a host-neutral JSON plugin contract, perform no network access, and nev
 python skills/intent-translator/scripts/plugin_manager.py list
 python skills/intent-translator/scripts/plugin_manager.py enable memory-breathing
 python skills/intent-translator/scripts/plugin_manager.py enable reversible-context
+```
+
+For Windows PowerShell, put invocation payloads in a UTF-8 JSON file and use `--input` instead of piping inline Chinese text:
+
+```powershell
+python skills/intent-translator/scripts/plugin_manager.py invoke reversible-context pack --input .\payload.json
 ```
 
 See `skills/intent-translator/references/optional-adapters.md` for lifecycle payloads and retrieval examples.

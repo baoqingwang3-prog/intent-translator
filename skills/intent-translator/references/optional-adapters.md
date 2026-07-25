@@ -42,11 +42,11 @@ Example end payload:
 }
 ```
 
-Pipe either payload to:
+Save either payload as UTF-8 JSON, then invoke it with `--input`. This is the preferred form on Windows PowerShell because legacy text pipelines can corrupt non-ASCII input.
 
 ```bash
-python scripts/plugin_manager.py invoke memory-breathing session_start
-python scripts/plugin_manager.py invoke memory-breathing session_end
+python scripts/plugin_manager.py invoke memory-breathing session_start --input session-start.json
+python scripts/plugin_manager.py invoke memory-breathing session_end --input session-end.json
 ```
 
 Each host may bind these operations to its own lifecycle mechanism. Claude Code can use lifecycle hooks; hosts without a reliable end event should call `session_end` explicitly. The repository does not silently edit host configuration.
@@ -71,8 +71,8 @@ Plugin: `reversible-context`
 ```
 
 ```bash
-python scripts/plugin_manager.py invoke reversible-context pack
-python scripts/plugin_manager.py invoke reversible-context get
+python scripts/plugin_manager.py invoke reversible-context pack --input context-pack.json
+python scripts/plugin_manager.py invoke reversible-context get --input context-get.json
 ```
 
 The `get` payload accepts either `{"hash":"..."}` or `{"marker":"[context-ref:sha256:...]"}`. Retrieval recomputes SHA-256 and refuses corrupted content. The marker is a reference, not proof that semantic compression is lossless; source files must not be deleted merely because a section was packed.

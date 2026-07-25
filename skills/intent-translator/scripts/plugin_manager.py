@@ -9,11 +9,10 @@ import json
 import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
-from init_profile import default_profile
+from init_profile import default_profile, profile_transaction
 
 
 PLUGIN_API_VERSION = 1
@@ -25,20 +24,6 @@ PROFILE_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 def default_profile_path() -> Path:
     configured = os.environ.get("INTENT_TRANSLATOR_PROFILE")
     return Path(configured).expanduser() if configured else Path.home() / ".intent-translator" / "profile.json"
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path = path.expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            json.dump(payload, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
 
 
 def load_profile(path: Path) -> dict[str, Any]:
@@ -134,9 +119,8 @@ def plugin_status(profile_path: Path, root: Path = PLUGIN_ROOT) -> list[dict[str
 
 def set_plugin_enabled(profile_path: Path, name: str, enabled: bool, root: Path = PLUGIN_ROOT) -> dict[str, Any]:
     plugin = _plugin_by_name(name, root)
-    profile = load_profile(profile_path)
-    profile.setdefault("optional_adapters", {})[plugin["profile_key"]] = enabled
-    _write_json(profile_path, profile)
+    with profile_transaction(profile_path, create=True) as profile:
+        profile.setdefault("optional_adapters", {})[plugin["profile_key"]] = enabled
     return {"name": name, "enabled": enabled, "profile_updated": True}
 
 

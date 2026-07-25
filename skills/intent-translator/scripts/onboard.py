@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from init_profile import default_profile, default_profile_path, now_iso, validate_profile, write_profile
+from init_profile import default_profile_path, now_iso, profile_transaction
 
 
 TEXT = {
@@ -34,12 +34,6 @@ TEXT = {
 }
 
 
-def load_or_default(path: Path, language: str) -> dict[str, Any]:
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
-    return default_profile(language)
-
-
 def apply_choices(
     path: Path,
     *,
@@ -49,43 +43,39 @@ def apply_choices(
     sharp_review: str,
     language: str,
 ) -> dict[str, Any]:
-    profile = load_or_default(path, language)
-    if memory == "local":
-        profile["memory"] = {
-            "adapter": "sqlite",
-            "location": "~/.intent-translator/memory.db",
-            "local_only": True,
-            "write_policy": "confirmed-only",
+    with profile_transaction(path, create=True, language=language) as profile:
+        if memory == "local":
+            profile["memory"] = {
+                "adapter": "sqlite",
+                "location": "~/.intent-translator/memory.db",
+                "local_only": True,
+                "write_policy": "confirmed-only",
+            }
+        elif memory == "off":
+            profile["memory"] = {"adapter": "none", "location": ""}
+        profile["interpretation_preferences"] = {
+            "material_ambiguity": {
+                "choices": "show-choices",
+                "ask": "ask",
+                "skip": profile.get("interpretation_preferences", {}).get("material_ambiguity", "neutral"),
+            }[interpretation],
+            "natural_language_correction": True,
         }
-    elif memory == "off":
-        profile["memory"] = {"adapter": "none", "location": ""}
-    profile["interpretation_preferences"] = {
-        "material_ambiguity": {
-            "choices": "show-choices",
-            "ask": "ask",
-            "skip": profile.get("interpretation_preferences", {}).get("material_ambiguity", "neutral"),
-        }[interpretation],
-        "natural_language_correction": True,
-    }
-    if tone != "skip":
-        profile.setdefault("response_style", {})["verbosity"] = {
-            "concise": "concise",
-            "balanced": "adaptive",
-            "detailed": "detailed",
-        }[tone]
-    if sharp_review != "skip":
-        profile.setdefault("review_preferences", {})["sharp_review"] = sharp_review == "on"
-    else:
-        profile.setdefault("review_preferences", {}).setdefault("sharp_review", False)
-    profile["onboarding"] = {
-        "completed_at": now_iso(),
-        "categories": ["memory", "interpretation", "tone"],
-        "skipped_fields_allowed": True,
-    }
-    errors = validate_profile(profile)
-    if errors:
-        raise ValueError("invalid profile after onboarding: " + "; ".join(errors))
-    write_profile(path, profile)
+        if tone != "skip":
+            profile.setdefault("response_style", {})["verbosity"] = {
+                "concise": "concise",
+                "balanced": "adaptive",
+                "detailed": "detailed",
+            }[tone]
+        if sharp_review != "skip":
+            profile.setdefault("review_preferences", {})["sharp_review"] = sharp_review == "on"
+        else:
+            profile.setdefault("review_preferences", {}).setdefault("sharp_review", False)
+        profile["onboarding"] = {
+            "completed_at": now_iso(),
+            "categories": ["memory", "interpretation", "tone"],
+            "skipped_fields_allowed": True,
+        }
     return profile
 
 

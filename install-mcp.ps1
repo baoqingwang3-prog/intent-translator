@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$RuntimeRoot,
+    [string]$HomeDirectory,
+    [string]$ConfigDir,
     [switch]$Replace,
     [switch]$ConfigureCodex
 )
@@ -12,12 +14,19 @@ $OutputEncoding = $utf8
 [Console]::OutputEncoding = $utf8
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
-$userHome = [Environment]::GetFolderPath("UserProfile")
+$userHome = if ($HomeDirectory) { [IO.Path]::GetFullPath($HomeDirectory) } else { [Environment]::GetFolderPath("UserProfile") }
 if (-not $RuntimeRoot) { $RuntimeRoot = Join-Path $userHome ".intent-translator\mcp" }
+if (-not $ConfigDir) { $ConfigDir = Join-Path $userHome ".intent-translator\mcp-configs" }
 $version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot "VERSION") -Raw).Trim()
-if ($version -notmatch '^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$') { throw "Invalid VERSION: $version" }
+if ($version -notmatch '^\d+\.\d+\.\d+(?:(?:a|b|rc)\d+|-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?(?:\.post\d+)?(?:\.dev\d+)?(?:\+[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?$') { throw "Invalid VERSION: $version" }
 $versionRoot = Join-Path $RuntimeRoot (Join-Path "runtimes" $version)
 $venv = Join-Path $versionRoot "venv"
+if (
+    [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT -and
+    [IO.Path]::GetFullPath($versionRoot).Length -gt 120
+) {
+    throw "MCP runtime path is too long for some Windows dependencies. Choose a shorter -RuntimeRoot, such as C:\it-mcp."
+}
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
 if (-not $python) { throw "Python 3.10+ is required." }
@@ -44,14 +53,12 @@ if (-not $Replace -and (Test-Path -LiteralPath $venvPython)) {
 if ($runtimeHealthy) {
     Write-Host "Reusing healthy MCP runtime $version at $versionRoot"
 } else {
-    & $venvPython -m pip install --disable-pip-version-check --upgrade $PSScriptRoot
+    & $venvPython -m pip install --disable-pip-version-check --retries 5 --timeout 60 --upgrade $PSScriptRoot
     if ($LASTEXITCODE -ne 0) { throw "Failed to install MCP package into $versionRoot" }
 }
 
-$skillDir = Join-Path $userHome ".codex\skills\intent-translator"
-$configDir = Join-Path $userHome ".intent-translator\mcp-configs"
 $command = Join-Path $venv "Scripts\intent-translator-mcp.exe"
-& $venvPython -m intent_translator_mcp.config --host all --command $command --skill-dir $skillDir --output-dir $configDir
+& $venvPython -m intent_translator_mcp.config --host all --command $command --home $userHome --output-dir $ConfigDir
 if ($LASTEXITCODE -ne 0) { throw "Failed to generate MCP host configurations" }
 
 & $venvPython -c "from intent_translator_mcp.server import mcp; print('MCP import smoke test passed')"
@@ -60,7 +67,7 @@ if ($LASTEXITCODE -ne 0) { throw "MCP import smoke test failed" }
 if ($ConfigureCodex) {
     $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $userHome ".codex" }
     $codexConfig = Join-Path $codexHome "config.toml"
-    $snippet = @(Get-Content -LiteralPath (Join-Path $configDir "codex-mcp.toml") -Encoding utf8)
+    $snippet = @(Get-Content -LiteralPath (Join-Path $ConfigDir "codex-mcp.toml") -Encoding utf8)
     $existingLines = if (Test-Path -LiteralPath $codexConfig) { @(Get-Content -LiteralPath $codexConfig -Encoding utf8) } else { @() }
     $result = [System.Collections.Generic.List[string]]::new()
     $skipping = $false
@@ -89,4 +96,4 @@ if ($ConfigureCodex) {
 $state = @{ version = $version; runtime = $versionRoot; command = $command; installed_at = [DateTime]::UtcNow.ToString('o') }
 [IO.File]::WriteAllText((Join-Path $RuntimeRoot "current.json"), ($state | ConvertTo-Json), $utf8)
 Write-Host "Installed MCP runtime $version to $versionRoot"
-Write-Host "Generated host configurations in $configDir"
+Write-Host "Generated host configurations in $ConfigDir"

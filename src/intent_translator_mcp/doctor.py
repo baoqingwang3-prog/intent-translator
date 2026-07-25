@@ -11,6 +11,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Mapping
 
+from . import __version__
 from .core import _candidate_skill_dirs
 
 
@@ -36,6 +37,16 @@ def _directory_can_be_created(path: Path) -> bool:
     while not candidate.exists() and candidate != candidate.parent:
         candidate = candidate.parent
     return candidate.is_dir() and os.access(candidate, os.W_OK)
+
+
+def _skill_version(path: Path) -> str:
+    version_path = path / "VERSION"
+    if not version_path.is_file():
+        return "legacy-unversioned"
+    try:
+        return version_path.read_text(encoding="utf-8-sig").strip() or "unknown"
+    except (OSError, UnicodeError):
+        return "unreadable"
 
 
 def run_doctor(
@@ -127,20 +138,40 @@ def run_doctor(
             )
         )
 
-    skill_dirs = _candidate_skill_dirs()
+    skill_dirs = _candidate_skill_dirs(home=home, env=env)
+    skill_copies = [
+        {
+            "location": _display_path(path, home, show_paths),
+            "version": _skill_version(path),
+        }
+        for path in skill_dirs
+    ]
     duplicate_skills = len(skill_dirs) > 1
+    copy_versions = {item["version"] for item in skill_copies}
+    inconsistent_copies = len(copy_versions) > 1
+    uncertain_copies = bool(
+        copy_versions & {"legacy-unversioned", "unknown", "unreadable"}
+    )
+    active_skill_version = skill_copies[0]["version"] if skill_copies else None
     checks.append(
         _check(
             "skill",
-            "warn" if duplicate_skills or not skill_dirs else "pass",
-            "Multiple intent-translator Skill copies found; the first location has precedence"
+            "warn" if not skill_dirs or inconsistent_copies or uncertain_copies else "pass",
+            "Multiple intent-translator Skill copies have different versions; the first location has precedence"
+            if inconsistent_copies
+            else "Multiple host-specific intent-translator Skill copies found at the same version"
+            if duplicate_skills and not uncertain_copies
+            else "Multiple intent-translator Skill copies found; the first location has precedence"
             if duplicate_skills
             else "Installed intent-translator Skill found"
             if skill_dirs
             else "No installed Skill found; MCP can still report this condition",
             locations=[_display_path(path, home, show_paths) for path in skill_dirs],
             active_location=_display_path(skill_dirs[0], home, show_paths) if skill_dirs else None,
+            active_version=active_skill_version,
+            copies=skill_copies,
             duplicate_count=max(0, len(skill_dirs) - 1),
+            versions_differ=inconsistent_copies,
         )
     )
 
@@ -157,6 +188,8 @@ def run_doctor(
     )
 
     runtime_state = home / ".intent-translator" / "mcp" / "current.json"
+    runtime_version: str | None = None
+    runtime_valid = False
     if not runtime_state.exists():
         checks.append(_check("mcp_runtime", "warn", "Versioned MCP runtime state was not found"))
     else:
@@ -166,6 +199,8 @@ def run_doctor(
             command = Path(raw_command).expanduser() if raw_command else None
             version = str(state.get("version", "")).strip()
             valid = bool(version and command is not None and command.is_absolute() and command.is_file())
+            runtime_version = version or None
+            runtime_valid = valid
             checks.append(
                 _check(
                     "mcp_runtime",
@@ -184,6 +219,47 @@ def run_doctor(
                     error=type(exc).__name__,
                 )
             )
+
+    comparable_skill_version = (
+        active_skill_version
+        if active_skill_version not in {None, "legacy-unversioned", "unknown", "unreadable"}
+        else None
+    )
+    aligned = bool(
+        runtime_valid
+        and runtime_version
+        and comparable_skill_version
+        and runtime_version == comparable_skill_version == __version__
+        and not inconsistent_copies
+    )
+    drift_reasons: list[str] = []
+    if not comparable_skill_version:
+        drift_reasons.append("active Skill version is unavailable")
+    if not runtime_valid:
+        drift_reasons.append("MCP runtime is missing or invalid")
+    if runtime_version and comparable_skill_version and runtime_version != comparable_skill_version:
+        drift_reasons.append("active Skill and installed MCP runtime differ")
+    if runtime_version and runtime_version != __version__:
+        drift_reasons.append("doctor package and installed MCP runtime differ")
+    if comparable_skill_version and comparable_skill_version != __version__:
+        drift_reasons.append("doctor package and active Skill differ")
+    if inconsistent_copies:
+        drift_reasons.append("installed Skill copies differ")
+    checks.append(
+        _check(
+            "version_alignment",
+            "pass" if aligned else "warn",
+            "Active Skill, doctor package, and MCP runtime versions match"
+            if aligned
+            else "Version drift or incomplete installation detected; upgrade the Skill and MCP together, then restart the host",
+            active_skill_version=active_skill_version,
+            runtime_version=runtime_version,
+            doctor_version=__version__,
+            duplicate_versions=sorted(copy_versions),
+            restart_host=bool(runtime_valid and any("differ" in reason for reason in drift_reasons)),
+            reasons=drift_reasons,
+        )
+    )
 
     semantic_command = env.get("INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON", "").strip()
     semantic_provider = env.get("INTENT_TRANSLATOR_SEMANTIC_PROVIDER", "").strip().casefold()

@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from intent_translator_mcp.ab_eval import read_jsonl, run  # noqa: E402
-from intent_translator_mcp.config import HOSTS, generate_config  # noqa: E402
+from intent_translator_mcp.config import HOSTS, default_skill_dir, generate_config  # noqa: E402
 from intent_translator_mcp.core import IntentCompiler, _load_skill_script  # noqa: E402
 from intent_translator_mcp.models import CompileRequest  # noqa: E402
 from intent_translator_mcp.student_state import (  # noqa: E402
@@ -193,6 +193,36 @@ class McpCoreTests(unittest.TestCase):
             self.assertFalse(result["clarification_required"])
             self.assertEqual(result["decision_receipt"]["mode"], "build")
 
+    def test_confirmed_short_phrase_does_not_match_inside_longer_chinese_text(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            profile = {
+                "profile_id": "exact-phrase-test",
+                "language": "zh-CN",
+                "phrase_mappings": {
+                    "好": {
+                        "meaning": "只同意上一条已经明确提出的下一步",
+                        "scope": "global",
+                        "match_mode": "exact",
+                        "confidence": "confirmed",
+                    }
+                },
+                "memory": {"adapter": "sqlite", "location": str(Path(temp) / "memory.db")},
+            }
+            Path(temp, "profile.json").write_text(
+                json.dumps(profile, ensure_ascii=False), encoding="utf-8"
+            )
+            result = IntentCompiler(registry=REGISTRY).compile(
+                CompileRequest(utterance="测试仓库内 Skill 还有什么不好用的地方", semantic_mode="off")
+            )
+            self.assertIsNone(result["phrase_match"])
+            self.assertNotEqual(result["normalized_goal"], "只同意上一条已经明确提出的下一步")
+
     def test_external_publication_requires_confirmation(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(
             os.environ,
@@ -253,6 +283,27 @@ class McpCoreTests(unittest.TestCase):
             self.assertIn("/tmp/intent-translator-mcp", payload)
             self.assertIn("PYTHONUTF8", payload)
             self.assertIn("PYTHONIOENCODING", payload)
+
+    def test_default_skill_paths_are_host_specific_and_support_unicode_spaces(self):
+        home = Path("C:/Users/测试 用户")
+        env = {
+            "CODEX_HOME": str(home / "自定义 Codex"),
+            "CLAUDE_CONFIG_DIR": str(home / "Claude 配置"),
+            "LOCALAPPDATA": str(home / "本地 数据"),
+        }
+        expected = {
+            "codex": home / "自定义 Codex" / "skills" / "intent-translator",
+            "claude": home / "Claude 配置" / "skills" / "intent-translator",
+            "cursor": home / ".cursor" / "skills" / "intent-translator",
+            "gemini": home / ".gemini" / "skills" / "intent-translator",
+            "copilot": home / ".copilot" / "skills" / "intent-translator",
+            "opencode": home / "本地 数据" / "opencode" / "skills" / "intent-translator",
+        }
+        for host, path in expected.items():
+            self.assertEqual(default_skill_dir(host, home=home, env=env, platform="nt"), path)
+            rendered = generate_config(host, "C:/程序 文件/intent-translator-mcp.exe", str(path))
+            self.assertIn("测试 用户", rendered)
+            self.assertNotIn("\\u", rendered)
 
     def test_ab_eval_improves_over_baseline(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(

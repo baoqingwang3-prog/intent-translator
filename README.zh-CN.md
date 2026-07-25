@@ -137,6 +137,12 @@ python skills/intent-translator/scripts/plugin_manager.py enable memory-breathin
 python skills/intent-translator/scripts/plugin_manager.py enable reversible-context
 ```
 
+Windows PowerShell 下建议把调用内容保存为 UTF-8 JSON 文件，再使用 `--input`，避免旧版 PowerShell 管道破坏中文：
+
+```powershell
+python skills/intent-translator/scripts/plugin_manager.py invoke reversible-context pack --input .\payload.json
+```
+
 插件不会自动修改宿主 Hook。Claude Code 等有生命周期 Hook 的宿主可以绑定统一 JSON 入口；没有可靠结束事件的宿主使用显式调用。协议与示例见 [可选插件说明](skills/intent-translator/references/optional-adapters.md)。
 
 ## 隐私边界
