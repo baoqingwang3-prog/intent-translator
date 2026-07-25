@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Intent Translator Studio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div>
+        <strong>Intent Translator</strong>
+        <span>Studio</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="runtime-chip" aria-live="polite">
+        <span id="runtime-dot" class="status-dot unknown"></span>
+        <span id="runtime-state">正在连接本地接口</span>
+      </div>
+      <button id="language-toggle" class="icon-text-button" type="button" title="切换语言">EN</button>
+    </div>
+  </header>
+
+  <div id="connection-alert" class="connection-alert" hidden></div>
+
+  <main class="workspace">
+    <section class="composer" aria-labelledby="composer-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow" id="composer-kicker">原话</p>
+          <h1 id="composer-title">你现在想做什么？</h1>
+        </div>
+        <button id="reset-session" class="icon-button" type="button" title="重新开始" aria-label="重新开始">↺</button>
+      </div>
+
+      <div class="example-tabs" role="tablist" aria-label="示例">
+        <button type="button" data-example="continue">继续任务</button>
+        <button type="button" data-example="negative">不发布</button>
+        <button type="button" data-example="route">选对 Skill</button>
+        <button type="button" data-example="correction">纠正后复现</button>
+      </div>
+
+      <label class="input-label" for="intent-input" id="intent-label">自然语言</label>
+      <textarea id="intent-input" rows="8" placeholder="例如：继续完善本地测试，不上传 GitHub"></textarea>
+
+      <details class="context-details">
+        <summary id="context-summary">当前上下文</summary>
+        <label for="context-input" id="context-label">最近背景</label>
+        <textarea id="context-input" rows="3"></textarea>
+        <label for="pending-input" id="pending-label">上一条具体待办</label>
+        <textarea id="pending-input" rows="3"></textarea>
+      </details>
+
+      <div class="composer-actions">
+        <div class="local-indicator">
+          <span aria-hidden="true">●</span>
+          <span id="local-mode-label">本地处理</span>
+        </div>
+        <button id="compile-button" class="primary-button" type="button">确认理解</button>
+      </div>
+    </section>
+
+    <section class="inspector" aria-labelledby="inspector-title">
+      <div class="section-heading inspector-heading">
+        <div>
+          <p class="eyebrow" id="result-kicker">编译结果</p>
+          <h2 id="inspector-title">当前理解</h2>
+        </div>
+        <button id="undo-interpretation" class="icon-button" type="button" title="撤销本次理解" aria-label="撤销本次理解" disabled>↶</button>
+      </div>
+
+      <div id="empty-result" class="empty-result">等待输入</div>
+
+      <div id="result-content" hidden>
+        <section class="result-band understanding-band">
+          <p id="understanding-text" class="understanding-text"></p>
+          <p id="comparison-text" class="comparison-text" hidden></p>
+        </section>
+
+        <section id="interpretation-section" class="result-band" hidden>
+          <h3 id="interpretation-title">请选择更接近的一项</h3>
+          <div id="interpretation-options" class="option-stack"></div>
+        </section>
+
+        <section class="result-band result-grid">
+          <div>
+            <h3 id="skill-title">准备调用</h3>
+            <p id="selected-skill" class="strong-value">无专用 Skill</p>
+          </div>
+          <div>
+            <h3 id="permission-title">执行边界</h3>
+            <p id="permission-state" class="strong-value"></p>
+          </div>
+        </section>
+
+        <section class="result-band">
+          <h3 id="why-title">为何询问</h3>
+          <ul id="why-ask" class="plain-list"></ul>
+        </section>
+
+        <section class="result-band">
+          <h3 id="source-title">原话对应</h3>
+          <div id="source-map" class="source-map"></div>
+        </section>
+
+        <section class="result-band">
+          <h3 id="memory-title">使用的本地来源</h3>
+          <div id="memory-sources" class="source-chips"></div>
+        </section>
+
+        <section class="result-band runtime-band">
+          <div>
+            <h3 id="version-title">当前运行</h3>
+            <p id="runtime-detail"></p>
+          </div>
+          <span id="restart-badge" class="restart-badge" hidden>需要重启</span>
+        </section>
+
+        <details class="result-band debate-details">
+          <summary id="debate-summary">查看尖锐审查状态</summary>
+          <p id="debate-content"></p>
+        </details>
+
+        <details class="result-band advanced-details">
+          <summary id="advanced-summary">高级信息</summary>
+          <pre id="advanced-content"></pre>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

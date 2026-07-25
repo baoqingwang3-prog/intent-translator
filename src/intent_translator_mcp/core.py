@@ -370,8 +370,11 @@ class IntentCompiler:
         registry: dict[str, Any] | None = None,
         semantic_adapter: SemanticAdapter | None = None,
         entrypoint: str = "python-api",
+        profile: dict[str, Any] | None = None,
+        profile_exists: bool | None = None,
     ) -> None:
-        self.profile = load_profile()
+        self.profile = copy.deepcopy(profile) if profile is not None else load_profile()
+        self.profile_exists = _profile_path().exists() if profile_exists is None else profile_exists
         self.entrypoint = entrypoint
         if registry is None:
             discover = _load_skill_script("discover_skills")
@@ -406,7 +409,7 @@ class IntentCompiler:
 
     def compile(self, request: CompileRequest) -> dict[str, Any]:
         utterance = request.utterance.strip()
-        profile_exists = _profile_path().exists()
+        profile_exists = self.profile_exists
         mapping = _phrase_mapping(self.profile, utterance, request.scope)
         expanded = mapping.get("meaning", "") if mapping else ""
         short_confirmation = _is_short_confirmation(utterance)

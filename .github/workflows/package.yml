@@ -32,6 +32,7 @@ jobs:
           "$RUNNER_TEMP/package-test/bin/python" -m pip install dist/*.whl
           "$RUNNER_TEMP/package-test/bin/intent-translator-doctor" --json
           "$RUNNER_TEMP/package-test/bin/intent-translator-onboard" --memory local --interpretation choices --tone concise --json
+          "$RUNNER_TEMP/package-test/bin/intent-translator-studio" --help
           "$RUNNER_TEMP/package-test/bin/python" -c "from intent_translator_mcp.server import mcp; assert mcp"
           python scripts/generate_sbom.py --python "$RUNNER_TEMP/package-test/bin/python" --output dist/intent-translator-sbom.cdx.json
       - name: Inspect distributions and SBOM

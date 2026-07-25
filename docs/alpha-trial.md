@@ -35,4 +35,4 @@ The automated protocol-level rehearsal is:
 python scripts/stranger_smoke.py
 ```
 
-It uses two isolated synthetic users with conflicting language rules, creates and invokes two minimal Skills, and emits JSON metrics. It does not replace real button clicks or real-user observation; the current report marks the UI as `protocol-simulated`.
+It uses two isolated synthetic users with conflicting language rules, creates and invokes two minimal Skills, and emits JSON metrics. The local Studio is separately browser-tested on desktop and 390x844 mobile, but automation still does not replace real-user observation. Real-user evidence remains incomplete until 3-5 strangers finish the protocol.

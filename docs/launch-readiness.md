@@ -31,13 +31,15 @@ Do not call a release stable until P0 exit conditions are met and the real-user 
 | Creator-shadow isolation | Complete locally | Generic-profile firewall, tracked-content audit, private-term scan support | Re-run immediately before first push |
 | Clean-room install and first use | Complete locally | Cross-platform acceptance test covers install, generic first use, third-party Skill routing, onboarding, uninstall, and retained local data | GitHub-hosted macOS/Linux/Windows run |
 | Core release acceptance | Complete locally | Unit, protocol, semantic safety, memory defense, student-state, metadata, and doctor suites | First remote CI run |
-| Beginner onboarding | Complete for CLI/MCP alpha | Three skippable choices, redacted summary, first-run guide | Host-native buttons remain host-dependent |
+| Beginner onboarding | Complete for local Studio/CLI/MCP alpha | Three skippable choices, redacted summary, first-run guide, and plain-language Studio | Host-native buttons remain host-dependent |
+| Visible runtime trust | Complete locally | Compile receipt, doctor, onboarding, and Studio show active/stale/degraded plus actual version and restart need | Restarted-host acceptance after local install |
+| Shareable diagnostics | Complete locally | Redacted doctor JSON contains version alignment and configuration health without profile text or exact paths | Reproduce one stranger-user report |
 | Release quality gates | Complete locally | CI matrix, compile/import checks, rollback tests, metadata check, secret and contamination audits | Artifact attestation and remote branch protection |
-| Stranger-user evidence | Planned, not complete | Trial protocol below | At least five consented users who did not help build the project |
+| Stranger-user evidence | Planned, not complete | Trial protocol below | 3-5 consented users who did not help build the project |
 
 ## Stranger-User Trial
 
-Recruit at least five people across different roles or study situations. Do not preload creator preferences or explain the intended interpretation.
+Recruit 3-5 people from the first Alpha audience who did not help build the project. Do not preload creator preferences or explain the intended interpretation.
 
 Each participant should:
 
@@ -52,3 +54,13 @@ Record only consented, redacted outcomes: successful task completion, wrong Skil
 ## Publication Hold
 
 Preparation does not authorize publication. Before creating a remote or pushing, confirm the destination owner, repository name, visibility, and exact branch/tag. Run current-tree, staged, and history secret scans plus the local private-term contamination scan immediately before that confirmation.
+
+## Final Alpha Checklist
+
+1. Run the full local release gate and Skill validation from a clean tree.
+2. Verify Studio on desktop and 390x844 mobile for the four core scenarios.
+3. Generate one redacted doctor JSON report and confirm it contains no profile text or exact private path.
+4. Restart the supported host and verify the actual runtime reports `active` at the expected version.
+5. Complete the 3-5 stranger-user protocol with zero missed publication, deletion, or privacy confirmations.
+6. Obtain explicit repository owner, name, visibility, branch, and tag authorization before any remote creation or push.
+7. Treat the first remote CI matrix and branch protection as external evidence that cannot be completed locally.

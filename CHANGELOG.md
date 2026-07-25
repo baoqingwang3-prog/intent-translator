@@ -4,6 +4,16 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+### Added
+
+- A real local bilingual Studio for inspecting understanding, source mapping, Skill routing, memory sources, authorization boundaries, and runtime freshness without an API key.
+- An explicit host support matrix, first-Alpha audience, Agent Reach complement, shareable redacted diagnostic workflow, and final Alpha checklist.
+- Loopback-only Studio binding by default, with explicit opt-in required for trusted-network exposure.
+
+### Changed
+
+- Skill listing metadata now describes understanding, authorization, local memory, and routing instead of only prompt rewriting.
+
 ## [0.7.0a1] - 2026-07-25
 
 ### Added

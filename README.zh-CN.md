@@ -2,9 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+**让 Agent 在动手前先正确理解你、守住授权边界，并选择正确的 Skill。**
+
 这是一个本地优先的 Agent Skill 和可选 MCP 中枢。它把“继续”“可以”“按老样子来”这类简短、依赖上下文的话，整理成更可靠的执行约定，同时保留用户的语气，并在发布、删除、外发隐私等高影响动作前检查授权。
 
 它不声称读心，也不会凭人格类型决定一个人的思考方式。通用中枢只负责意图、授权、记忆和 Skill 路由；具体职业能力仍由对应 Skill 和可信资料提供。
+
+首批 Alpha 面向经常使用 Codex、Claude Code 等 Agent、安装多个 Skill、习惯用简短自然语言继续任务，并担心 Agent 理解错、调用错或越权的人。
+
+| 用户原话 | 中枢需要证明的结果 |
+|---|---|
+| `继续` | 恢复具体待办和其中的限制 |
+| `好，先比较方案，不要发布` | 保留“不发布”，不让“好”扩大授权 |
+| `搜索 GitHub 上高星的 Agent Skill` | 按搜索动作路由到 Agent Reach，不误判为创建 Skill |
+| 用户自然语言纠正一次 | 在隔离的本地画像中复现修正后的理解 |
 
 ## 怎么选
 
@@ -26,6 +37,16 @@ intent-translator-onboard
 
 详见 [首次三分钟](docs/first-run.md)。
 
+### 本地 Studio
+
+安装可选 MCP 包后，可直接启动真实本地编译界面：
+
+```bash
+intent-translator-studio --host 127.0.0.1 --port 8765
+```
+
+打开 `http://127.0.0.1:8765`。它不需要 API Key，会显示当前理解、非明显的原话对应、准备调用的 Skill、本地记忆来源、授权边界、实际运行版本和是否需要重启。连接不到本地编译器时会明确显示降级，不会假装保护已经启用。
+
 如果主要使用 Codex，并希望一次装好 Skill、MCP、学生画像、托管规则和 doctor，可在 Windows 运行：
 
 ```powershell
@@ -35,6 +56,8 @@ intent-translator-onboard
 公开仓库包含通用的 `university-student` 大学生基础包和 `student-exam-prep` 目标扩展包。影子评测只有传入 `-EnableShadow` 才会启用。你的学校、专业、课程表、成绩、目标、当前科目、Vault 路径、进度、错题和纠错历史只写入本地画像或数据库，不应提交到 GitHub。结构说明见 [docs/student-profile.md](docs/student-profile.md)。
 
 ## 安装 Skill
+
+宿主支持程度并不等于安装器能生成配置。正式、实验、仅 Skill 和 MCP 未验证状态见 [宿主支持矩阵](docs/support-matrix.md)。
 
 Windows：
 

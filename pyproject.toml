@@ -41,6 +41,7 @@ intent-translator-onboard = "intent_translator_mcp.onboarding:main"
 intent-translator-semantic-eval = "intent_translator_mcp.semantic_eval:main"
 intent-translator-study = "intent_translator_mcp.study_shadow:main"
 intent-translator-state = "intent_translator_mcp.student_state:main"
+intent-translator-studio = "intent_translator_mcp.studio:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/intent_translator_mcp"]

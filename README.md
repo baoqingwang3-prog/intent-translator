@@ -2,9 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+**Make the agent understand the request, preserve authorization boundaries, and choose the right Skill before it acts.**
+
 A local-first Agent Skill that turns terse, implicit, or context-dependent language into a compact execution contract. It recovers recent context, preserves personal voice, challenges consequential assumptions, uses local memory with consent, discovers installed Skills, and routes the task to the smallest capable tool set.
 
 The project does not claim to read minds or understand every profession by itself. It provides a general intent and routing layer; domain Skills, trusted sources, and high-stakes policies provide specialized judgment.
+
+The first Alpha is for people who frequently use Codex, Claude Code, or similar agents, keep several Skills installed, continue work with short natural-language messages, and want visible protection against misunderstanding, wrong routing, or over-broad authorization.
+
+| What the user says | What the control layer proves |
+|---|---|
+| `Continue` | Restores the specific pending action and its constraints |
+| `Okay, compare the options; do not publish` | Keeps the prohibition and does not treat `Okay` as broader permission |
+| `Search GitHub for high-star Agent Skills` | Routes the search action to Agent Reach instead of confusing the object with Skill creation |
+| A natural-language correction | Replays the corrected meaning in an isolated local profile |
 
 ## Start Here
 
@@ -28,11 +39,23 @@ With Skill-only installation, run the path printed by the installer instead, for
 
 Every question can be skipped. See [First Three Minutes](docs/first-run.md).
 
+### Try the local Studio
+
+After installing the optional MCP package, start the real local compiler UI:
+
+```bash
+intent-translator-studio --host 127.0.0.1 --port 8765
+```
+
+Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current understanding, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. If the local compiler is unavailable, the page reports degraded status instead of pretending protection is active.
+
 ## Status
 
 GitHub Alpha candidate, version `0.7.0a1`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
+
+Host support is intentionally narrower than the installer list. See the explicit [host support matrix](docs/support-matrix.md) for Alpha-supported, experimental, Skill-only, and MCP-unverified combinations.
 
 | Component | Supported baseline | Degradation |
 |---|---|---|
@@ -140,9 +163,10 @@ Check an installation without exposing exact home-directory paths:
 ```bash
 intent-translator-doctor
 intent-translator-doctor --json
+intent-translator-doctor --json > intent-translator-diagnostic.json
 ```
 
-The doctor lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and recommends upgrading both plus restarting the host when they drift. A newly installed runtime does not replace an MCP process already held open by a running host.
+The JSON form is a shareable redacted diagnostic: it includes versions, host snippets, restart need, and configuration health without profile text or exact private paths. The doctor lists every detected Skill copy and version, compares the active Skill with the installed MCP runtime and doctor package, and recommends upgrading both plus restarting the host when they drift. A newly installed runtime does not replace an MCP process already held open by a running host.
 
 Remove only the MCP runtime and generated snippets while preserving profile and memory:
 
@@ -190,6 +214,8 @@ Brief feedback such as `太复杂了` becomes a pending correction and is stored
 The system adapts to task-specific expertise, plain-language needs, accessibility preferences, and confirmed phrase meanings. It avoids treating occupation, personality type, age, dialect, or spelling as a deterministic model of the person.
 
 Routing uses explicit aliases for known Skills and conservative multi-keyword matching against installed Skill descriptions. This allows third-party professional Skills to participate without adding every profession to this repository.
+
+Intent Translator and Agent Reach are complementary. Intent Translator decides **what the user actually wants, whether it is authorized, and which Skill owns the action**. Agent Reach decides **where on the internet to search and how to retrieve the result**. The control layer can route a search to Agent Reach; it does not replace an internet-access layer.
 
 ## Optional Plugins
 
@@ -294,7 +320,7 @@ On the isolated 24-case regression set, the naive baseline scores 63.2% across r
 - No model is bundled. Real semantic quality depends on the configured adapter and still needs held-out live-model evaluation.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
-See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, and high-star comparison.
+See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, host support, and high-star comparison.
 
 ## Repository Layout
 
