@@ -56,6 +56,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("python -m pip install build .", package_workflow)
+        self.assertIn("branches: [main]", package_workflow)
         self.assertIn("scripts/studio_browser_smoke.py", release_gate)
         self.assertIn("studio-browser-smoke-0.7.0a2.json", release_gate)
         self.assertTrue(evidence["passed"])
