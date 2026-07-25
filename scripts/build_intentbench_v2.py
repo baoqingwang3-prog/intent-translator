@@ -398,10 +398,11 @@ def materialize() -> list[dict[str, object]]:
 def main() -> int:
     cases = materialize()
     V2_PATH.parent.mkdir(parents=True, exist_ok=True)
-    V2_PATH.write_text(
-        "".join(json.dumps(case, ensure_ascii=False, separators=(",", ":")) + "\n" for case in cases),
-        encoding="utf-8",
-    )
+    payload = "".join(
+        json.dumps(case, ensure_ascii=False, separators=(",", ":")) + "\n"
+        for case in cases
+    ).encode("utf-8")
+    V2_PATH.write_bytes(payload)
     print(json.dumps({"output": str(V2_PATH), "case_count": len(cases)}, ensure_ascii=False))
     return 0
 

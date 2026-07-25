@@ -43,9 +43,8 @@ class IntentBenchV2Tests(unittest.TestCase):
         manifest = json.loads(
             (REPO_ROOT / "benchmarks" / "intentbench-v2" / "benchmark.json").read_text(encoding="utf-8")
         )
-        digest = hashlib.sha256(
-            (REPO_ROOT / "benchmarks" / "intentbench-v2" / "cases.jsonl").read_bytes()
-        ).hexdigest()
+        cases_bytes = (REPO_ROOT / "benchmarks" / "intentbench-v2" / "cases.jsonl").read_bytes()
+        digest = hashlib.sha256(cases_bytes.replace(b"\r\n", b"\n")).hexdigest()
         self.assertEqual(manifest["cases_sha256"], digest)
 
     def test_v2_compiler_meets_declared_development_conformance_gate(self):
