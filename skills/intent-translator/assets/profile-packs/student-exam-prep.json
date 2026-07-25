@@ -19,9 +19,9 @@
         "keep_evaluation_silent": true
       },
       "routing": [
-        {"subject": "math", "terms": ["math", "mathematics", "数学", "高数", "线代", "概率论"], "preferred_skills": ["kaoyan-math", "study-assistant"]},
-        {"subject": "english", "terms": ["english", "英语", "ielts", "雅思", "阅读", "写作", "听力", "口语"], "preferred_skills": ["kaoyan-english", "study-assistant"]},
-        {"subject": "professional-course", "terms": ["专业课", "电子技术", "模电", "数电"], "preferred_skills": ["kaoyan-electronics", "study-assistant"]},
+        {"subject": "math", "terms": ["math", "mathematics", "数学", "高数", "线代", "概率论"], "preferred_skills": ["study-assistant"]},
+        {"subject": "english", "terms": ["english", "英语", "language exam", "语言考试", "阅读", "写作", "听力", "口语"], "preferred_skills": ["study-assistant"]},
+        {"subject": "professional-course", "terms": ["专业课", "专业认证", "职业考试"], "preferred_skills": ["study-assistant"]},
         {"subject": "general-study", "terms": ["复习", "学习计划", "错题", "测试我", "quiz", "review"], "preferred_skills": ["study-assistant"]}
       ]
     },

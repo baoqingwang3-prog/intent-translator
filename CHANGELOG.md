@@ -4,13 +4,26 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.0a3] - 2026-07-25
+
 ### Added
 
 - A clean-room Playwright Studio gate for desktop and mobile, with redacted reproducible evidence and a prepared GitHub CI job.
+- Typed operation, effect, data-egress, and active-task-source fields in the intent contract.
+- Chinese, English, and mixed-language role regressions across development, product, design, research, operations, content, finance, and legal/admin work.
+- Visible Skill selection, abstention, installation, and unverified activation states.
+- Public design-source and product-value evidence documents with license provenance.
+
+### Changed
+
+- Public source now ships only generic study and certification examples; personal goals and subject Skill preferences stay in the local profile.
+- Action ownership now precedes Skill noun matching, with public reads separated from external writes.
 
 ### Fixed
 
 - Studio hidden states no longer leave large blank result areas, and clean first runs now state that no personal memory is loaded.
+- English token boundaries no longer confuse words such as `unpublished` with a publication action.
+- Automatic autonomy restoration is disabled and requires explicit confirmation.
 
 ## [0.7.0a2] - 2026-07-25
 

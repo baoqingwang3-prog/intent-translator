@@ -17,7 +17,6 @@ from init_profile import default_profile
 
 
 DEFAULT_PROFILE_FORBIDDEN = {
-    "exam_goal": ("考研", "雅思"),
     "personality_label": ("ENTP",),
     "pressure_style": ("PUA",),
     "private_path": ("C:\\Users\\", "D:\\测试"),

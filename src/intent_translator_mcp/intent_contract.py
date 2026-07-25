@@ -20,6 +20,29 @@ Mode = Literal[
     "compress",
     "route",
 ]
+Operation = Literal[
+    "answer",
+    "search",
+    "research",
+    "create",
+    "test",
+    "change",
+    "publish",
+    "delete",
+    "install",
+    "transfer",
+]
+Effect = Literal[
+    "none",
+    "read_public",
+    "read_local",
+    "write_local",
+    "write_external",
+    "destructive",
+    "system_change",
+]
+DataEgress = Literal["none", "public_query", "user_text", "private_file", "profile", "memory"]
+ActiveTaskSource = Literal["utterance", "pending", "context", "project", "profile"]
 ConstraintType = Literal[
     "prohibited-action",
     "deferred-action",
@@ -82,6 +105,10 @@ class TypedIntentContract(BaseModel):
     original_utterance: str = Field(min_length=1)
     goal: str = Field(min_length=1)
     mode: Mode
+    operation: Operation
+    effect: Effect
+    data_egress: DataEgress
+    active_task_source: ActiveTaskSource
     action_owner: ActionOwner
     object: IntentObject
     constraints: list[ContractConstraint] = Field(default_factory=list)
@@ -104,7 +131,7 @@ _FILE = re.compile(r"(?<![\w.-])(?:[A-Za-z]:[\\/][^\s,，]+|[^\s,，]+\.[A-Za-z0
 
 def _destination(text: str, risk: dict[str, Any]) -> IntentDestination:
     folded = text.casefold()
-    if not risk.get("external"):
+    if not risk.get("external") and risk.get("effect") != "read_public":
         return IntentDestination(kind="local", value="local environment")
     email = _EMAIL.search(text)
     url = _URL.search(text)
@@ -115,6 +142,8 @@ def _destination(text: str, risk: dict[str, Any]) -> IntentDestination:
     for marker in ("github", "gitlab", "origin", "remote", "互联网", "外部"):
         if marker in folded:
             return IntentDestination(kind="external", value=marker)
+    if risk.get("effect") == "read_public":
+        return IntentDestination(kind="external", value="public web")
     return IntentDestination(kind="unknown")
 
 
@@ -123,6 +152,10 @@ def build_typed_contract(
     utterance: str,
     goal: str,
     mode: str,
+    operation: str,
+    effect: str,
+    data_egress: str,
+    active_task_source: str,
     action_text: str,
     primary_skill: str | None,
     skill_candidates: list[dict[str, Any]],
@@ -191,6 +224,10 @@ def build_typed_contract(
         original_utterance=utterance,
         goal=goal,
         mode=mode,
+        operation=operation,
+        effect=effect,
+        data_egress=data_egress,
+        active_task_source=active_task_source,
         action_owner=owner,
         object=IntentObject(value=object_value, source=object_source),
         constraints=typed_constraints,

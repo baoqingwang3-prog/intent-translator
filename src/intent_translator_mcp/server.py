@@ -124,7 +124,6 @@ def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
             "clarification_required",
             "preserve_voice",
             "confidence",
-            "confidence_calibration",
             "phrase_match",
             "short_confirmation_status",
             "risk",
@@ -142,9 +141,9 @@ def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     }
     compact["routing"] = {
         "primary_skill": routing.get("primary_skill"),
-        "route_reason": (
-            envelope.get("decision_receipt", {}) or {}
-        ).get("route_reason", ""),
+        "selection_state": routing.get("selection_state"),
+        "activation_state": routing.get("activation_state"),
+        "installed": routing.get("capability_facts", {}).get("installed", False),
         "acquisition_policy": routing.get("acquisition_policy", []),
     }
     compact["semantic"] = {

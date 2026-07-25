@@ -55,11 +55,11 @@ After installing the optional MCP package, start the local compiler inspection U
 intent-translator-studio --host 127.0.0.1 --port 8765
 ```
 
-Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current interpretation, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. It inspects the compiler and does not execute the task. A healthy Studio does not prove that another Agent host calls MCP on every turn. If the local compiler is unavailable, the page reports degraded status.
+Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current interpretation, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. Routing distinguishes installed selection from intended-but-unverified capability and never claims the host activated a Skill. It inspects the compiler and does not execute the task. A healthy Studio does not prove that another Agent host calls MCP on every turn. If the local compiler is unavailable, the page reports degraded status.
 
 ## Status
 
-Local Alpha candidate, version `0.7.0a2`. GitHub Alpha evidence is still blocked on the documented stranger-user trial and first green GitHub-hosted CI. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Local Alpha candidate, version `0.7.0a3`. GitHub Alpha evidence is still blocked on the documented stranger-user trial and first green GitHub-hosted CI. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -117,7 +117,7 @@ Restart or reload the agent host after installation. Personal configuration is c
 For a Codex-first Windows setup that installs the Skill and MCP, applies the reusable student profile pack, manages the Codex rules block, and runs the doctor:
 
 ```powershell
-.\setup-codex.ps1 -StudyGoal "postgraduate exam","IELTS" -ObsidianVaultName "My Vault" -ObsidianVaultPath "D:\My Vault" -EnableShadow
+.\setup-codex.ps1 -StudyGoal "professional certification","language exam" -ObsidianVaultName "My Vault" -ObsidianVaultPath "D:\My Vault" -EnableShadow
 ```
 
 The repository contains a generic `university-student` base pack plus a `student-exam-prep` goal extension. Shadow evaluation remains off unless `-EnableShadow` is supplied. Goals, current subjects, vault locations, progress, mistakes, and correction history are written to the local profile or database and must not be committed. See [docs/student-profile.md](docs/student-profile.md).
@@ -318,7 +318,7 @@ python skills/intent-translator/scripts/plugin_manager.py list
 
 # Review silent shadow samples and sync the managed pointer index
 intent-translator-study shadow-review
-intent-translator-study pointer-list --exam-goal IELTS
+intent-translator-study pointer-list --exam-goal "language exam"
 intent-translator-study pointer-sync
 ```
 
@@ -356,7 +356,7 @@ On the isolated 24-case regression set, the naive baseline scores 63.2% across r
 - Adaptive-autonomy restore metadata is experimental. It never grants execution authority, and a cautious mode must be restored only after a user-facing confirmation.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
-See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, host support, and high-star comparison.
+See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), [docs/value-p0.md](docs/value-p0.md), [docs/design-sources.md](docs/design-sources.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, product-value evidence, licensed design sources, host support, and high-star comparison.
 
 ## Repository Layout
 

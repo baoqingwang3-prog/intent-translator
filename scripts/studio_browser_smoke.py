@@ -46,7 +46,7 @@ def build_smoke_contract() -> dict[str, object]:
             },
             {
                 "id": "route",
-                "may_execute": False,
+                "may_execute": True,
                 "selected_skill": "agent-reach",
             },
             {

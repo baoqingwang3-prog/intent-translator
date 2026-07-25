@@ -13,7 +13,7 @@ Choose one primary Skill by ownership. Add a supporting Skill only for a separat
 | Obsidian read, search, create, or update | `obsidian-cli` | `obsidian-markdown`, `obsidian-bases`, or `json-canvas` by file type |
 | Cross-task context transfer | `handoff` | `obsidian-cli` to retain durable pointers or preferences |
 | General exam learning | `study-assistant` | Its `study-*` subskills selected by the orchestrator |
-| Postgraduate study planning | `kaoyan-plan` | Subject router: `kaoyan-math`, `kaoyan-english`, or `kaoyan-electronics` |
+| Exam or certification planning | `study-assistant` | Use an installed subject Skill only when its declared ownership matches the request |
 | Mistake capture and review | `mistake-book` | `mistake-extract` or `mistake-restructure` for later processing |
 | Code explanation or architecture | `graphify`, `codebase-design`, or `domain-modeling` | Choose by whether the question concerns relationships, module shape, or domain language |
 | Hard bug diagnosis | `diagnosing-bugs` | `tdd` after the cause is established and a fix is authorized |

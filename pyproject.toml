@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-translator-mcp"
-version = "0.7.0a2"
+version = "0.7.0a3"
 description = "Local-first intent compiler and routing MCP server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,10 +27,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/baoqingwang3-prog/personal-intent-compiler"
-Repository = "https://github.com/baoqingwang3-prog/personal-intent-compiler"
-Issues = "https://github.com/baoqingwang3-prog/personal-intent-compiler/issues"
-Documentation = "https://github.com/baoqingwang3-prog/personal-intent-compiler/blob/main/README.md"
+Homepage = "https://github.com/baoqingwang3-prog/intent-translator"
+Repository = "https://github.com/baoqingwang3-prog/intent-translator"
+Issues = "https://github.com/baoqingwang3-prog/intent-translator/issues"
+Documentation = "https://github.com/baoqingwang3-prog/intent-translator/blob/main/README.md"
 
 [project.scripts]
 intent-translator-mcp = "intent_translator_mcp.server:main"

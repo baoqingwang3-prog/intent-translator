@@ -38,7 +38,7 @@ class StudyShadowTests(unittest.TestCase):
             disabled = observe_shadow(
                 connection,
                 self.profile(temp, enabled=False),
-                utterance="继续复习雅思阅读",
+                utterance="继续复习语言认证阅读",
                 compiler_mode="change",
                 host_mode="answer",
             )
@@ -46,19 +46,19 @@ class StudyShadowTests(unittest.TestCase):
             result = observe_shadow(
                 connection,
                 self.profile(temp),
-                utterance="继续复习雅思阅读并使用 C:\\private\\notes.md",
+                utterance="继续复习语言认证阅读并使用 C:\\private\\notes.md",
                 compiler_mode="change",
                 compiler_skill="study-assistant",
                 host_mode="answer",
                 host_clarification=True,
                 subject="english",
-                exam_goal="雅思",
+                exam_goal="语言认证",
                 context_switched=True,
             )
             row = connection.execute("SELECT * FROM shadow_events").fetchone()
             self.assertTrue(result["recorded"])
             self.assertEqual(row["utterance_preview"], "")
-            self.assertNotIn("继续复习雅思阅读", row["utterance_hash"])
+            self.assertNotIn("继续复习语言认证阅读", row["utterance_hash"])
             report = review_shadow(connection)
             self.assertEqual(report["counts"]["intent_mismatches"], 1)
             self.assertEqual(report["counts"]["unnecessary_clarifications"], 1)
@@ -79,20 +79,20 @@ class StudyShadowTests(unittest.TestCase):
             connection = connect(Path(temp) / "memory.db")
             upsert_pointer(
                 connection,
-                path="雅思/阅读错题.md",
-                title="雅思阅读错题",
+                path="语言认证/阅读错题.md",
+                title="语言认证阅读错题",
                 purpose="复盘定位题",
                 subject="english",
-                exam_goal="雅思",
+                exam_goal="语言认证",
                 authority_level="personal",
             )
-            pointers = list_pointers(connection, exam_goal="雅思")
+            pointers = list_pointers(connection, exam_goal="语言认证")
             content = render_pointer_index(pointers)
             result = sync_pointer_index(profile, content)
             note = Path(temp) / "AI" / "intent-translator-study-index.md"
             self.assertTrue(result["synced"])
             self.assertTrue(note.exists())
-            self.assertIn("雅思阅读错题", note.read_text(encoding="utf-8"))
+            self.assertIn("语言认证阅读错题", note.read_text(encoding="utf-8"))
             connection.close()
 
     def test_sync_rejects_managed_note_outside_vault(self):

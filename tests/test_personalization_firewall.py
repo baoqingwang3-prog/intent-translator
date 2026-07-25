@@ -35,7 +35,14 @@ class PersonalizationFirewallTests(unittest.TestCase):
 
     def test_clean_profile_contains_no_creator_shadow(self):
         serialized = json.dumps(default_profile(), ensure_ascii=False)
-        for forbidden in ("example-creator-handle", "考研", "雅思", "ENTP", "PUA", "D:\\测试"):
+        for forbidden in (
+            "example-creator-handle",
+            "private-exam-goal",
+            "private-language-goal",
+            "ENTP",
+            "PUA",
+            "D:\\测试",
+        ):
             self.assertNotIn(forbidden, serialized)
         self.assertEqual(default_profile()["phrase_mappings"], {})
         self.assertNotIn("student_state", default_profile())

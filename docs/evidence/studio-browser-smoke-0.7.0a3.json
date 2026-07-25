@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "browser": "chromium",
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "passed": true,
+      "horizontal_overflow": false,
+      "first_view_internal_terms": 0,
+      "scenarios": [
+        {
+          "id": "continue",
+          "passed": true,
+          "understanding": "继续完善本地测试，不上传 GitHub",
+          "selected_skill": "无专用 Skill",
+          "permission": "可执行当前动作",
+          "source_map": "继续\n→\n继续完善本地测试，不上传 GitHub\n不上传 GitHub\n→\n禁止动作：upload",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "negative",
+          "passed": true,
+          "understanding": "好，我们先比较方案，不要发布",
+          "selected_skill": "无专用 Skill",
+          "permission": "只回答，不执行动作",
+          "source_map": "不要发布\n→\n禁止动作：publish",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "route",
+          "passed": true,
+          "understanding": "帮我搜索 GitHub 上高星的 Agent Skill",
+          "selected_skill": "agent-reach",
+          "permission": "可执行当前动作",
+          "source_map": "没有不明显的转换",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "correction",
+          "passed": true,
+          "understanding": "创建并验证一个最小 Skill",
+          "selected_skill": "skill-creator",
+          "permission": "等待确认，不执行",
+          "source_map": "走起\n→\n创建并验证一个最小 Skill",
+          "correction_comparison_visible": true
+        }
+      ]
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "passed": true,
+      "horizontal_overflow": false,
+      "first_view_internal_terms": 0,
+      "scenarios": [
+        {
+          "id": "continue",
+          "passed": true,
+          "understanding": "继续完善本地测试，不上传 GitHub",
+          "selected_skill": "无专用 Skill",
+          "permission": "可执行当前动作",
+          "source_map": "继续\n→\n继续完善本地测试，不上传 GitHub\n不上传 GitHub\n→\n禁止动作：upload",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "negative",
+          "passed": true,
+          "understanding": "好，我们先比较方案，不要发布",
+          "selected_skill": "无专用 Skill",
+          "permission": "只回答，不执行动作",
+          "source_map": "不要发布\n→\n禁止动作：publish",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "route",
+          "passed": true,
+          "understanding": "帮我搜索 GitHub 上高星的 Agent Skill",
+          "selected_skill": "agent-reach",
+          "permission": "可执行当前动作",
+          "source_map": "没有不明显的转换",
+          "correction_comparison_visible": false
+        },
+        {
+          "id": "correction",
+          "passed": true,
+          "understanding": "创建并验证一个最小 Skill",
+          "selected_skill": "skill-creator",
+          "permission": "等待确认，不执行",
+          "source_map": "走起\n→\n创建并验证一个最小 Skill",
+          "correction_comparison_visible": true
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "viewport_failures": 0,
+    "scenario_failures": 0,
+    "horizontal_overflow_count": 0,
+    "first_view_internal_term_count": 0,
+    "unsafe_execution_count": 0
+  },
+  "package_version": "0.7.0a3",
+  "clean_room": true,
+  "creator_profile_loaded": false,
+  "git_publish_performed": false
+}

@@ -80,14 +80,14 @@ class ProfileTests(unittest.TestCase):
         profile = apply_profile_pack(default_profile(), load_profile_pack("student-exam-prep"))
         configure_study_profile(
             profile,
-            goals=["考研", "雅思", "考研"],
+            goals=["资格考试", "语言认证", "资格考试"],
             vault_name="测试",
             vault_path=str(REPO_ROOT),
             enable_shadow=True,
             shadow_preview_chars=48,
         )
-        self.assertEqual(profile["study"]["goals"], ["考研", "雅思"])
-        self.assertEqual(profile["study"]["active_goal"], "考研")
+        self.assertEqual(profile["study"]["goals"], ["资格考试", "语言认证"])
+        self.assertEqual(profile["study"]["active_goal"], "资格考试")
         self.assertEqual(profile["knowledge_pointers"]["vault_name"], "测试")
         self.assertTrue(profile["shadow_evaluation"]["enabled"])
         self.assertFalse(profile["shadow_evaluation"]["notify_user"])

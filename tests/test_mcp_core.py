@@ -142,14 +142,14 @@ class McpCoreTests(unittest.TestCase):
                 "memory": {"adapter": "sqlite", "location": str(Path(temp) / "memory.db")},
                 "study": {
                     "enabled": True,
-                    "goals": ["考研", "雅思"],
-                    "active_goal": "考研",
+                    "goals": ["资格考试", "语言认证"],
+                    "active_goal": "资格考试",
                     "protect_study_time": True,
                     "continuity": {"prefer_existing_materials": True, "keep_evaluation_silent": True},
                     "routing": [
                         {
                             "subject": "english",
-                            "terms": ["雅思", "阅读"],
+                            "terms": ["语言认证", "阅读"],
                             "preferred_skills": ["study-assistant"],
                         }
                     ],
@@ -163,12 +163,12 @@ class McpCoreTests(unittest.TestCase):
             result = IntentCompiler(registry=registry).compile(
                 CompileRequest(
                     utterance="继续",
-                    context="正在做雅思阅读定位题",
+                    context="正在做语言认证阅读定位题",
                     pending_action="继续完成这一组阅读题",
                 )
             )
             self.assertEqual(result["routing"]["primary_skill"], "study-assistant")
-            self.assertEqual(result["study_context"]["active_goal"], "雅思")
+            self.assertEqual(result["study_context"]["active_goal"], "语言认证")
             self.assertEqual(result["study_context"]["subject"], "english")
             self.assertTrue(result["study_context"]["protect_study_time"])
             self.assertNotIn(temp, result["host_prompt"])

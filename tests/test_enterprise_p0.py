@@ -351,7 +351,8 @@ class EnterpriseP0Tests(unittest.TestCase):
                 ),
             )
         self.assertEqual(result["mode"], "search")
-        self.assertEqual(result["routing"]["primary_skill"], "skill-lookup")
+        self.assertEqual(result["routing"]["primary_skill"], "agent-reach")
+        self.assertIn("skill-lookup", result["routing"]["supporting_skills"])
         self.assertNotEqual(result["routing"]["primary_skill"], "skill-creator")
 
     def test_typed_intent_contract_exposes_required_execution_fields(self):
@@ -369,6 +370,10 @@ class EnterpriseP0Tests(unittest.TestCase):
         for field in (
             "original_utterance",
             "goal",
+            "operation",
+            "effect",
+            "data_egress",
+            "active_task_source",
             "action_owner",
             "object",
             "constraints",

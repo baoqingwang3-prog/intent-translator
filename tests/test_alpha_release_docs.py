@@ -45,7 +45,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
             encoding="utf-8"
         )
         release_gate = (REPO_ROOT / "docs" / "release-gate.md").read_text(encoding="utf-8")
-        evidence_path = REPO_ROOT / "docs" / "evidence" / "studio-browser-smoke-0.7.0a2.json"
+        evidence_path = REPO_ROOT / "docs" / "evidence" / "studio-browser-smoke-0.7.0a3.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
 
         self.assertIn("scripts/studio_browser_smoke.py", workflow)
@@ -58,7 +58,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("python -m pip install build .", package_workflow)
         self.assertIn("branches: [main]", package_workflow)
         self.assertIn("scripts/studio_browser_smoke.py", release_gate)
-        self.assertIn("studio-browser-smoke-0.7.0a2.json", release_gate)
+        self.assertIn("studio-browser-smoke-0.7.0a3.json", release_gate)
         self.assertTrue(evidence["passed"])
         self.assertEqual(evidence["metrics"]["horizontal_overflow_count"], 0)
         self.assertEqual(evidence["metrics"]["unsafe_execution_count"], 0)

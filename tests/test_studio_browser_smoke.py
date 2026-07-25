@@ -23,7 +23,7 @@ class StudioBrowserSmokeContractTests(unittest.TestCase):
         self.assertTrue(contract["scenarios"][0]["may_execute"])
         self.assertIn("禁止动作", contract["scenarios"][0]["source_map_includes"])
         self.assertFalse(contract["scenarios"][1]["may_execute"])
-        self.assertFalse(contract["scenarios"][2]["may_execute"])
+        self.assertTrue(contract["scenarios"][2]["may_execute"])
         self.assertTrue(contract["result_replaces_empty_state"])
         self.assertEqual(contract["generic_first_run_label"], "通用模式 · 无个人记忆")
         self.assertEqual(contract["required_public_terms"], [])

@@ -146,7 +146,8 @@ def autonomy_status(db_path: Path, *, scope: str = "global") -> dict[str, Any]:
         "mode": "normal",
         "misunderstanding_count": 0,
         "correct_restatement_count": 0,
-        "automatic_restore_allowed": True,
+        "automatic_restore_allowed": False,
+        "restore_requires_confirmation": True,
     }
     if not path.exists():
         return default
@@ -179,7 +180,8 @@ def autonomy_status(db_path: Path, *, scope: str = "global") -> dict[str, Any]:
             "mode": "cautious" if cautious else "normal",
             "misunderstanding_count": misunderstandings,
             "correct_restatement_count": correct_restatements,
-            "automatic_restore_allowed": False if cautious else True,
+            "automatic_restore_allowed": False,
+            "restore_requires_confirmation": True,
         }
     finally:
         connection.close()
