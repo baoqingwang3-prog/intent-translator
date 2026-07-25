@@ -261,14 +261,28 @@ class StudioHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _asset(self, name: str) -> None:
+        requested = Path(name)
+        segments = name.replace("\\", "/").split("/")
+        requested_suffix = requested.suffix.casefold()
+        if (
+            not requested.parts
+            or requested.is_absolute()
+            or requested.drive
+            or any(segment in {"", ".", ".."} for segment in segments)
+            or requested_suffix not in MIME_TYPES
+        ):
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+
         root = studio_asset_dir().resolve()
-        target = (root / name).resolve()
-        if root not in target.parents or not target.is_file():
+        target = (root / requested).resolve()
+        target_mime_type = MIME_TYPES.get(target.suffix.casefold())
+        if root not in target.parents or not target.is_file() or target_mime_type is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         body = target.read_bytes()
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", MIME_TYPES.get(target.suffix, "application/octet-stream"))
+        self.send_header("Content-Type", target_mime_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()

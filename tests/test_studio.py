@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import sys
@@ -5,14 +6,16 @@ import tempfile
 import threading
 import unittest
 import urllib.request
+from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from intent_translator_mcp.studio import (  # noqa: E402
+    StudioHandler,
     build_status_payload,
     compile_payload,
     correction_demo_payload,
@@ -121,6 +124,48 @@ class StudioTests(unittest.TestCase):
             self.assertNotIn(technical_term, index)
         self.assertTrue((studio_asset_dir() / "styles.css").is_file())
         self.assertTrue((studio_asset_dir() / "app.js").is_file())
+
+    def test_asset_rejects_unsafe_names_before_accessing_the_asset_root(self):
+        handler = object.__new__(StudioHandler)
+        handler.send_error = Mock()
+        absolute_asset = str((Path.cwd() / "index.html").resolve())
+
+        with patch("intent_translator_mcp.studio.studio_asset_dir") as asset_dir:
+            for name in (
+                "",
+                "../index.html",
+                "assets/../index.html",
+                r"assets\..\index.html",
+                "assets//index.html",
+                absolute_asset,
+                "index.exe",
+            ):
+                with self.subTest(name=name):
+                    handler.send_error.reset_mock()
+                    StudioHandler._asset(handler, name)
+                    handler.send_error.assert_called_once_with(HTTPStatus.NOT_FOUND)
+            asset_dir.assert_not_called()
+
+    def test_asset_allows_nested_files_with_expected_static_extensions(self):
+        handler = object.__new__(StudioHandler)
+        handler.send_error = Mock()
+        handler.send_response = Mock()
+        handler.send_header = Mock()
+        handler.end_headers = Mock()
+        handler.wfile = io.BytesIO()
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            asset = root / "css" / "app.css"
+            asset.parent.mkdir()
+            asset.write_bytes(b"body {}")
+            with patch("intent_translator_mcp.studio.studio_asset_dir", return_value=root):
+                StudioHandler._asset(handler, "css/app.css")
+
+        handler.send_error.assert_not_called()
+        handler.send_response.assert_called_once_with(HTTPStatus.OK)
+        handler.send_header.assert_any_call("Content-Type", "text/css; charset=utf-8")
+        self.assertEqual(handler.wfile.getvalue(), b"body {}")
 
     def test_http_server_serves_status_and_real_compile_api(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(
