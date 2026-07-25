@@ -4,15 +4,14 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.0a1] - 2026-07-25
+
 ### Added
 
 - Minimal three-category first-run onboarding for generic users.
 - Reproducible two-user stranger smoke with isolated language correction and Skill invocation metrics.
 - Release gate, creator-shadow and secret audit, package inspection, lifecycle coverage, and tagged artifact provenance.
 - Stranger-user Alpha protocol and high-star GitHub release benchmark.
-
-### Added
-
 - CLI and MCP onboarding entry points for three skippable local preferences.
 - Cross-platform clean-room acceptance covering install, generic first use, third-party Skill routing, onboarding, uninstall, and data preservation.
 - Tracked-content creator-shadow scanning with local private-term fingerprints.
@@ -20,6 +19,7 @@ All notable changes are recorded here. The project follows semantic versioning a
 ### Changed
 
 - A newly initialized but uncustomized profile remains generic and no longer claims personal knowledge.
+- Confirmed phrase mappings no longer activate when the user's shorter utterance is only a fragment of the saved phrase.
 
 ## [0.6.0] - 2026-07-25
 

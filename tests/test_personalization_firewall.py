@@ -97,6 +97,18 @@ class PersonalizationFirewallTests(unittest.TestCase):
             self.assertFalse(generic["study_context"]["enabled"])
             self.assertFalse(generic["student_state"]["enabled"])
 
+    def test_short_utterance_does_not_match_a_longer_confirmed_phrase(self):
+        with tempfile.TemporaryDirectory() as temp:
+            profile = default_profile()
+            profile["phrase_mappings"]["you can consider"] = {
+                "meaning": "explore options without publishing",
+                "scope": "global",
+            }
+            short = self.compile_with_profile(temp, profile, "consider")
+            full = self.compile_with_profile(temp, profile, "you can consider this approach")
+            self.assertIsNone(short["phrase_match"])
+            self.assertEqual(full["phrase_match"]["phrase"], "you can consider")
+
     def test_repository_contamination_metrics_are_zero(self):
         private_term = "definitely-not-" + "present-private-handle"
         report = audit_repository(REPO_ROOT, private_terms=[private_term])

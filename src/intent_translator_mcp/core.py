@@ -108,7 +108,7 @@ def _phrase_mapping(profile: dict[str, Any], utterance: str, scope: str) -> dict
     normalized = utterance.strip()
     candidates: list[tuple[int, str, Any]] = []
     for phrase, raw in profile.get("phrase_mappings", {}).items():
-        if phrase not in normalized and normalized not in phrase:
+        if phrase not in normalized:
             continue
         mapping = raw if isinstance(raw, dict) else {"meaning": str(raw), "scope": "global"}
         if mapping.get("scope", "global") not in {"global", scope}:

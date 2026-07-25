@@ -30,7 +30,7 @@ Every question can be skipped. See [First Three Minutes](docs/first-run.md).
 
 ## Status
 
-GitHub Alpha candidate, version `0.6.0`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+GitHub Alpha candidate, version `0.7.0a1`. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
