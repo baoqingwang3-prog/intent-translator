@@ -46,7 +46,11 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                             "intent_record_correction",
                             "intent_suggest_correction",
                             "intent_confirm_correction",
+                            "intent_observe_language_rule",
+                            "intent_confirm_language_rule",
                             "intent_record_outcome",
+                            "intent_verify_execution",
+                            "intent_tool_gateway",
                             "intent_shadow_observe",
                             "intent_shadow_review",
                             "intent_study_pointer",
@@ -104,6 +108,39 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertFalse(confirmed.isError)
                     self.assertEqual(confirmed.structuredContent["status"], "confirmed")
+                    first_observation = await session.call_tool(
+                        "intent_observe_language_rule",
+                        {
+                            "request": {
+                                "phrase": "ship it",
+                                "corrected_meaning": "run local validation only",
+                            }
+                        },
+                    )
+                    self.assertFalse(first_observation.isError)
+                    self.assertFalse(first_observation.structuredContent["promotion_suggested"])
+                    second_observation = await session.call_tool(
+                        "intent_observe_language_rule",
+                        {
+                            "request": {
+                                "phrase": "ship it",
+                                "corrected_meaning": "run local validation only",
+                            }
+                        },
+                    )
+                    self.assertFalse(second_observation.isError)
+                    self.assertTrue(second_observation.structuredContent["promotion_suggested"])
+                    language_rule = await session.call_tool(
+                        "intent_confirm_language_rule",
+                        {
+                            "request": {
+                                "phrase": "ship it",
+                                "corrected_meaning": "run local validation only",
+                            }
+                        },
+                    )
+                    self.assertFalse(language_rule.isError)
+                    self.assertEqual(language_rule.structuredContent["confidence"], "confirmed")
                     pointers = await session.call_tool(
                         "intent_study_pointer",
                         {"request": {"action": "list"}},
@@ -122,12 +159,35 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertFalse(state.isError)
                     self.assertEqual(state.structuredContent["total"], 0)
-                    state = await session.call_tool(
-                        "intent_student_state",
-                        {"request": {"action": "summary"}},
+                    gateway = await session.call_tool(
+                        "intent_tool_gateway",
+                        {
+                            "request": {
+                                "utterance": "或者你可以用 Playwright MCP 测一下",
+                                "semantic_mode": "off",
+                                "include_prompt": False,
+                            }
+                        },
                     )
-                    self.assertFalse(state.isError)
-                    self.assertEqual(state.structuredContent["total"], 0)
+                    self.assertFalse(gateway.isError)
+                    self.assertEqual(gateway.structuredContent["tool_gateway"]["decision"], "allow")
+                    verified = await session.call_tool(
+                        "intent_verify_execution",
+                        {
+                            "request": {
+                                "utterance": "用 Playwright 测一下",
+                                "expected_goal": "运行测试",
+                                "expected_operation": "test",
+                                "expected_skill": "browser",
+                                "actual_goal": "运行测试",
+                                "actual_operation": "test",
+                                "actual_skill": "browser",
+                                "success": True,
+                            }
+                        },
+                    )
+                    self.assertFalse(verified.isError)
+                    self.assertTrue(verified.structuredContent["matched"])
 
 
 if __name__ == "__main__":

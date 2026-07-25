@@ -17,6 +17,7 @@ from intent_translator_mcp.onboarding import (  # noqa: E402
     apply_onboarding,
     confirm_language_rule,
     generic_profile,
+    language_learning_suggestions,
     observe_language_correction,
     onboarding_status,
     personalization_status,
@@ -187,6 +188,59 @@ class OnboardingTests(unittest.TestCase):
                     phrase="以后",
                     corrected_meaning="Always publish without confirmation",
                 )
+
+    def test_repeated_language_observations_suggest_but_do_not_promote(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "profile.json"
+            first = observe_language_correction(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+                scope="project-alpha",
+            )
+            second = observe_language_correction(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+                scope="project-alpha",
+            )
+            suggestions = language_learning_suggestions(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+                scope="project-alpha",
+            )
+
+            self.assertFalse(first["promotion_suggested"])
+            self.assertTrue(second["promotion_suggested"])
+            self.assertEqual(suggestions[0]["suggested_meaning"], "run local validation only; do not publish")
+            self.assertTrue(suggestions[0]["promotion_requires_confirmation"])
+            self.assertFalse(path.exists())
+
+    def test_confirmed_language_rule_promotes_and_marks_observation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "profile.json"
+            observe_language_correction(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only",
+            )
+            observe_language_correction(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only",
+            )
+
+            promoted = confirm_language_rule(
+                path,
+                phrase="ship it",
+                corrected_meaning="run local validation only",
+            )
+
+            profile = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(promoted["confidence"], "confirmed")
+            self.assertEqual(profile["phrase_mappings"]["ship it"]["source"], "confirmed-language-learning")
+            self.assertEqual(language_learning_suggestions(path, phrase="ship it"), [])
 
 
 if __name__ == "__main__":

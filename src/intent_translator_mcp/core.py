@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import copy
 import difflib
+import hashlib
 import json
 import os
 import re
@@ -17,20 +18,32 @@ from .authorization import issue_confirmation_receipt, verify_confirmation_recei
 from .intent_contract import build_typed_contract
 from .models import CompileRequest
 from .local_policy import assess_local_risk, autonomy_status, conditional_review, sparse_source_map
-from .onboarding import interpretation_gate, personalization_status
+from .onboarding import interpretation_gate, language_learning_suggestions, personalization_status
 from .runtime_status import build_runtime_status, candidate_skill_dirs
 from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
 from .skill_integrity import verify_skill_script
 from .student_state import read_state_summary, state_db_path
+from .tool_gateway import decide_tool_access
 from .version import __version__
 
 
 MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("remember", ("记住", "记一下", "存下来", "remember", "save this", "note this")),
     ("recall", ("之前", "老样子", "回忆", "recall", "之前定的", "as before", "previous setting")),
-    ("search", ("查一下", "查一查", "搜索", "搜一下", "调研一下", "做调研", "研究一下", "找一找", "search", "look up", "research", "find out")),
-    ("diagnose", ("报错", "原因", "装好了吗", "为什么", "diagnose", "why is this failing", "explain the error")),
-    ("route", ("改写提示词", "梳理提示词", "转换成提示词", "prompt template", "prompt for another agent")),
+    ("search", ("查一下", "查一查", "搜索", "搜一下", "调研", "调研一下", "做调研", "研究", "研究一下", "找一找", "search", "look up", "research", "find", "find out")),
+    ("diagnose", ("报错", "原因", "失败", "启动失败", "装好了吗", "为什么", "diagnose", "traceback", "why is this failing", "explain the error", "explain why", "command failed", "deployment failure")),
+    (
+        "route",
+        (
+            "改写提示词",
+            "梳理提示词",
+            "转换成提示词",
+            "prompt template",
+            "prompt for another agent",
+            "convert this rough request into a prompt",
+            "convert this request into a prompt",
+        ),
+    ),
     (
         "build",
         (
@@ -38,6 +51,7 @@ MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
             "整一个",
             "搞个",
             "创建",
+            "新建",
             "设计",
             "可复用助手",
             "可复用小助手",
@@ -55,7 +69,7 @@ MODE_RULES: list[tuple[str, tuple[str, ...]]] = [
             "push",
         ),
     ),
-    ("change", ("修改", "修复", "完善", "安装", "装好", "接一下", "旋转", "删除", "删掉", "全删", "清空", "整理", "运行", "测试", "发送", "发到", "改文件", "change", "edit", "fix", "improve", "refine", "install", "delete", "remove", "drop", "rotate", "validation", "send", "run", "test")),
+    ("change", ("改", "修改", "修复", "完善", "安装", "装好", "接一下", "旋转", "删除", "删掉", "全删", "清空", "整理", "运行", "测试", "发送", "发到", "改文件", "更新", "写入", "change", "edit", "fix", "improve", "refine", "replace", "revise", "organize", "clean up", "clean this up", "structure", "sort", "add", "install", "delete", "remove", "drop", "rotate", "validation", "send", "run", "resume", "test", "tests", "testing", "test suite", "update", "write")),
 ]
 
 SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
@@ -67,6 +81,8 @@ SKILL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
     ("diagnosing-bugs", ("报错", "失败命令", "诊断")),
     ("agent-reach", ("全网", "大家怎么评价", "外部搜索", "查一下", "搜索")),
     ("pdf", ("pdf",)),
+    ("docx", ("docx", "word document")),
+    ("xlsx", ("xlsx", "excel", "spreadsheet", "workbook")),
     ("scientific-critical-thinking", ("反驳", "人格类型", "实证", "科学")),
     ("prompt-lookup", ("提示词", "prompt", "另一个 agent", "另一个agent")),
 ]
@@ -88,7 +104,7 @@ HIGH_STAKES = (
     "bank statement",
 )
 EXTERNAL_TERMS = ("github", "gitlab", "发布", "上架", "上传", "外发", "发送", "发到", "发给", "收件人", "部署", "公开", "推送", "发给外部", "外部搜索", "publish", "upload", "send", "email", "recipient", "push", "origin", "remote", "deploy", "make public")
-DESTRUCTIVE_TERMS = ("删除", "删掉", "清空", "销毁", "覆盖", "抹掉", "移除", "全删", "全部删除", "永久删除", "delete", "remove", "drop", "truncate", "purge", "erase", "overwrite", "destroy", "rm -")
+DESTRUCTIVE_TERMS = ("删除", "删掉", "清空", "销毁", "覆盖", "抹掉", "移除", "全删", "全部删除", "永久删除", "delete", "remove", "clear", "drop", "truncate", "purge", "erase", "overwrite", "destroy", "rm -")
 SENSITIVE_TERMS = ("过敏", "身份证", "密码", "凭据", "密钥", "令牌", "token", "api key", "病史", "完整用户画像", "credentials", "secret", "allergy", "identity number", "password", "medical history", "full user profile")
 SAFE_LOCAL_TERMS = ("本地", "测试", "整理", "修改", "修复", "完善", "更新", "创建", "构建", "实现", "编辑", "生成", "重命名", "运行", "验证", "skill", "local", "test", "change", "edit", "fix", "improve", "refine", "update", "create", "creating", "build", "implement", "write", "generate", "rename", "run", "validate", "validation")
 APPROVAL_TERMS = {
@@ -109,14 +125,15 @@ APPROVAL_TERMS = {
     "ok",
     "approved",
     "sounds good",
+    "go ahead",
 }
-CONTINUE_TERMS = {"继续", "往下", "再往下", "好了", "已登录", "已安装", "continue", "go on", "next", "done", "logged in", "installed"}
+CONTINUE_TERMS = {"继续", "往下", "再往下", "好了", "恢复了", "已登录", "已安装", "continue", "go on", "go ahead", "next", "done", "restored", "logged in", "installed"}
 ROUTING_STOPWORDS = {
     "about", "after", "agent", "also", "another", "before", "from", "have", "into",
     "need", "that", "this", "tool", "user", "using", "with", "your",
 }
 PUBLIC_SEARCH_TERMS = ("github", "gitlab", "互联网", "全网", "网页", "web", "internet", "repository")
-RESEARCH_TERMS = ("调研", "研究", "research", "compare products", "其他产品")
+RESEARCH_TERMS = ("调研", "研究", "research", "prior art", "compare products", "其他产品")
 PROMPT_CONVERSION_TERMS = (
     "改写提示词",
     "梳理提示词",
@@ -141,11 +158,24 @@ EVALUATION_QUESTION_TERMS = (
 SHORT_CONFIRMATION_TERMS = {term.casefold() for term in APPROVAL_TERMS | CONTINUE_TERMS}
 AMBIGUOUS_ACTION_PATTERNS = (
     re.compile(r"(?:把|将)(?:这个|那个|它|东西|文件)?\s*(?:发|传|推)(?:了|出去|过去|一下|吧)", re.I),
-    re.compile(r"\b(?:send|push|upload|publish)\s+(?:it|that|this)\b", re.I),
+    re.compile(r"\b(?:send|push|upload|publish)\s+(?:it|that|this)\b(?!\s+[a-z0-9_-])", re.I),
+    re.compile(r"(?:整理|重构|清理|优化).{0,8}(?:这个|那个|它)\s*$", re.I),
+    re.compile(r"\b(?:organize|clean up|structure|restructure|improve)\s+(?:this|that|it)(?:\s+for\s+me)?\s*$", re.I),
+    re.compile(r"\bclean\s+(?:this|that|it)\s+up(?:\s+一下)?\s*$", re.I),
+    re.compile(r"\bput\s+(?:this|that|it)\s+into\s+a\s+better\s+structure\s*$", re.I),
 )
+AMBIGUOUS_INTEGRATION_PATTERNS = (
+    re.compile(r"(?:也|再|帮我|给我)?\s*(?:接一下|接入一下|接上|集成一下)(?:吧|呗)?$", re.I),
+    re.compile(r"\b(?:hook|wire|connect|integrate)\s+(?:this|it)\s+(?:up|in)?\s*$", re.I),
+)
+ISOLATED_SELECTION_TERMS = {
+    "1", "2", "3", "第一个", "第二个", "第三个", "第1个", "第2个", "第3个",
+    "first", "second", "third", "the first", "the second", "the third",
+}
 INSTALL_ACTION_PATTERNS = (
     re.compile(r"(?:安装|装上|你自己装|自动安装|自动装|缺什么.{0,12}装)", re.I),
     re.compile(r"\b(?:install|set up)\b", re.I),
+    re.compile(r"\badd\s+(?:the\s+)?selected\s+skill\s+to\b", re.I),
 )
 PROTECTED_DATA_PATTERNS = (
     re.compile(
@@ -165,10 +195,11 @@ PROTECTED_DATA_PATTERNS = (
 )
 NEGATED_ACTION_PATTERNS = (
     re.compile(
-        r"(?P<text>(?:不要|不得|无需|禁止)\s*"
+        r"(?P<text>(?:不要|不得|无需|禁止|不)\s*"
         r"(?P<action>(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送)"
         r"(?:(?:\s*[、，,]\s*|\s*(?:或|和|以及)\s*)"
-        r"(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送))*))",
+        r"(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送))*)"
+        r"(?:\s*(?:到|至|去|给)?\s*(?:GitHub|互联网|外部))?)",
         re.I,
     ),
     re.compile(
@@ -191,6 +222,16 @@ NEGATED_ACTION_PATTERNS = (
         re.I,
     ),
     re.compile(
+        r"(?P<text>(?:do\s+not|don't|never|not\s+to)\s+"
+        r"(?P<action>send)(?:\s+(?:my|the))?\s+(?:profile|files?|documents?))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:do\s+not|don't|never|not\s+to)\s+"
+        r"(?P<action>change)(?:\s+(?:any|the))?\s+files?)",
+        re.I,
+    ),
+    re.compile(
         r"(?P<text>without\s+(?P<action>publishing|uploading|deploying|sending\s+externally))",
         re.I,
     ),
@@ -202,6 +243,22 @@ NEGATED_ACTION_PATTERNS = (
     re.compile(
         r"(?P<text>(?:do\s+not|don't|not\s+yet|without)\s+"
         r"(?P<action>install|create|rewrite))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:不要|别|先别|暂时别)\s*(?P<action>改|修改|编辑)(?:文件|配置|仓库)?)",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:do\s+not|don't|without)\s+(?P<action>edit|editing|apply(?:ing)?\s+(?:a\s+)?fix)(?:\s+(?:files?|the\s+repository))?)",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>without\s+(?P<action>pushing)(?:\s+it)?(?:\s+anywhere)?)",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:不要|别|先不要)\s*(?P<action>publish|upload|push))",
         re.I,
     ),
 )
@@ -244,6 +301,17 @@ ACTION_NAMES = {
     "deploying": "deploy",
     "send externally": "external-transfer",
     "sending externally": "external-transfer",
+    "send": "external-transfer",
+    "push": "publish",
+    "pushing": "publish",
+    "change": "change",
+    "edit": "change",
+    "editing": "change",
+    "apply a fix": "change",
+    "applying a fix": "change",
+    "改": "change",
+    "修改": "change",
+    "编辑": "change",
     "make public": "publish",
     "开源": "publish",
     "open-source": "publish",
@@ -322,6 +390,59 @@ def _contains(text: str, terms: tuple[str, ...]) -> bool:
 
 def _is_short_confirmation(text: str) -> bool:
     return text.strip().casefold() in SHORT_CONFIRMATION_TERMS
+
+
+def _gate_id(scope: str, options: list[dict[str, Any]]) -> str:
+    candidates = [str(option.get("text", "")).strip() for option in options]
+    return "gate-" + hashlib.sha256(
+        json.dumps(
+            {"scope": scope, "candidates": candidates},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()[:20]
+
+
+def _selection_index(text: str) -> int | None:
+    normalized = " ".join(text.strip().casefold().split())
+    mapping = {
+        "1": 0, "第一个": 0, "第1个": 0, "第一个方案": 0, "first": 0, "the first": 0,
+        "2": 1, "第二个": 1, "第2个": 1, "第二个方案": 1, "second": 1, "the second": 1,
+        "3": 2, "第三个": 2, "第3个": 2, "第三个方案": 2, "third": 2, "the third": 2,
+    }
+    return mapping.get(normalized)
+
+
+def _resolve_gate_selection(request: CompileRequest) -> dict[str, Any] | None:
+    if not request.interpretation_gate_id or not request.interpretation_options:
+        return None
+    options = [item.model_dump(mode="json") for item in request.interpretation_options]
+    if request.interpretation_gate_id != _gate_id(request.scope, options):
+        return None
+    normalized = request.utterance.strip().casefold()
+    selected = next(
+        (option for option in options if str(option.get("id", "")).casefold() == normalized),
+        None,
+    )
+    if selected is None:
+        index = _selection_index(request.utterance)
+        if index is not None and index < len(options):
+            selected = options[index]
+    if selected is None:
+        return None
+    return {
+        "gate_id": request.interpretation_gate_id,
+        "option_id": selected["id"],
+        "text": selected["text"],
+        "intent": dict(selected.get("intent") or {}),
+        "source": "previous-interpretation-gate",
+    }
+
+
+def _ambiguous_integration(text: str) -> bool:
+    compact = " ".join(text.strip().split())
+    return any(pattern.search(compact) for pattern in AMBIGUOUS_INTEGRATION_PATTERNS)
 
 
 def _action_text_for_classification(text: str) -> str:
@@ -430,6 +551,19 @@ def _classify_mode(text: str, pending: str) -> str:
         return "change"
     if _contains(lowered, PROMPT_CONVERSION_TERMS):
         return "route"
+    if "skill" in lowered and _contains(
+        lowered,
+        (
+            "从头创建",
+            "从零创建",
+            "创建",
+            "定制 skill",
+            "自定义 skill",
+            "custom skill",
+            "build a skill from scratch",
+        ),
+    ):
+        return "build"
     if _contains(
         lowered,
         (
@@ -460,7 +594,7 @@ def _classify_mode(text: str, pending: str) -> str:
             return "build"
         if _contains(
             lowered,
-            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "existing skill", "available skill", "skill registry"),
+            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "registry", "existing skill", "available skill", "skill registry"),
         ):
             return "search"
     if any(lowered.startswith(term) for term in ("继续", "往下", "再往下", "continue", "go on")):
@@ -480,13 +614,28 @@ def _classify_action_semantics(
     folded = _action_text_for_classification(text).casefold()
     available_files = available_files or []
     public_target = _contains(folded, PUBLIC_SEARCH_TERMS)
-    if _contains(folded, ("发布", "上架", "公开发布", "publish", "make public", "push to github")):
+    ambiguous_transfer = any(
+        pattern.search(folded) for pattern in AMBIGUOUS_ACTION_PATTERNS[:2]
+    )
+    if _contains(
+        folded,
+        (
+            "发布", "上架", "公开发布", "公开上线", "正式公开上线",
+            "publish", "make public", "push to github", "ship this repository",
+            "ship the repository", "ship", "release these", "release to the public",
+        ),
+    ):
         operation, effect = "publish", "write_external"
     elif _contains(folded, DESTRUCTIVE_TERMS):
         operation, effect = "delete", "destructive"
     elif _installation_requested(folded):
         operation, effect = "install", "system_change"
-    elif _contains(
+    elif _contains(folded, ("本地预览", "local preview")) and _contains(
+        folded,
+        ("不要发送", "先不要发送", "不要外发", "do not send", "without sending"),
+    ):
+        operation, effect = "create", "write_local"
+    elif ambiguous_transfer or _contains(
         folded,
         (
             "发给",
@@ -507,9 +656,9 @@ def _classify_action_semantics(
         ),
     ):
         operation, effect = "transfer", "write_external"
-    elif mode == "build":
+    elif mode in {"build", "route"}:
         operation, effect = "create", "write_local"
-    elif _contains(folded, ("playwright", "测试", "验证", "反测", "验收", "test", "verify")):
+    elif _contains(folded, ("playwright", "测试", "验证", "反测", "验收", "test", "tests", "testing", "test suite", "verify")):
         operation, effect = "test", "read_local"
     elif mode == "search":
         operation = "research" if _contains(folded, RESEARCH_TERMS) else "search"
@@ -533,6 +682,132 @@ def _classify_action_semantics(
     else:
         data_egress = "none"
     return operation, effect, data_egress
+
+
+def _operation_semantics(
+    operation: str, text: str, *, available_files: list[str] | None = None
+) -> tuple[str, str, str]:
+    operation = operation.strip().casefold()
+    folded = text.casefold()
+    available_files = available_files or []
+    if operation in {"search", "research"}:
+        mode = "search"
+        effect = "read_public" if _contains(folded, PUBLIC_SEARCH_TERMS) else "read_local"
+    elif operation == "test":
+        mode, effect = "change", "read_local"
+    elif operation == "create":
+        mode, effect = "build", "write_local"
+    elif operation == "publish":
+        mode, effect = "build", "write_external"
+    elif operation == "delete":
+        mode, effect = "change", "destructive"
+    elif operation == "install":
+        mode, effect = "change", "system_change"
+    elif operation == "transfer":
+        mode, effect = "change", "write_external"
+    elif operation == "change":
+        mode, effect = "change", "write_local"
+    elif operation == "answer":
+        mode, effect = "answer", "none"
+    else:
+        raise ValueError(f"unsupported corrected operation: {operation}")
+    if effect == "read_public":
+        data_egress = "public_query"
+    elif effect == "write_external":
+        if _contains(folded, ("用户画像", "profile", "personality profile")):
+            data_egress = "profile"
+        elif _contains(folded, ("记忆", "memory", "correction ledger")):
+            data_egress = "memory"
+        elif available_files or _contains(folded, ("文件", "附件", "稿件", "file", "document", "draft")):
+            data_egress = "private_file"
+        else:
+            data_egress = "user_text"
+    else:
+        data_egress = "none"
+    return mode, effect, data_egress
+
+
+def _confirmed_correction_edit(corrections: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for correction in corrections:
+        if int(correction.get("score", 0) or 0) < 30:
+            continue
+        edit = correction.get("edit")
+        if not isinstance(edit, dict):
+            continue
+        field = str(edit.get("field", "")).strip()
+        replacement = str(edit.get("replacement", "")).strip()
+        source = str(correction.get("source", ""))
+        if field and replacement and source.startswith("user-confirmed"):
+            return {"correction": correction, "field": field, "replacement": replacement}
+    return None
+
+
+def _candidate_destination(text: str, effect: str) -> dict[str, str]:
+    folded = text.casefold()
+    if effect == "write_external":
+        for marker in ("github", "gitlab", "email", "互联网", "外部"):
+            if marker in folded:
+                return {"kind": "external", "value": marker}
+        return {"kind": "unknown", "value": ""}
+    if effect == "read_public":
+        return {"kind": "external", "value": "public web"}
+    return {"kind": "local", "value": "local environment"}
+
+
+def _typed_candidate_summary(
+    text: str,
+    *,
+    baseline: dict[str, Any],
+    registry: dict[str, Any],
+    available_files: list[str],
+) -> dict[str, Any]:
+    mode = _classify_mode(text, "")
+    operation, effect, data_egress = _classify_action_semantics(
+        text, mode, available_files=available_files
+    )
+    if operation in {"search", "research"}:
+        mode = "search"
+    elif operation == "create":
+        mode = "build"
+    elif operation in {"test", "change", "delete", "install", "transfer"}:
+        mode = "change"
+    skill, _ = _route_skill(text, registry, mode=mode, operation=operation)
+    destination = _candidate_destination(text, effect)
+    changes = [
+        field
+        for field, current, proposed in (
+            ("operation", baseline.get("operation"), operation),
+            ("effect", baseline.get("effect"), effect),
+            ("data_egress", baseline.get("data_egress"), data_egress),
+            ("destination", baseline.get("destination"), destination.get("kind")),
+            ("skill", baseline.get("skill"), skill),
+        )
+        if current != proposed
+    ]
+    return {
+        "goal": text,
+        "mode": mode,
+        "operation": operation,
+        "effect": effect,
+        "data_egress": data_egress,
+        "destination": destination,
+        "skill": skill,
+        "changes": changes,
+    }
+
+
+def _ambiguous_user_choices(operation: str) -> tuple[str, list[str], int]:
+    if operation == "transfer":
+        return (
+            "只在本地准备好内容，先不发送",
+            ["确认要发送的具体内容和目标后，再执行这一次发送"],
+            0,
+        )
+    return (
+        "先只整理或说明，不执行会改变结果的动作",
+        ["补齐对象、范围和目标后，再执行这一次动作"],
+        0,
+    )
 
 
 def _memory_action(text: str, mode: str) -> str:
@@ -559,7 +834,7 @@ def _risk(
     if operation is None or effect is None or data_egress is None:
         operation, effect, data_egress = _classify_action_semantics(security_text, mode)
     ambiguous_action = any(pattern.search(security_text) for pattern in AMBIGUOUS_ACTION_PATTERNS)
-    external = effect == "write_external" or ambiguous_action
+    external = effect == "write_external"
     sensitive = _contains(security_text, SENSITIVE_TERMS)
     irreversible = effect == "destructive" or operation == "publish"
     high_stakes = _contains(security_text, HIGH_STAKES)
@@ -638,6 +913,8 @@ def _route_skill(
             return operation == "create"
         if name == "prompt-lookup":
             return mode == "route"
+        if operation in {"publish", "transfer", "delete"}:
+            return False
         return True
 
     scores: list[tuple[int, str, list[str]]] = []
@@ -646,25 +923,32 @@ def _route_skill(
         "skill" in folded
         and _contains(
             folded,
-            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "existing skill", "available skill", "skill registry"),
+            ("现成", "已有", "有没有", "先找", "帮我找", "找一个", "registry", "existing skill", "available skill", "skill registry"),
         )
     )
     broad_product_search = _contains(
-        folded, ("github", "gitlab", "仓库", "repository", "互联网", "全网", "其他产品", "other products")
+        folded,
+        (
+            "github", "gitlab", "仓库", "repository", "互联网", "全网",
+            "产品", "方案", "其他产品", "products", "other products", "prior art",
+        ),
     )
     if mode == "search" and existing_skill_search and "skill-lookup" in installed and not broad_product_search:
         scores.append((1200, "skill-lookup", ["existing-skill-first"]))
     if operation in {"search", "research"} and "agent-reach" in installed:
         action_terms = [
             term
-            for term in ("搜索", "查", "找", "现成", "调研", "search", "research", "look up", "github", "互联网", "web")
+            for term in ("搜索", "查", "找", "现成", "调研", "search", "research", "find", "prior art", "look up", "github", "互联网", "web")
             if term.casefold() in text.casefold()
         ]
         if action_terms:
             scores.append((1100 + len(action_terms), "agent-reach", action_terms))
     if mode == "search" and existing_skill_search and broad_product_search and "skill-lookup" in installed:
         scores.append((900, "skill-lookup", ["existing-skill-support"]))
-    if operation == "test":
+    if operation == "test" and _contains(
+        text,
+        ("browser", "playwright", "网页", "页面", "浏览器", "studio", "ui"),
+    ):
         browser_skill = next(
             (
                 name
@@ -676,6 +960,8 @@ def _route_skill(
         )
         if browser_skill:
             scores.append((1300, browser_skill, ["test-action-owner"]))
+    if mode == "diagnose" and "diagnosing-bugs" in installed:
+        scores.append((1300, "diagnosing-bugs", ["diagnose-action-owner"]))
     if operation == "install" and "skill-installer" in installed:
         scores.append((1300, "skill-installer", ["install-action-owner"]))
     for name, terms in SKILL_ALIASES:
@@ -816,15 +1102,43 @@ def _study_request_relevant(
         ),
     ):
         return False
-    terms = [
-        "学习",
+    non_study_learning_terms = (
+        "机器学习",
+        "语义学习",
+        "增量学习",
+        "模型学习",
+        "学习能力",
+        "个人语义学习",
+        "machine learning",
+        "semantic learning",
+        "incremental learning",
+        "learning ability",
+    )
+    explicit_study_terms = (
         "复习",
         "考试",
         "作业",
         "课程",
-        "study",
+        "学习计划",
+        "学习进度",
+        "学习任务",
+        "开始学习",
+        "继续学习",
+        "帮我学习",
+        "学一下",
+        "study plan",
+        "study session",
+        "study progress",
+        "homework",
         "exam",
         "course",
+    )
+    if _contains(folded, non_study_learning_terms) and not (
+        mentions_configured_goal or _contains(folded, explicit_study_terms)
+    ):
+        return False
+    terms = [
+        *explicit_study_terms,
         *[str(goal) for goal in study.get("goals", [])],
     ]
     for route in study.get("routing", []):
@@ -956,21 +1270,38 @@ class IntentCompiler:
 
     def compile(self, request: CompileRequest) -> dict[str, Any]:
         utterance = request.utterance.strip()
+        gate_resolution = _resolve_gate_selection(request)
+        isolated_selection = gate_resolution is None and _selection_index(utterance) is not None
         profile_exists = self.profile_exists
         mapping = _phrase_mapping(self.profile, utterance, request.scope)
         expanded = mapping.get("meaning", "") if mapping else ""
-        short_confirmation = _is_short_confirmation(utterance)
-        continuation = utterance.casefold() in {term.casefold() for term in CONTINUE_TERMS}
-        action_source = (
-            request.pending_action or request.context or expanded or utterance
-            if short_confirmation
-            else " ".join(part for part in (utterance, expanded) if part)
-        )
+        short_confirmation = False if gate_resolution or isolated_selection else _is_short_confirmation(utterance)
+        continuation = False if gate_resolution or isolated_selection else utterance.casefold() in {
+            term.casefold() for term in CONTINUE_TERMS
+        }
+        if gate_resolution:
+            action_source = gate_resolution["text"]
+        elif isolated_selection:
+            action_source = utterance
+        else:
+            action_source = (
+                request.pending_action or request.context or expanded or utterance
+                if short_confirmation
+                else " ".join(part for part in (utterance, expanded) if part)
+            )
         action_text, constraints = _extract_constraints(action_source)
         source_text = " ".join(
-            part for part in (utterance, expanded, request.context, request.pending_action) if part
+            part
+            for part in (
+                utterance,
+                gate_resolution["text"] if gate_resolution else "",
+                expanded,
+                request.context,
+                request.pending_action,
+            )
+            if part
         )
-        study_relevant = _study_request_relevant(
+        study_relevant = False if gate_resolution or isolated_selection else _study_request_relevant(
             self.profile,
             source_text if short_confirmation else utterance,
             continuation=continuation or short_confirmation,
@@ -983,6 +1314,9 @@ class IntentCompiler:
         )
         active_state = state_context.get("active_focus") if state_context.get("enabled") else None
         active_task_source = (
+            "context"
+            if gate_resolution
+            else
             "utterance"
             if not short_confirmation
             else "pending"
@@ -1016,12 +1350,28 @@ class IntentCompiler:
             mode = "change"
         if utterance.casefold() in {term.casefold() for term in APPROVAL_TERMS} and mode == "answer" and request.context:
             mode = "build" if _contains(request.context, ("create", "build", "设计", "创建")) else "change"
-        deterministic_mode = mode
         operation, effect, data_egress = _classify_action_semantics(
             action_text,
             mode,
             available_files=request.available_files,
         )
+        selected_intent = gate_resolution.get("intent", {}) if gate_resolution else {}
+        if selected_intent:
+            mode = str(selected_intent.get("mode") or mode)
+            operation = str(selected_intent.get("operation") or operation)
+            effect = str(selected_intent.get("effect") or effect)
+            data_egress = str(selected_intent.get("data_egress") or data_egress)
+        if isolated_selection:
+            mode, operation, effect, data_egress = "answer", "answer", "none", "none"
+        if operation in {"search", "research"}:
+            mode = "search"
+        elif operation == "create" and mode != "route":
+            mode = "build"
+        elif operation == "publish":
+            mode = "build"
+        elif operation in {"test", "change", "delete", "install", "transfer"}:
+            mode = "change"
+        deterministic_mode = mode
         memory_action = _memory_action(source_text, mode)
         preliminary_risk = _risk(
             action_text,
@@ -1120,6 +1470,38 @@ class IntentCompiler:
         if mapping:
             mapping = {**mapping, "review_required": mapping_review_required}
         corrections = self.recall_corrections(source_text, request.scope)
+        correction_edit = _confirmed_correction_edit(corrections)
+        correction_requires_review = False
+        if correction_edit and correction_edit["field"] == "operation":
+            corrected_operation = correction_edit["replacement"].casefold()
+            if corrected_operation != operation:
+                protected = operation in {"publish", "delete", "transfer", "install"} or corrected_operation in {
+                    "publish",
+                    "delete",
+                    "transfer",
+                    "install",
+                }
+                if protected:
+                    correction_requires_review = True
+                else:
+                    operation = corrected_operation
+                    mode, effect, data_egress = _operation_semantics(
+                        operation,
+                        action_text,
+                        available_files=request.available_files,
+                    )
+                    risk = _risk(
+                        action_text,
+                        request.authorization,
+                        mode=mode,
+                        receipt_verified=receipt_verified,
+                        operation=operation,
+                        effect=effect,
+                        data_egress=data_egress,
+                    )
+                    risk["receipt_status"] = receipt_status
+                    risk["local_policy"] = local_risk
+                    deterministic_mode = mode
         memories = self.recall_memories(source_text, request.scope) if memory_action == "read" else []
         memory_defense = {
             "mode": "on" if _memory_enabled(self.profile) else "off",
@@ -1138,9 +1520,21 @@ class IntentCompiler:
             if "phrase mapping changes an executable action" not in risk["reasons"]:
                 risk["reasons"].append("phrase mapping changes an executable action")
             risk["confirmation_required"] = True
+        if correction_requires_review:
+            clarification = True
+            path = "review"
+            risk["confirmation_required"] = True
+            if "confirmed correction changes a protected action identity" not in risk["reasons"]:
+                risk["reasons"].append("confirmed correction changes a protected action identity")
         if short_confirmation_status["state"] == "missing-specific-action":
             clarification = True
             path = "review"
+        if isolated_selection:
+            clarification = True
+            path = "review"
+            risk["confirmation_required"] = True
+            if "selection value has no valid interpretation-gate context" not in risk["reasons"]:
+                risk["reasons"].append("selection value has no valid interpretation-gate context")
         routing_text = " ".join(
             part
             for part in (action_text, request.context if short_confirmation else "")
@@ -1200,7 +1594,9 @@ class IntentCompiler:
             confidence = min(confidence, 0.72)
         if short_confirmation_status["state"] == "missing-specific-action":
             confidence = min(confidence, 0.5)
-        if short_confirmation:
+        if gate_resolution:
+            normalized = gate_resolution["text"]
+        elif short_confirmation:
             normalized = request.pending_action or expanded
             if not normalized and active_state:
                 normalized = active_state.get("next_action") or active_state.get("title") or utterance
@@ -1208,6 +1604,23 @@ class IntentCompiler:
                 normalized = utterance
         else:
             normalized = expanded or utterance
+        language_suggestions = (
+            []
+            if mapping
+            else language_learning_suggestions(
+                _profile_path(),
+                phrase=utterance,
+                scope=request.scope,
+                limit=3,
+            )
+        )
+        personal_semantics = {
+            "status": "suggested" if language_suggestions else "none",
+            "suggestions": language_suggestions,
+            "confirmed_rule_applied": bool(mapping),
+            "promotion_requires_confirmation": bool(language_suggestions),
+            "local_only": True,
+        }
         state_status = {
             "enabled": bool(state_context.get("enabled")),
             "focus": active_state.get("title") if active_state else None,
@@ -1474,19 +1887,68 @@ class IntentCompiler:
             confidence = min(confidence, 0.5)
 
         gate_alternatives = list(proposal.get("alternatives", [])) if proposal else []
+        gate_candidate_sources: dict[str, dict[str, Any]] = {}
         if (proposal_rejected or proposal_as_alternative) and proposed_goal:
             gate_alternatives.insert(0, proposed_goal)
-        gate = interpretation_gate(
-            primary=normalized
-            if proposal_rejected or proposal_as_alternative
-            else str(proposal.get("interpretation") or normalized)
-            if proposal
-            else normalized,
-            alternatives=gate_alternatives,
+            gate_candidate_sources[proposed_goal] = {"kind": "semantic-proposal"}
+        if correction_edit and (
+            correction_requires_review or correction_edit["field"] in {"goal", "object", "constraint", "skill"}
+        ):
+            correction = correction_edit["correction"]
+            corrected_text = str(
+                correction.get("correct_interpretation")
+                or correction.get("correction")
+                or correction_edit["replacement"]
+            ).strip()
+            if corrected_text and corrected_text.casefold() != normalized.casefold():
+                gate_alternatives.insert(0, corrected_text)
+                gate_candidate_sources[corrected_text] = {
+                    "kind": "correction-case",
+                    "correction_id": correction.get("id"),
+                    "scope": correction.get("scope"),
+                    "source": correction.get("source"),
+                }
+        for suggestion in language_suggestions:
+            suggested_meaning = str(suggestion.get("suggested_meaning", "")).strip()
+            if suggested_meaning and suggested_meaning.casefold() != normalized.casefold():
+                gate_alternatives.insert(0, suggested_meaning)
+                gate_candidate_sources[suggested_meaning] = {
+                    "kind": "unconfirmed-language-learning-suggestion",
+                    "fingerprint": suggestion.get("fingerprint"),
+                }
+        ambiguous_integration = bool(
+            not gate_resolution
+            and not correction_edit
+            and _ambiguous_integration(utterance)
         )
+        if gate_resolution:
+            gate = {"required": False, "candidates": [], "controls": []}
+        elif ambiguous_integration:
+            gate = interpretation_gate(
+                primary="先给接入方案，暂不改文件",
+                alternatives=["直接接入并修改文件", "都不是"],
+                recommended=0,
+                scope=request.scope,
+            )
+        else:
+            gate = interpretation_gate(
+                primary=normalized
+                if proposal_rejected or proposal_as_alternative
+                else str(proposal.get("interpretation") or normalized)
+                if proposal
+                else normalized,
+                alternatives=gate_alternatives,
+                scope=request.scope,
+            )
         if gate["required"]:
             clarification = True
             path = "review"
+            if language_suggestions:
+                risk["confirmation_required"] = True
+        elif language_suggestions:
+            clarification = True
+            path = "review"
+            confidence = min(confidence, 0.6)
 
         transformations: list[dict[str, Any]] = []
         if mapping and expanded and expanded == normalized:
@@ -1495,6 +1957,33 @@ class IntentCompiler:
                     "original": utterance,
                     "compiled": expanded,
                     "kind": "confirmed-language-rule",
+                }
+            )
+        for suggestion in language_suggestions:
+            suggested_meaning = str(suggestion.get("suggested_meaning", "")).strip()
+            if suggested_meaning:
+                transformations.append(
+                    {
+                        "original": utterance,
+                        "compiled": suggested_meaning,
+                        "kind": "unconfirmed-language-learning-suggestion",
+                        "obvious": False,
+                    }
+                )
+        if correction_edit:
+            correction = correction_edit["correction"]
+            transformations.append(
+                {
+                    "original": utterance,
+                    "compiled": (
+                        f"仅修正 {correction_edit['field']} 为 {correction_edit['replacement']}，"
+                        "保留未冲突的目标、对象、约束和授权边界"
+                    ),
+                    "kind": "correction-case",
+                    "obvious": False,
+                    "correction_id": correction.get("id"),
+                    "source": correction.get("source"),
+                    "scope": correction.get("scope"),
                 }
             )
         if short_confirmation and normalized.casefold() != utterance.casefold():
@@ -1560,7 +2049,18 @@ class IntentCompiler:
                 if str(item.get("text", "")).strip()
             ],
             source_map=source_map,
+            additional_required_slots=(
+                ["interpretation_context"] if isolated_selection else []
+            ),
         )
+        if typed_contract.communication.needs_purpose_question:
+            typed_contract.required_slots = sorted(
+                set([*typed_contract.required_slots, "communication_purpose"])
+            )
+            clarification = True
+            path = "review"
+            risk["confirmation_required"] = True
+            typed_contract.risk.confirmation_required = True
         if typed_contract.required_slots:
             clarification = True
             path = "review"
@@ -1571,6 +2071,82 @@ class IntentCompiler:
             if reason not in risk["reasons"]:
                 risk["reasons"].append(reason)
             typed_contract.risk.confirmation_required = True
+            if not gate.get("required"):
+                primary_choice, alternatives, recommended = _ambiguous_user_choices(operation)
+                gate = interpretation_gate(
+                    primary=primary_choice,
+                    alternatives=alternatives,
+                    recommended=recommended,
+                    scope=request.scope,
+                )
+                typed_contract.alternatives = [
+                    str(item.get("text", ""))
+                    for item in gate.get("candidates", [])
+                    if str(item.get("text", "")).strip()
+                ]
+        if gate.get("required"):
+            baseline_candidate = {
+                "operation": operation,
+                "effect": effect,
+                "data_egress": data_egress,
+                "destination": typed_contract.destination.kind,
+                "skill": primary_skill,
+            }
+            for candidate in gate.get("candidates", []):
+                candidate_text = str(candidate.get("text", ""))
+                candidate["intent"] = _typed_candidate_summary(
+                    candidate_text,
+                    baseline=baseline_candidate,
+                    registry=self.registry,
+                    available_files=request.available_files,
+                )
+                if ambiguous_integration and candidate_text == "先给接入方案，暂不改文件":
+                    candidate["intent"].update(
+                        {
+                            "mode": "answer",
+                            "operation": "answer",
+                            "effect": "none",
+                            "data_egress": "none",
+                            "skill": None,
+                        }
+                    )
+                elif ambiguous_integration and candidate_text == "直接接入并修改文件":
+                    candidate["intent"].update(
+                        {
+                            "mode": "change",
+                            "operation": "change",
+                            "effect": "write_local",
+                            "data_egress": "none",
+                        }
+                    )
+                elif ambiguous_integration and candidate_text == "都不是":
+                    candidate["intent"].update(
+                        {
+                            "mode": "answer",
+                            "operation": "answer",
+                            "effect": "none",
+                            "data_egress": "none",
+                            "skill": None,
+                            "requires_correction": True,
+                        }
+                    )
+                candidate["source"] = gate_candidate_sources.get(
+                    candidate_text,
+                    {"kind": "deterministic-interpretation"},
+                )
+        if gate_resolution and bool(gate_resolution.get("intent", {}).get("requires_correction")):
+            clarification = True
+            path = "review"
+            risk["confirmation_required"] = True
+        tool_gateway = decide_tool_access(
+            operation=operation,
+            effect=effect,
+            data_egress=data_egress,
+            risk=risk,
+            clarification_required=clarification,
+            required_slots=list(typed_contract.required_slots),
+            semantic_suggestion=str((proposal or {}).get("tool_decision", "")),
+        )
         autonomy = autonomy_status(_memory_path(self.profile), scope=request.scope)
         confidence, confidence_calibration = _calibrated_confidence(
             profile=self.profile,
@@ -1711,9 +2287,12 @@ class IntentCompiler:
             "student_state": state_context,
             "state_status": state_status,
             "personalization_status": personalization_status(profile_exists=profile_exists, profile=self.profile),
+            "personal_semantics": personal_semantics,
             "interpretation_gate": gate,
+            "gate_resolution": gate_resolution,
             "prompt_source_map": source_map,
             "intent_contract": typed_contract.model_dump(mode="json"),
+            "tool_gateway": tool_gateway,
             "adaptive_autonomy": autonomy,
             "current_status": current_status,
             "runtime_status": runtime_status,
@@ -1730,7 +2309,7 @@ class IntentCompiler:
                 ],
             },
             "completion_contract": {
-                "execute": mode not in {"answer", "diagnose"} and not risk["blocked"] and not clarification,
+                "execute": mode not in {"answer", "diagnose"} and tool_gateway["decision"] == "allow",
                 "verify": mode in {"build", "change", "route"},
                 "report_evidence": mode in {"build", "change", "diagnose"},
             },

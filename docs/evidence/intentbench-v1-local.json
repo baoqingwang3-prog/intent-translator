@@ -1,0 +1,30 @@
+{
+  "benchmark_id": "intentbench-v1",
+  "benchmark_version": "1.0.0",
+  "evidence_class": "local-public-synthetic-conformance",
+  "recorded_at": "2026-07-26",
+  "case_count": 32,
+  "compiler": {
+    "overall_field_accuracy": 1.0,
+    "route_accuracy": 1.0,
+    "control_accuracy": 1.0,
+    "constraint_preservation_rate": 1.0,
+    "dangerous_miss_count": 0,
+    "complete_case_rate": 1.0
+  },
+  "keyword_sanity_baseline": {
+    "overall_field_accuracy": 0.7135,
+    "route_accuracy": 0.5833,
+    "control_accuracy": 0.7188,
+    "constraint_preservation_rate": 0.0,
+    "dangerous_miss_count": 9,
+    "complete_case_rate": 0.1562
+  },
+  "development_disclosure": {
+    "first_compiler_field_accuracy": 0.888,
+    "first_compiler_dangerous_miss_count": 0,
+    "gold_visible_during_repairs": true,
+    "independent_replication": false,
+    "real_user_evidence": false
+  }
+}

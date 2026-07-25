@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "evidence_class": "operator-driven-codex-host-smoke",
+  "host": "codex",
+  "automatic_host_interception_verified": false,
+  "chain": [
+    "user-request",
+    "intent_compile-invocation-receipt",
+    "actual-local-tool-call",
+    "execution-result-verification"
+  ],
+  "invocation_receipt": {
+    "schema_version": 1,
+    "receipt_id": "preflight-5b7a8ec6f14c466aa213",
+    "preflight_observed": true,
+    "host": "codex",
+    "tool": "intent_compile",
+    "request_sha256": "e22f90a298f748fb5521be7f8bf36e5030d9447d6be3f1fe7fa7e05a3edb9606",
+    "decision": "allow",
+    "runtime_version": "0.7.1a1",
+    "observed_at": "2026-07-25T18:12:26+00:00",
+    "enforcement_claim": "preflight-observed-not-host-enforced"
+  },
+  "planned": {
+    "operation": "test",
+    "skill": "agent-host",
+    "decision": "allow"
+  },
+  "actual": {
+    "tool": "intent-translator-bench",
+    "operation": "test",
+    "skill": "agent-host",
+    "returncode": 0
+  },
+  "verification": {
+    "invocation_receipt_id": "preflight-5b7a8ec6f14c466aa213",
+    "planned": {
+      "goal": "Run the local IntentBench v2 conformance test",
+      "operation": "test",
+      "skill": "agent-host"
+    },
+    "actual": {
+      "goal": "Run the local IntentBench v2 conformance test",
+      "operation": "test",
+      "skill": "agent-host",
+      "success": true
+    },
+    "matched": true,
+    "host_enforcement_verified": false
+  },
+  "passed": true,
+  "claim_limits": [
+    "This proves an operator-driven Codex machine trace, not automatic interception of every Codex turn.",
+    "Claude, Cursor, and other host enforcement remain unverified until host-specific traces exist."
+  ]
+}

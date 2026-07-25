@@ -80,7 +80,7 @@ The compact response contains:
   "runtime_status": {
     "state": "active",
     "restart_required": false,
-    "version": "0.7.0a3"
+    "version": "0.7.1a1"
   }
 }
 ```

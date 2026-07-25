@@ -30,7 +30,7 @@ from semantic_search import (  # noqa: E402
 )
 
 
-DB_SCHEMA_VERSION = 4
+DB_SCHEMA_VERSION = 5
 CONFIDENCE_VALUES = {"confirmed", "observed", "inferred"}
 SEVERITY_VALUES = {"low", "medium", "high", "critical"}
 OUTCOME_VALUES = {"heeded", "recurred", "unknown"}
@@ -194,6 +194,18 @@ def connect(db_path: Path) -> sqlite3.Connection:
         )
         """
     )
+    ensure_columns(
+        connection,
+        "corrections",
+        {
+            "trigger_context": "TEXT NOT NULL DEFAULT ''",
+            "wrong_interpretation": "TEXT NOT NULL DEFAULT ''",
+            "correct_interpretation": "TEXT NOT NULL DEFAULT ''",
+            "source": "TEXT NOT NULL DEFAULT 'user-confirmed'",
+            "edit_json": "TEXT NOT NULL DEFAULT '{}'",
+            "expires_at": "TEXT NOT NULL DEFAULT ''",
+        },
+    )
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS correction_events (
@@ -221,6 +233,39 @@ def connect(db_path: Path) -> sqlite3.Connection:
             status TEXT NOT NULL DEFAULT 'pending',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
+        )
+        """
+    )
+    ensure_columns(
+        connection,
+        "pending_corrections",
+        {
+            "trigger_context": "TEXT NOT NULL DEFAULT ''",
+            "wrong_interpretation": "TEXT NOT NULL DEFAULT ''",
+            "correct_interpretation": "TEXT NOT NULL DEFAULT ''",
+            "source": "TEXT NOT NULL DEFAULT 'user-natural-language-correction'",
+            "edit_json": "TEXT NOT NULL DEFAULT '{}'",
+            "expires_at": "TEXT NOT NULL DEFAULT ''",
+        },
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS execution_outcomes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scope TEXT NOT NULL,
+            utterance TEXT NOT NULL,
+            expected_goal TEXT NOT NULL DEFAULT '',
+            expected_operation TEXT NOT NULL DEFAULT '',
+            expected_skill TEXT NOT NULL DEFAULT '',
+            actual_goal TEXT NOT NULL DEFAULT '',
+            actual_operation TEXT NOT NULL DEFAULT '',
+            actual_skill TEXT NOT NULL DEFAULT '',
+            success INTEGER NOT NULL,
+            matched INTEGER NOT NULL,
+            mismatch_json TEXT NOT NULL DEFAULT '[]',
+            correction_id INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(correction_id) REFERENCES corrections(id)
         )
         """
     )
@@ -803,6 +848,23 @@ def hard_delete_memory(connection: sqlite3.Connection, memory_id: int) -> bool:
     return cursor.rowcount == 1
 
 
+def decorate_correction(record: dict[str, Any], *, score: int | None = None) -> dict[str, Any]:
+    decorated = dict(record)
+    try:
+        edit = json.loads(str(decorated.pop("edit_json", "{}") or "{}"))
+    except json.JSONDecodeError:
+        edit = {}
+    decorated["edit"] = edit if isinstance(edit, dict) else {}
+    decorated["local_only"] = True
+    decorated["expired"] = bool(
+        decorated.get("expires_at")
+        and str(decorated["expires_at"]) <= now_iso()
+    )
+    if score is not None:
+        decorated["score"] = score
+    return decorated
+
+
 def add_correction(
     connection: sqlite3.Connection,
     *,
@@ -811,19 +873,44 @@ def add_correction(
     correction: str,
     severity: str = "medium",
     evidence: str = "",
+    trigger_context: str = "",
+    wrong_interpretation: str = "",
+    correct_interpretation: str = "",
+    source: str = "user-confirmed",
+    edit: dict[str, Any] | None = None,
+    retain_days: int | None = None,
 ) -> dict[str, Any]:
     if severity not in SEVERITY_VALUES:
         raise ValueError(f"severity must be one of {sorted(SEVERITY_VALUES)}")
     if not scope.strip() or not trigger_text.strip() or not correction.strip():
         raise ValueError("scope, trigger_text, and correction are required")
+    bounded_fields = (
+        scope,
+        trigger_text,
+        correction,
+        evidence,
+        trigger_context,
+        wrong_interpretation,
+        correct_interpretation,
+        source,
+    )
+    if any(len(str(value)) > 2000 for value in bounded_fields):
+        raise ValueError("correction case exceeds the bounded storage limit")
     defense = memory_defense_assessment(
-        text=f"{trigger_text}\n{correction}",
+        text="\n".join(str(value) for value in bounded_fields),
         kind="policy",
         source_type="user_confirmed",
     )
     if defense["trust_level"] == "quarantined":
         raise ValueError("correction rejected by memory defense: " + defense["quarantine_reason"])
+    edit = dict(edit or {})
+    if edit and (
+        str(edit.get("field", "")) not in {"goal", "operation", "object", "constraint", "skill"}
+        or not str(edit.get("replacement", "")).strip()
+    ):
+        raise ValueError("edit requires a supported field and a non-empty replacement")
     timestamp = now_iso()
+    expires_at = _expires_at("standard", retain_days)
     values = (scope.strip(), trigger_text.strip(), correction.strip())
     existing = connection.execute(
         "SELECT * FROM corrections WHERE scope = ? AND trigger_text = ? AND correction = ?",
@@ -831,18 +918,50 @@ def add_correction(
     ).fetchone()
     if existing:
         connection.execute(
-            "UPDATE corrections SET severity = ?, evidence = ?, status = 'active', updated_at = ? WHERE id = ?",
-            (severity, evidence.strip(), timestamp, existing["id"]),
+            """
+            UPDATE corrections
+            SET severity = ?, evidence = ?, trigger_context = ?, wrong_interpretation = ?,
+                correct_interpretation = ?, source = ?, edit_json = ?, expires_at = ?,
+                status = 'active', updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                severity,
+                evidence.strip(),
+                trigger_context.strip(),
+                wrong_interpretation.strip(),
+                (correct_interpretation or correction).strip(),
+                source.strip() or "user-confirmed",
+                json.dumps(edit, ensure_ascii=False, sort_keys=True),
+                expires_at,
+                timestamp,
+                existing["id"],
+            ),
         )
         correction_id = int(existing["id"])
         deduplicated = True
     else:
         cursor = connection.execute(
             """
-            INSERT INTO corrections(scope, trigger_text, correction, severity, evidence, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO corrections(
+                scope, trigger_text, correction, severity, evidence, trigger_context,
+                wrong_interpretation, correct_interpretation, source, edit_json,
+                expires_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (*values, severity, evidence.strip(), timestamp, timestamp),
+            (
+                *values,
+                severity,
+                evidence.strip(),
+                trigger_context.strip(),
+                wrong_interpretation.strip(),
+                (correct_interpretation or correction).strip(),
+                source.strip() or "user-confirmed",
+                json.dumps(edit, ensure_ascii=False, sort_keys=True),
+                expires_at,
+                timestamp,
+                timestamp,
+            ),
         )
         correction_id = int(cursor.lastrowid)
         deduplicated = False
@@ -850,11 +969,22 @@ def add_correction(
         connection,
         "corrections_fts",
         correction_id,
-        f"{scope} {trigger_text} {correction} {evidence}",
+        " ".join(
+            (
+                scope,
+                trigger_text,
+                trigger_context,
+                wrong_interpretation,
+                correct_interpretation or correction,
+                correction,
+                evidence,
+                source,
+            )
+        ),
     )
     connection.commit()
     row = connection.execute("SELECT * FROM corrections WHERE id = ?", (correction_id,)).fetchone()
-    result = row_to_dict(row)
+    result = decorate_correction(row_to_dict(row))
     result["deduplicated"] = deduplicated
     return result
 
@@ -871,8 +1001,8 @@ def search_corrections(
     if not query_tokens:
         return []
     candidate_ids = fts_candidate_ids(connection, "corrections_fts", query)
-    sql = "SELECT * FROM corrections WHERE status = 'active'"
-    params: list[Any] = []
+    sql = "SELECT * FROM corrections WHERE status = 'active' AND (expires_at = '' OR expires_at > ?)"
+    params: list[Any] = [now_iso()]
     if scope:
         sql += " AND scope IN (?, 'global')"
         params.append(scope)
@@ -884,7 +1014,18 @@ def search_corrections(
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
-        haystack = f"{record['trigger_text']} {record['correction']} {record['evidence']}"
+        haystack = " ".join(
+            str(record.get(key, ""))
+            for key in (
+                "trigger_text",
+                "trigger_context",
+                "wrong_interpretation",
+                "correct_interpretation",
+                "correction",
+                "evidence",
+                "source",
+            )
+        )
         semantic_match = overlap_score(query_tokens, semantic_tokens(haystack))
         if not semantic_match:
             continue
@@ -896,8 +1037,7 @@ def search_corrections(
             + int(record["recurred_count"]) * 5
             + int(record["heeded_count"])
         )
-        record["score"] = score
-        ranked.append((score, str(record["updated_at"]), record))
+        ranked.append((score, str(record["updated_at"]), decorate_correction(record, score=score)))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
     results = [item[2] for item in ranked[: max(1, limit)]]
     if track_access:
@@ -936,7 +1076,7 @@ def record_correction_outcome(
         )
     connection.commit()
     row = connection.execute("SELECT * FROM corrections WHERE id = ?", (correction_id,)).fetchone()
-    return row_to_dict(row)
+    return decorate_correction(row_to_dict(row))
 
 
 def _extract_replacement(message: str) -> str:
@@ -954,6 +1094,13 @@ def suggest_correction(
     previous_behavior: str = "",
     replacement: str = "",
     severity: str = "medium",
+    trigger_context: str = "",
+    wrong_interpretation: str = "",
+    correct_interpretation: str = "",
+    edit_field: str = "",
+    edit_replacement: str = "",
+    source: str = "user-natural-language-correction",
+    retain_days: int | None = None,
 ) -> dict[str, Any]:
     if severity not in SEVERITY_VALUES:
         raise ValueError(f"severity must be one of {sorted(SEVERITY_VALUES)}")
@@ -976,13 +1123,25 @@ def suggest_correction(
         correction = ""
         trigger_text = message.strip()
         ready = False
+    structured_correct = (correct_interpretation or correction).strip()
+    edit: dict[str, Any] = {}
+    if edit_field.strip() and (edit_replacement.strip() or structured_correct):
+        edit = {
+            "field": edit_field.strip(),
+            "replacement": edit_replacement.strip() or structured_correct,
+        }
+    elif structured_correct and wrong_interpretation.strip():
+        edit = {"field": "goal", "replacement": structured_correct}
+    expires_at = _expires_at("standard", retain_days)
     timestamp = now_iso()
     cursor = connection.execute(
         """
         INSERT INTO pending_corrections(
             scope, trigger_text, correction, severity, evidence, source_message,
-            previous_behavior, ready_for_confirmation, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 'pending', ?, ?)
+            previous_behavior, ready_for_confirmation, status, created_at, updated_at,
+            trigger_context, wrong_interpretation, correct_interpretation, source,
+            edit_json, expires_at
+        ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             scope.strip(),
@@ -994,6 +1153,12 @@ def suggest_correction(
             int(ready),
             timestamp,
             timestamp,
+            trigger_context.strip() or trigger_text,
+            wrong_interpretation.strip() or previous_behavior.strip(),
+            structured_correct,
+            source.strip() or "user-natural-language-correction",
+            json.dumps(edit, ensure_ascii=False, sort_keys=True),
+            expires_at,
         ),
     )
     connection.commit()
@@ -1025,6 +1190,23 @@ def confirm_pending_correction(connection: sqlite3.Connection, pending_id: int) 
         correction=str(pending["correction"]),
         severity=str(pending["severity"]),
         evidence=f"Confirmed from: {pending['source_message']}",
+        trigger_context=str(pending["trigger_context"]),
+        wrong_interpretation=str(pending["wrong_interpretation"]),
+        correct_interpretation=str(pending["correct_interpretation"]),
+        source="user-confirmed-natural-language-correction",
+        edit=json.loads(str(pending["edit_json"] or "{}")),
+        retain_days=(
+            max(
+                1,
+                (
+                    parse_iso(str(pending["expires_at"]))
+                    - datetime.now(timezone.utc)
+                ).days
+                + 1,
+            )
+            if str(pending["expires_at"] or "")
+            else None
+        ),
     )
     connection.execute(
         "UPDATE pending_corrections SET status = 'confirmed', updated_at = ? WHERE id = ?",
@@ -1032,6 +1214,102 @@ def confirm_pending_correction(connection: sqlite3.Connection, pending_id: int) 
     )
     connection.commit()
     return {"pending_id": pending_id, "status": "confirmed", "correction": correction}
+
+
+def verify_execution_outcome(
+    connection: sqlite3.Connection,
+    *,
+    scope: str,
+    utterance: str,
+    expected_goal: str,
+    expected_operation: str,
+    expected_skill: str,
+    actual_goal: str,
+    actual_operation: str,
+    actual_skill: str,
+    success: bool,
+    user_confirmed_correction: bool = False,
+    correction_ids: list[int] | None = None,
+    retain_days: int | None = None,
+) -> dict[str, Any]:
+    """Compare the plan with the observed result and optionally persist a confirmed correction."""
+    if not scope.strip() or not utterance.strip():
+        raise ValueError("scope and utterance are required")
+    comparisons = (
+        ("goal", expected_goal, actual_goal),
+        ("operation", expected_operation, actual_operation),
+        ("skill", expected_skill, actual_skill),
+    )
+    mismatches = [
+        {"field": field, "expected": expected, "actual": actual}
+        for field, expected, actual in comparisons
+        if str(expected).strip().casefold() != str(actual).strip().casefold()
+    ]
+    matched = bool(success and not mismatches)
+    written_correction = None
+    if user_confirmed_correction and mismatches:
+        edit_mismatch = next(
+            (item for item in mismatches if item["field"] == "operation"),
+            mismatches[0],
+        )
+        written_correction = add_correction(
+            connection,
+            scope=scope,
+            trigger_text=utterance,
+            trigger_context=utterance,
+            wrong_interpretation=expected_goal or expected_operation,
+            correct_interpretation=actual_goal or actual_operation,
+            correction=actual_goal or actual_operation,
+            source="user-confirmed-execution-verification",
+            evidence="Confirmed after comparing the compiled plan with the observed result",
+            edit={
+                "field": edit_mismatch["field"],
+                "replacement": edit_mismatch["actual"],
+            },
+            retain_days=retain_days,
+        )
+    for correction_id in correction_ids or []:
+        record_correction_outcome(
+            connection,
+            correction_id=int(correction_id),
+            outcome="heeded" if matched else "recurred",
+            context="execution verification",
+        )
+    timestamp = now_iso()
+    cursor = connection.execute(
+        """
+        INSERT INTO execution_outcomes(
+            scope, utterance, expected_goal, expected_operation, expected_skill,
+            actual_goal, actual_operation, actual_skill, success, matched,
+            mismatch_json, correction_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            scope.strip(),
+            utterance.strip(),
+            expected_goal.strip(),
+            expected_operation.strip(),
+            expected_skill.strip(),
+            actual_goal.strip(),
+            actual_operation.strip(),
+            actual_skill.strip(),
+            int(success),
+            int(matched),
+            json.dumps(mismatches, ensure_ascii=False),
+            written_correction["id"] if written_correction else None,
+            timestamp,
+        ),
+    )
+    connection.commit()
+    return {
+        "outcome_id": int(cursor.lastrowid),
+        "matched": matched,
+        "success": bool(success),
+        "mismatches": mismatches,
+        "written_correction": written_correction,
+        "write_required_user_confirmation": True,
+        "local_only": True,
+    }
 
 
 def reject_pending_correction(connection: sqlite3.Connection, pending_id: int) -> dict[str, Any]:
@@ -1127,6 +1405,7 @@ def export_store(connection: sqlite3.Connection) -> dict[str, Any]:
         "corrections",
         "correction_events",
         "pending_corrections",
+        "execution_outcomes",
         "intent_checks",
         "schema_migrations",
     )
@@ -1152,6 +1431,7 @@ def purge_store(connection: sqlite3.Connection, *, scope: str | None = None) -> 
             connection.execute("DELETE FROM memory_events WHERE memory_id = ?", (memory_id,))
         for correction_id in correction_ids:
             connection.execute("DELETE FROM correction_events WHERE correction_id = ?", (correction_id,))
+        connection.execute("DELETE FROM execution_outcomes WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM memories WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM corrections WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM pending_corrections WHERE scope = ?", (scope,))
@@ -1163,6 +1443,7 @@ def purge_store(connection: sqlite3.Connection, *, scope: str | None = None) -> 
             "memory_events",
             "correction_events",
             "pending_corrections",
+            "execution_outcomes",
             "intent_checks",
             "memories",
             "corrections",

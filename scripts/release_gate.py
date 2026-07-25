@@ -122,6 +122,38 @@ def installed_wheel_steps(
                 [python, "-c", "from intent_translator_mcp.server import mcp; assert mcp"],
                 env=env,
             ),
+            run_step(
+                "wheel-intentbench-v1",
+                [
+                    python,
+                    "-m",
+                    "intent_translator_mcp.intentbench",
+                    "--system",
+                    "compiler",
+                    "--fail-on-dangerous-miss",
+                    "--minimum-field-accuracy",
+                    "1.0",
+                ],
+                cwd=root,
+                env=env,
+            ),
+            run_step(
+                "wheel-intentbench-v2",
+                [
+                    python,
+                    "-m",
+                    "intent_translator_mcp.intentbench",
+                    "--benchmark",
+                    "intentbench-v2",
+                    "--system",
+                    "compiler",
+                    "--fail-on-dangerous-miss",
+                    "--minimum-field-accuracy",
+                    "1.0",
+                ],
+                cwd=root,
+                env=env,
+            ),
         ]
     )
     return steps
@@ -146,10 +178,45 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
         steps.append(run_step("full-tests", [python, "-m", "unittest", "discover", "-s", "tests", "-v"]))
     steps.extend(
         [
+            run_step(
+                "intentbench-v1",
+                [
+                    python,
+                    "-m",
+                    "intent_translator_mcp.intentbench",
+                    "--system",
+                    "compiler",
+                    "--fail-on-dangerous-miss",
+                    "--minimum-field-accuracy",
+                    "1.0",
+                ],
+            ),
+            run_step(
+                "intentbench-v2",
+                [
+                    python,
+                    "-m",
+                    "intent_translator_mcp.intentbench",
+                    "--benchmark",
+                    "intentbench-v2",
+                    "--system",
+                    "compiler",
+                    "--fail-on-dangerous-miss",
+                    "--minimum-field-accuracy",
+                    "1.0",
+                ],
+            ),
             run_step("stranger-smoke", [python, "scripts/stranger_smoke.py"]),
             run_step("release-audit", [python, "scripts/release_audit.py", "--repo", str(REPO_ROOT)]),
         ]
     )
+    if mode != "quick":
+        steps.append(
+            run_step(
+                "codex-operator-host-trace",
+                [python, "scripts/codex_host_trace_smoke.py", "--python", python],
+            )
+        )
 
     package_report: dict[str, Any] | None = None
     if mode == "full" and all(step["passed"] for step in steps):

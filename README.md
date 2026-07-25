@@ -59,7 +59,7 @@ Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the curre
 
 ## Status
 
-Local Alpha candidate, version `0.7.0a3`. GitHub Alpha evidence is still blocked on the documented stranger-user trial and first green GitHub-hosted CI. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+P1 Alpha, version `0.7.1a1`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 
@@ -307,6 +307,10 @@ python skills/intent-translator/scripts/evaluate_predictions.py --cases evals/ca
 # Compare a naive baseline with the deterministic compiler
 intent-translator-eval --cases evals/cases.jsonl --output work/ab-report.json
 
+# Run the public synthetic conformance benchmark
+intent-translator-bench --system compiler --output work/intentbench-v1-compiler.json --fail-on-dangerous-miss --minimum-field-accuracy 1.0
+intent-translator-bench --system keyword --output work/intentbench-v1-keyword.json
+
 # Compare no-model, helpful-model, and adversarial-model fixtures
 intent-translator-semantic-eval --cases evals/semantic_cases.jsonl
 
@@ -328,13 +332,22 @@ intent-translator-study pointer-sync
 python -m unittest discover -s tests -v
 python -m compileall -q skills src tests scripts
 python scripts/release_gate.py --mode quick
+python scripts/release_gate.py --mode full
 ```
 
-The GitHub Actions matrix is configured for Windows, macOS, and Linux with Python 3.10 and 3.12, but remains remotely unproven until its first GitHub-hosted run passes.
+The published Alpha line has passed GitHub-hosted Windows, macOS, and Linux jobs with Python 3.10 and 3.12 plus the independent Studio browser smoke. Each later release commit must earn its own remote evidence.
 
-### Current deterministic A/B
+### Current deterministic evidence
 
-On the isolated 24-case regression set, the naive baseline scores 63.2% across routing fields and misses 7 required confirmations. The compiler scores 96.5% and misses 0 required confirmations, with about 20.2 ms mean local latency on the development machine. This is a regression result, not a claim of general real-user understanding; live-model and out-of-distribution evaluation remain required before a stable release.
+The legacy 24-case internal regression compares a deliberately naive baseline with the deterministic compiler. It remains useful for backward compatibility but is not the public evidence contract.
+
+[IntentBench v1](benchmarks/intentbench-v1/README.md) adds 32 public synthetic cases, 12 preregistered fields, exact missing-prediction penalties, constraint and dangerous-miss metrics, external prediction templates, and explicit anti-gaming rules. [IntentBench v2](benchmarks/intentbench-v2/README.md) expands the public development contract to 100 English, Chinese, and mixed-language cases across roles, safety boundaries, ambiguous actions, and third-party Skills. The repaired compiler passes both public development sets with zero dangerous misses.
+
+The compiler's 100% conformance score is not an independent accuracy claim: the gold labels were visible and earlier runs were used to repair defects. `intent-translator-challenge` prepares evaluator-held bundles without public gold, while `intent-translator-same-model-eval` prepares and scores a paired with-Skill/without-Skill run only when model, tool, prompt, and profile conditions match. These are protocols, not independent results, until an outside evaluator runs them.
+
+Compile and gateway responses include a bounded invocation receipt. `scripts/codex_host_trace_smoke.py` links one operator-driven Codex machine preflight to an actual local tool result and execution verification. Its claim is deliberately narrow: it does not prove that Codex, Claude, Cursor, or another host automatically invokes the preflight on every turn. Execution mismatches can be exported hash-only with `intent-translator-feedback`; consented trial metrics can be initialized, recorded, summarized, and deleted with `intent-translator-trial`. Neither tool stores raw utterances by default or promotes failures into benchmarks without human review.
+
+Ambiguous integration requests use a project-scoped interpretation gate. A confirmed correction can apply within that project without leaking elsewhere, and `1`, `first`, or a button option ID resolve against the same pending choice. Recipient adaptation can produce a plain-language, investor, or engineering local preview, but audience labels never authorize sending files or disclosing source, diagnostics, memory, profiles, or secrets.
 
 ## Privacy And Safety
 
@@ -348,15 +361,16 @@ On the isolated 24-case regression set, the naive baseline scores 63.2% across r
 ## Public Alpha Limits
 
 - The deterministic regression set is small and intentionally cannot prove general understanding.
+- IntentBench v1 and v2 are public synthetic development data, not hidden test sets or real-user evidence.
+- Blinded challenge and same-model A/B tooling is prepared, but no independent result is claimed by this release.
 - New languages, dialects, professions, and third-party Skills need out-of-distribution evaluation.
-- Host auto-invocation behavior varies; installing the MCP server does not guarantee every host will call it on every message.
+- Host auto-invocation behavior varies; an invocation receipt proves the compiler observed a call, not that the host enforced it on every message.
 - No model is bundled. Real semantic quality depends on the configured adapter and still needs held-out live-model evaluation.
-- Public read-only network searches may still request confirmation because the current risk model conservatively groups some network reads with external actions.
-- Browser-test requests phrased indirectly, such as "use Playwright to test it," may need to be restated as an explicit local test command for reliable routing.
-- Adaptive-autonomy restore metadata is experimental. It never grants execution authority, and a cautious mode must be restored only after a user-facing confirmation.
+- The local hard-boundary policy is not a replacement for the host or platform safety system.
+- A selected or installed Skill is not proof that the host exposed or successfully activated it.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
-See [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), [docs/value-p0.md](docs/value-p0.md), [docs/design-sources.md](docs/design-sources.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the release gate, stranger-user protocol, product-value evidence, licensed design sources, host support, and high-star comparison.
+See [docs/contribution-boundary.md](docs/contribution-boundary.md), [docs/threat-model.md](docs/threat-model.md), [SECURITY.md](SECURITY.md), [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), [docs/value-p0.md](docs/value-p0.md), [docs/design-sources.md](docs/design-sources.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the contribution boundary, threat model, reporting policy, release evidence, trial protocol, and prior-art comparison.
 
 ## Repository Layout
 

@@ -219,6 +219,10 @@ def _observations_path(profile_path: Path) -> Path:
     return Path(profile_path).expanduser().parent / "language-observations.json"
 
 
+def _empty_observations() -> dict[str, Any]:
+    return {"schema_version": 1, "observations": {}}
+
+
 def _validated_rule(phrase: str, corrected_meaning: str, scope: str) -> tuple[str, str, str]:
     phrase = " ".join(phrase.split())
     corrected_meaning = " ".join(corrected_meaning.split())
@@ -239,22 +243,37 @@ def observe_language_correction(
     phrase, corrected_meaning, scope = _validated_rule(phrase, corrected_meaning, scope)
     path = _observations_path(profile_path)
     key = hashlib.sha256(f"{scope}\0{phrase}\0{corrected_meaning}".encode("utf-8")).hexdigest()
-    with locked_json_document(
-        path, lambda: {"schema_version": 1, "observations": {}}
-    ) as data:
+    timestamp = now_iso()
+    with locked_json_document(path, _empty_observations) as data:
         item = data["observations"].setdefault(
             key,
-            {"fingerprint": key, "scope": scope, "count": 0},
+            {
+                "fingerprint": key,
+                "scope": scope,
+                "phrase_hash": hashlib.sha256(phrase.encode("utf-8")).hexdigest(),
+                "meaning_hash": hashlib.sha256(corrected_meaning.encode("utf-8")).hexdigest(),
+                "count": 0,
+                "first_seen_at": timestamp,
+                "status": "observed",
+            },
         )
         item["count"] = int(item.get("count", 0)) + 1
-        item["updated_at"] = now_iso()
+        item["phrase_hash"] = hashlib.sha256(phrase.encode("utf-8")).hexdigest()
+        item["meaning_hash"] = hashlib.sha256(corrected_meaning.encode("utf-8")).hexdigest()
+        item["updated_at"] = timestamp
+        if item["count"] >= 2 and item.get("status") == "observed":
+            item["status"] = "suggested"
     return {
+        "fingerprint": key,
+        "scope": scope,
+        "phrase": phrase,
         "corrected_understanding": corrected_meaning,
         "applied_to_current_turn": True,
         "observation_count": item["count"],
         "promotion_suggested": item["count"] >= 2,
         "promotion_requires_confirmation": True,
         "raw_observation_stored": False,
+        "local_only": True,
     }
 
 
@@ -269,20 +288,87 @@ def confirm_language_rule(
             "scope": scope,
             "match_mode": "exact",
             "confidence": "confirmed",
+            "source": "confirmed-language-learning",
             "updated_at": now_iso(),
         }
-    return profile["phrase_mappings"][phrase]
+    observation_path = _observations_path(profile_path)
+    fingerprint = hashlib.sha256(f"{scope}\0{phrase}\0{corrected_meaning}".encode("utf-8")).hexdigest()
+    if observation_path.exists():
+        with locked_json_document(observation_path, _empty_observations) as data:
+            item = data.get("observations", {}).get(fingerprint)
+            if item:
+                item["status"] = "promoted"
+                item["promoted_at"] = now_iso()
+    return {"phrase": phrase, **profile["phrase_mappings"][phrase]}
+
+
+def language_learning_suggestions(
+    profile_path: Path,
+    *,
+    phrase: str = "",
+    corrected_meaning: str = "",
+    scope: str = "global",
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    path = _observations_path(profile_path)
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return []
+    normalized_phrase = " ".join(phrase.split()).casefold()
+    normalized_meaning = " ".join(corrected_meaning.split())
+    phrase_hash = hashlib.sha256(normalized_phrase.encode("utf-8")).hexdigest() if normalized_phrase else ""
+    meaning_hash = hashlib.sha256(normalized_meaning.encode("utf-8")).hexdigest() if normalized_meaning else ""
+    allowed_scopes = {scope, "global"}
+    suggestions: list[dict[str, Any]] = []
+    for item in data.get("observations", {}).values():
+        item_scope = str(item.get("scope", "global"))
+        count = int(item.get("count", 0))
+        if item_scope not in allowed_scopes:
+            continue
+        if item.get("status") == "promoted" or count < 2:
+            continue
+        if phrase_hash and item.get("phrase_hash") != phrase_hash:
+            continue
+        if meaning_hash and item.get("meaning_hash") != meaning_hash:
+            continue
+        suggestion = {
+            "fingerprint": item.get("fingerprint", ""),
+            "scope": item_scope,
+            "observation_count": count,
+            "status": "suggested",
+            "promotion_requires_confirmation": True,
+            "local_only": True,
+            "updated_at": item.get("updated_at", ""),
+        }
+        if normalized_meaning:
+            suggestion["suggested_meaning"] = normalized_meaning
+        suggestions.append(suggestion)
+    suggestions.sort(key=lambda row: (int(row["observation_count"]), str(row["updated_at"])), reverse=True)
+    return suggestions[: max(1, limit)]
 
 
 def interpretation_gate(
-    *, primary: str, alternatives: list[str], recommended: int = 0
+    *, primary: str, alternatives: list[str], recommended: int = 0, scope: str = "global"
 ) -> dict[str, Any]:
     candidates = [item.strip() for item in [primary, *alternatives] if item and item.strip()]
-    candidates = list(dict.fromkeys(candidates))
+    candidates = list(dict.fromkeys(candidates))[:3]
     if len(candidates) < 2:
         return {"required": False, "candidates": [], "controls": []}
     recommended = max(0, min(recommended, len(candidates) - 1))
+    gate_id = "gate-" + hashlib.sha256(
+        json.dumps(
+            {"scope": scope, "candidates": candidates},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()[:20]
     return {
+        "id": gate_id,
+        "scope": scope,
         "required": True,
         "primary_understanding": candidates[0],
         "candidates": [

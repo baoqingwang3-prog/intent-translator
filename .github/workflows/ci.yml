@@ -24,6 +24,10 @@ jobs:
         run: python -m pip install .
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: IntentBench v1 conformance
+        run: python -m intent_translator_mcp.intentbench --system compiler --fail-on-dangerous-miss --minimum-field-accuracy 1.0
+      - name: IntentBench v2 conformance
+        run: python -m intent_translator_mcp.intentbench --benchmark intentbench-v2 --system compiler --fail-on-dangerous-miss --minimum-field-accuracy 1.0
       - name: Stranger-user smoke
         run: python scripts/stranger_smoke.py
       - name: Privacy and release audit

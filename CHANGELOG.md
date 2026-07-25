@@ -4,6 +4,26 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.1a1] - 2026-07-26
+
+### Added
+
+- IntentBench v1 with packaged public synthetic cases, external prediction scoring, exact missing-prediction penalties, confidence intervals, and dangerous-miss reporting.
+- IntentBench v2 with 100 public synthetic bilingual and mixed-language development cases, third-party Skill coverage, dangerous-miss gates, and blinded private-challenge tooling.
+- A same-model paired A/B protocol that rejects model, tool, prompt, profile, or gold-label mismatches before scoring.
+- Bounded invocation receipts, operator-driven Codex execution-trace evidence, privacy-preserving feedback export, and consented trial-record tooling with deletion support.
+- Project-scoped interpretation-gate continuity and a typed recipient-adaptation contract for local previews.
+- A falsifiable contribution and prior-art boundary, domain glossary, public threat model, and private vulnerability reporting policy.
+- Release and GitHub CI gates that run IntentBench, including a clean installed-wheel benchmark check.
+
+### Changed
+
+- Action ownership now handles English update/testing language, prompt conversion, Skill creation with validation, and private file transfer without noun-based route hijacking.
+- Negated file/profile transfer and no-change constraints are removed from the requested action while remaining visible as prohibitions.
+- Ambiguous integration wording abstains outside a confirmed project correction; numbered, textual, and button option selections resolve against the same pending gate.
+- Audience and relationship context can change a preview's terminology and sections but never expands disclosure or external-send authorization.
+- Compile and tool-gateway responses distinguish observed preflight from host-enforced execution; automatic interception remains explicitly unverified.
+
 ## [0.7.0a3] - 2026-07-25
 
 ### Added

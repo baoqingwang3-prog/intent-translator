@@ -1,19 +1,17 @@
 # Security Policy
 
-## Reporting
-
-Do not open a public issue containing a credential, private memory database, personal profile, or exploit payload with sensitive data. Report security problems privately to the repository owner through GitHub's private vulnerability reporting when enabled.
-
-## Data Boundary
-
-The default memory and profile paths are local and excluded from version control. This repository must not contain real user profiles, memory databases, tokens, private keys, authentication codes, payment data, or private machine paths.
-
-The privacy scanner is a pattern-based guard, not a complete data-loss-prevention system. Review context before external transmission, especially when it contains health, financial, identity, employment, legal, or confidential business information.
-
-The project collects no telemetry. `intent-translator-doctor` hides exact home-directory paths unless `--show-paths` is supplied. Diagnostic output can still reveal host names, installed components, and error types, so review it before posting publicly.
-
-Before a release, scan the current tree, staged diff, and reachable Git history. A clean pattern scan reduces risk but does not prove that all sensitive information has been removed.
-
 ## Supported Versions
 
-Until the first stable release, only the latest commit on the default branch receives security fixes.
+Security fixes are applied to the latest Alpha release and the current `main` branch. Older Alpha tags are immutable historical releases and may not receive backports.
+
+## Report A Vulnerability
+
+Use the repository's private [GitHub Security Advisory](https://github.com/baoqingwang3-prog/intent-translator/security/advisories/new) form. Do not open a public issue for a suspected secret leak, authorization bypass, private-data exposure, receipt replay, installer compromise, or cross-profile contamination.
+
+Include the affected version, operating system, host, minimal reproduction, expected control decision, actual decision receipt, and whether private data may have left the device. Redact credentials, exact home paths, private profile text, and identifying utterances.
+
+The maintainers will acknowledge a complete report, reproduce it where possible, classify the affected trust boundary from [docs/threat-model.md](docs/threat-model.md), and publish a remediation note after users have a reasonable opportunity to update.
+
+## Scope Limits
+
+This project cannot enforce safety when a host does not call the preflight or ignores its result. Vulnerabilities in downstream Agents, Skills, browsers, operating systems, and external services should also be reported to their respective maintainers.

@@ -2,6 +2,8 @@
 
 This project implements its own code and wording. The following open-source projects informed specific architectural choices.
 
+The exact project contribution and the mechanisms not claimed as original are separated in [contribution-boundary.md](contribution-boundary.md).
+
 | Project | License | Ideas studied |
 |---|---|---|
 | [TypeChat](https://github.com/microsoft/TypeChat) | MIT | Schema-first intent contracts, validation, and repair instead of free-text completion |

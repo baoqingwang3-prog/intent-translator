@@ -14,6 +14,10 @@ from intent_translator_mcp.ab_eval import read_jsonl, run  # noqa: E402
 from intent_translator_mcp.config import HOSTS, default_skill_dir, generate_config  # noqa: E402
 from intent_translator_mcp.core import IntentCompiler, _load_skill_script  # noqa: E402
 from intent_translator_mcp.models import CompileRequest  # noqa: E402
+from intent_translator_mcp.onboarding import (  # noqa: E402
+    confirm_language_rule,
+    observe_language_correction,
+)
 from intent_translator_mcp.student_state import (  # noqa: E402
     connect as connect_state,
     set_focus,
@@ -222,6 +226,104 @@ class McpCoreTests(unittest.TestCase):
             )
             self.assertIsNone(result["phrase_match"])
             self.assertNotEqual(result["normalized_goal"], "只同意上一条已经明确提出的下一步")
+
+    def test_repeated_local_language_learning_surfaces_review_before_promotion(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+            os.environ,
+            {
+                "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
+                "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+            },
+        ):
+            profile_path = Path(temp) / "profile.json"
+            observe_language_correction(
+                profile_path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+            )
+            observe_language_correction(
+                profile_path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+            )
+
+            proposed = IntentCompiler(registry=REGISTRY).compile(
+                CompileRequest(utterance="ship it", semantic_mode="off")
+            )
+
+            self.assertEqual(proposed["personal_semantics"]["status"], "suggested")
+            self.assertTrue(proposed["clarification_required"])
+            self.assertEqual(proposed["path"], "review")
+            self.assertNotEqual(
+                proposed["normalized_goal"],
+                "run local validation only; do not publish",
+            )
+            self.assertNotIn(
+                "run local validation only; do not publish",
+                json.dumps(proposed["personal_semantics"]),
+            )
+
+            confirm_language_rule(
+                profile_path,
+                phrase="ship it",
+                corrected_meaning="run local validation only; do not publish",
+            )
+            confirmed = IntentCompiler(registry=REGISTRY).compile(
+                CompileRequest(utterance="ship it", semantic_mode="off")
+            )
+
+            self.assertEqual(
+                confirmed["normalized_goal"],
+                "run local validation only; do not publish",
+            )
+            self.assertEqual(confirmed["phrase_match"]["source"], "confirmed-language-learning")
+            self.assertEqual(confirmed["personal_semantics"]["status"], "none")
+
+    def test_language_learning_observations_are_profile_path_isolated(self):
+        with tempfile.TemporaryDirectory() as user_a, tempfile.TemporaryDirectory() as user_b:
+            profile_a = Path(user_a) / "profile.json"
+            profile_b = Path(user_b) / "profile.json"
+            for _ in range(2):
+                observe_language_correction(
+                    profile_a,
+                    phrase="ship it",
+                    corrected_meaning="run tests only",
+                )
+                observe_language_correction(
+                    profile_b,
+                    phrase="ship it",
+                    corrected_meaning="prepare release notes only",
+                )
+
+            with patch.dict(
+                os.environ,
+                {
+                    "INTENT_TRANSLATOR_PROFILE": str(profile_a),
+                    "INTENT_TRANSLATOR_MEMORY_DB": str(Path(user_a) / "memory.db"),
+                },
+            ):
+                result_a = IntentCompiler(registry=REGISTRY).compile(
+                    CompileRequest(utterance="ship it", semantic_mode="off")
+                )
+            with patch.dict(
+                os.environ,
+                {
+                    "INTENT_TRANSLATOR_PROFILE": str(profile_b),
+                    "INTENT_TRANSLATOR_MEMORY_DB": str(Path(user_b) / "memory.db"),
+                },
+            ):
+                result_b = IntentCompiler(registry=REGISTRY).compile(
+                    CompileRequest(utterance="ship it", semantic_mode="off")
+                )
+
+            self.assertEqual(result_a["personal_semantics"]["status"], "suggested")
+            self.assertEqual(result_b["personal_semantics"]["status"], "suggested")
+            self.assertNotEqual(
+                result_a["personal_semantics"]["suggestions"][0]["fingerprint"],
+                result_b["personal_semantics"]["suggestions"][0]["fingerprint"],
+            )
+            self.assertNotIn("run tests only", json.dumps(result_a["personal_semantics"]))
+            self.assertNotIn("prepare release notes only", json.dumps(result_b["personal_semantics"]))
 
     def test_external_publication_requires_confirmation(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(

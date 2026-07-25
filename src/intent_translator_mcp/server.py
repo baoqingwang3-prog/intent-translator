@@ -24,6 +24,9 @@ from .models import (
     CompileRequest,
     CorrectionRequest,
     CorrectionSuggestionRequest,
+    ExecutionVerificationRequest,
+    LanguageRuleConfirmRequest,
+    LanguageRuleObservationRequest,
     MemoryDefenseRequest,
     OnboardingApplyRequest,
     OnboardingStatusRequest,
@@ -35,9 +38,12 @@ from .models import (
     StudyPointerRequest,
     StudentStateRequest,
 )
+from .invocation import build_invocation_receipt
 from .onboarding import (
     apply_onboarding,
+    confirm_language_rule,
     default_profile_path,
+    observe_language_correction,
     onboarding_status,
     onboarding_summary,
 )
@@ -113,6 +119,43 @@ def compiler() -> IntentCompiler:
 def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     routing = envelope.get("routing", {})
     runtime = envelope.get("runtime_status", {})
+    contract = dict(envelope.get("intent_contract", {}))
+    for key in ("prohibitions", "artifact", "pending_action", "alternatives", "source_map"):
+        if not contract.get(key):
+            contract.pop(key, None)
+    if not contract.get("communication", {}).get("active"):
+        contract.pop("communication", None)
+
+    risk_source = envelope.get("risk", {})
+    risk = {
+        key: risk_source.get(key)
+        for key in (
+            "impact",
+            "reversible",
+            "external",
+            "sensitive",
+            "high_stakes",
+            "system_change",
+            "ambiguous_action",
+            "unknown_executable",
+            "blocked",
+            "confirmation_required",
+            "receipt_verified",
+            "reasons",
+        )
+        if key in risk_source
+    }
+    for key in ("confirmation_challenge", "semantic_confirmation_challenge"):
+        if risk_source.get(key):
+            risk[key] = risk_source[key]
+    if risk_source.get("receipt_status", {}).get("reason") not in {None, "not required"}:
+        risk["receipt_status"] = risk_source["receipt_status"]
+    if risk_source.get("semantic_authorization", {}).get("required"):
+        risk["semantic_authorization"] = risk_source["semantic_authorization"]
+    local_policy = risk_source.get("local_policy", {})
+    if local_policy.get("blocked") or local_policy.get("confirmation_required"):
+        risk["local_policy"] = local_policy
+
     compact = {
         key: envelope[key]
         for key in (
@@ -124,21 +167,23 @@ def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
             "clarification_required",
             "preserve_voice",
             "confidence",
-            "phrase_match",
             "short_confirmation_status",
-            "risk",
-            "constraints",
-            "semantic_fidelity",
-            "interpretation_gate",
-            "prompt_source_map",
-            "intent_contract",
             "current_status",
             "completion_contract",
-            "host_prompt",
             "decision_receipt",
+            "invocation_receipt",
         )
         if key in envelope
     }
+    compact["risk"] = risk
+    compact["intent_contract"] = contract
+    for key in ("phrase_match", "constraints", "gate_resolution", "prompt_source_map"):
+        if envelope.get(key):
+            compact[key] = envelope[key]
+    if envelope.get("interpretation_gate", {}).get("required"):
+        compact["interpretation_gate"] = envelope["interpretation_gate"]
+    if envelope.get("host_prompt"):
+        compact["host_prompt"] = envelope["host_prompt"]
     compact["routing"] = {
         "primary_skill": routing.get("primary_skill"),
         "selection_state": routing.get("selection_state"),
@@ -146,17 +191,30 @@ def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         "installed": routing.get("capability_facts", {}).get("installed", False),
         "acquisition_policy": routing.get("acquisition_policy", []),
     }
+    gateway = envelope.get("tool_gateway", {})
+    compact["tool_gateway"] = {
+        "decision": gateway.get("decision"),
+        "local_deterministic_authority": gateway.get("local_deterministic_authority", True),
+    }
+    if gateway.get("decision") != "allow":
+        compact["tool_gateway"]["reasons"] = gateway.get("reasons", [])
+        compact["tool_gateway"]["required_slots"] = gateway.get("required_slots", [])
     compact["semantic"] = {
         key: envelope.get("semantic", {}).get(key)
         for key in ("status", "provider", "proposal", "error")
         if envelope.get("semantic", {}).get(key) is not None
     }
+    fidelity = envelope.get("semantic_fidelity", {})
+    if fidelity.get("status") not in {None, "not-applied"}:
+        compact["semantic_fidelity"] = fidelity
     study = envelope.get("study_context", {})
     if study.get("enabled"):
         compact["study_context"] = study
         compact["state_status"] = envelope.get("state_status", {})
     if envelope.get("adaptive_autonomy", {}).get("mode") == "cautious":
         compact["adaptive_autonomy"] = envelope["adaptive_autonomy"]
+    if envelope.get("personal_semantics", {}).get("status") != "none":
+        compact["personal_semantics"] = envelope["personal_semantics"]
     compact["runtime_status"] = {
         "state": runtime.get("state"),
         "restart_required": runtime.get("restart_required", False),
@@ -179,6 +237,7 @@ def _compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
 def intent_compile(request: CompileRequest) -> dict[str, Any]:
     """Compile wording into an envelope, optionally using an explicitly configured semantic adapter."""
     envelope = compiler().compile(request)
+    envelope["invocation_receipt"] = build_invocation_receipt(request, envelope)
     return envelope if request.include_diagnostics else _compact_envelope(envelope)
 
 
@@ -326,6 +385,26 @@ def intent_confirm_correction(request: PendingCorrectionRequest) -> dict[str, An
 
 
 @mcp.tool(
+    title="Observe a language rule correction",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def intent_observe_language_rule(request: LanguageRuleObservationRequest) -> dict[str, Any]:
+    """Record a local-only repeated wording correction before suggesting profile promotion."""
+    return observe_language_correction(default_profile_path(), **request.model_dump())
+
+
+@mcp.tool(
+    title="Confirm a language rule",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def intent_confirm_language_rule(request: LanguageRuleConfirmRequest) -> dict[str, Any]:
+    """Promote a user-confirmed wording meaning into the local profile."""
+    return confirm_language_rule(default_profile_path(), **request.model_dump())
+
+
+@mcp.tool(
     title="Record correction outcome",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
     structured_output=True,
@@ -339,6 +418,59 @@ def intent_record_outcome(request: OutcomeRequest) -> dict[str, Any]:
         return memory.record_correction_outcome(connection, **request.model_dump())
     finally:
         connection.close()
+
+
+@mcp.tool(
+    title="Verify an execution outcome",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def intent_verify_execution(request: ExecutionVerificationRequest) -> dict[str, Any]:
+    """Compare the compiled plan with the observed result and write back only confirmed corrections."""
+    instance = compiler()
+    memory = _load_skill_script("memory_store")
+    connection = memory.connect(_memory_path(instance.profile))
+    try:
+        payload = request.model_dump()
+        invocation_receipt_id = payload.pop("invocation_receipt_id", "")
+        result = memory.verify_execution_outcome(connection, **payload)
+        result["execution_trace"] = {
+            "invocation_receipt_id": invocation_receipt_id or None,
+            "planned": {
+                "goal": request.expected_goal,
+                "operation": request.expected_operation,
+                "skill": request.expected_skill,
+            },
+            "actual": {
+                "goal": request.actual_goal,
+                "operation": request.actual_operation,
+                "skill": request.actual_skill,
+                "success": request.success,
+            },
+            "matched": result["matched"],
+            "host_enforcement_verified": False,
+        }
+        return result
+    finally:
+        connection.close()
+
+
+@mcp.tool(
+    title="Authorize a compiled tool action",
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True),
+    structured_output=True,
+)
+def intent_tool_gateway(request: CompileRequest) -> dict[str, Any]:
+    """Return the deterministic allow, deny, or human-review decision for one proposed action."""
+    envelope = compiler().compile(request)
+    invocation_receipt = build_invocation_receipt(request, envelope, tool="intent_tool_gateway")
+    return {
+        "tool_gateway": envelope["tool_gateway"],
+        "intent_contract": envelope["intent_contract"],
+        "runtime_status": envelope["runtime_status"],
+        "decision_receipt": envelope.get("decision_receipt"),
+        "invocation_receipt": invocation_receipt,
+    }
 
 
 @mcp.tool(

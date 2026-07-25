@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-translator-mcp"
-version = "0.7.0a3"
+version = "0.7.1a1"
 description = "Local-first intent compiler and routing MCP server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,6 +43,15 @@ intent-translator-study = "intent_translator_mcp.study_shadow:main"
 intent-translator-state = "intent_translator_mcp.student_state:main"
 intent-translator-studio = "intent_translator_mcp.studio:main"
 intent-translator-host = "intent_translator_mcp.host_registration:main"
+intent-translator-bench = "intent_translator_mcp.intentbench:main"
+intent-translator-challenge = "intent_translator_mcp.challenge:main"
+intent-translator-feedback = "intent_translator_mcp.feedback:main"
+intent-translator-trial = "intent_translator_mcp.trial:main"
+intent-translator-same-model-eval = "intent_translator_mcp.same_model_eval:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/intent_translator_mcp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"benchmarks/intentbench-v1" = "intent_translator_mcp/benchmarks/intentbench-v1"
+"benchmarks/intentbench-v2" = "intent_translator_mcp/benchmarks/intentbench-v2"

@@ -4,7 +4,7 @@ This matrix describes verified behavior, not merely whether an installer can cop
 
 | Host and platform | Skill workflow | Local MCP | Alpha status | Evidence and limits |
 |---|---|---|---|---|
-| Codex on Windows 10/11 | Supported | Supported after host restart | **Alpha-supported** | Local install, version handshake, Studio, doctor, adversarial regressions, rollback, and uninstall are verified. Remote CI pending. |
+| Codex on Windows 10/11 | Supported | Supported after host restart | **Alpha-supported** | Local install, version handshake, Studio, doctor, adversarial regressions, rollback, uninstall, and one operator-driven preflight-to-tool trace are verified. Automatic interception of every turn is not claimed. |
 | Codex on macOS/Linux | Supported | Configuration available | **Experimental** | Cross-platform scripts and CI are prepared; host-level MCP behavior remains remotely unverified. |
 | Claude Code | Supported | Configuration available | **Experimental** | Skill discovery and generated snippets are covered; lifecycle hooks and host invocation behavior are not yet accepted. |
 | Cursor | Supported | Configuration available | **Experimental** | Skill use is available; MCP invocation and restart behavior need host-specific trials. |
@@ -23,4 +23,4 @@ This matrix describes verified behavior, not merely whether an installer can cop
 
 Installing a new runtime does not replace an MCP process already held by a running host. After every MCP upgrade, restart or reload the host and verify that the compile receipt or Studio reports `active`, the expected actual runtime version, and no Skill/MCP version conflict. A `stale` state means host-level acceptance is incomplete.
 
-The first GitHub-hosted Windows/macOS/Linux matrix run remains required external evidence. Local preparation must not be described as a remote CI pass.
+The published Alpha line has passed the GitHub-hosted Windows/macOS/Linux matrix. A later local tree must not be described as remotely proven until the same checks pass for that exact commit.

@@ -22,7 +22,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
         matrix = (REPO_ROOT / "docs" / "support-matrix.md").read_text(encoding="utf-8")
         for label in ("Alpha-supported", "Experimental", "Skill-only", "MCP unverified"):
             self.assertIn(label, matrix)
-        self.assertIn("Remote CI pending", matrix)
+        self.assertIn("must not be described as remotely proven", matrix)
         self.assertIn("restart", matrix.casefold())
 
     def test_skill_listing_describes_the_full_control_layer(self):

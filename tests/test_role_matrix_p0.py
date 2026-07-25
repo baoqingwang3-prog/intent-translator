@@ -127,7 +127,7 @@ class RoleMatrixP0Tests(unittest.TestCase):
                     "把这个 private draft upload 到 GitHub Pages",
                 ),
                 "available_files": ["draft.md"],
-                "expected": ("answer", "transfer", "write_external", "private_file", None, True, False),
+                "expected": ("change", "transfer", "write_external", "private_file", None, True, False),
             },
             {
                 "role": "finance",

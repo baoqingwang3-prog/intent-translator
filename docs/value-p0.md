@@ -39,3 +39,5 @@ It is a deterministic regression gate, not a claim that every user or model will
 10. The public tree contains no creator-specific exam goals or private subject Skill defaults.
 
 The executable regressions live in `tests/test_value_p0.py` and `tests/test_role_matrix_p0.py`.
+
+The broader public conformance contract lives in [IntentBench v1](../benchmarks/intentbench-v1/README.md). Its gold labels are public and were used to repair the implementation, so its final score proves conformance to declared behavior rather than generalization to unfamiliar users. The contribution and prior-art boundary is documented in [contribution-boundary.md](contribution-boundary.md), and the controls are mapped to threats in [threat-model.md](threat-model.md).

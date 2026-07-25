@@ -100,6 +100,28 @@ class SourceMapEntry(BaseModel):
     obvious: bool | None = None
 
 
+class CommunicationContract(BaseModel):
+    active: bool = False
+    communication_purpose: Literal[
+        "none", "show-project", "request-feedback", "fundraising", "technical-review"
+    ] = "none"
+    relationship_context: Literal["unspecified", "personal", "professional"] = "unspecified"
+    recipient_expertise: Literal["unknown", "general", "investor", "engineer"] = "unknown"
+    desired_effect: Literal[
+        "unspecified", "understand", "evaluate", "invest", "contribute", "review"
+    ] = "unspecified"
+    recommended_artifact: Literal["none", "local-preview"] = "none"
+    channel: Literal["unspecified", "email", "chat", "public"] = "unspecified"
+    disclosure: Literal["local-only", "private-recipient", "public"] = "local-only"
+    template: Literal[
+        "none", "general-overview", "investor-overview", "engineering-overview"
+    ] = "none"
+    sections: list[str] = Field(default_factory=list)
+    excluded_disclosures: list[str] = Field(default_factory=list)
+    needs_purpose_question: bool = False
+    question: str = ""
+
+
 class TypedIntentContract(BaseModel):
     schema_version: int = 1
     original_utterance: str = Field(min_length=1)
@@ -120,6 +142,7 @@ class TypedIntentContract(BaseModel):
     required_slots: list[str] = Field(default_factory=list)
     risk: IntentRisk
     authorization: IntentAuthorization
+    communication: CommunicationContract = Field(default_factory=CommunicationContract)
     alternatives: list[str] = Field(default_factory=list)
     source_map: list[SourceMapEntry] = Field(default_factory=list)
 
@@ -127,6 +150,88 @@ class TypedIntentContract(BaseModel):
 _EMAIL = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
 _URL = re.compile(r"https?://[^\s]+", re.I)
 _FILE = re.compile(r"(?<![\w.-])(?:[A-Za-z]:[\\/][^\s,，]+|[^\s,，]+\.[A-Za-z0-9]{1,8})")
+
+
+def _communication_contract(text: str) -> CommunicationContract:
+    folded = text.casefold()
+    personal_terms = (
+        "女朋友", "男朋友", "伴侣", "朋友", "家人",
+        "girlfriend", "boyfriend", "partner", "friend", "family",
+    )
+    investor_terms = ("vc", "投资人", "天使投资", "investor", "venture capitalist")
+    engineer_terms = ("工程师", "开发者", "程序员", "engineer", "developer", "maintainer")
+    show_terms = ("看看", "看一下", "看的", "项目介绍", "给人看", "show", "preview", "overview")
+    feedback_terms = ("试用", "挑问题", "提意见", "反馈", "try it", "feedback", "review it")
+    active = any(term in folded for term in (*personal_terms, *investor_terms, *engineer_terms)) and any(
+        term in folded for term in (*show_terms, *feedback_terms, "发给", "给")
+    )
+    if not active:
+        return CommunicationContract()
+
+    relationship = (
+        "personal"
+        if any(term in folded for term in personal_terms)
+        else "professional"
+        if any(term in folded for term in (*investor_terms, *engineer_terms))
+        else "unspecified"
+    )
+    expertise = (
+        "investor"
+        if any(term in folded for term in investor_terms)
+        else "engineer"
+        if any(term in folded for term in engineer_terms)
+        else "unknown"
+    )
+    if expertise == "investor":
+        purpose, desired, template = "fundraising", "invest", "investor-overview"
+        sections = ["problem", "target-users", "differentiation", "evidence", "risks", "ask"]
+        excluded = ["source-code", "diagnostics", "profile", "private-memory", "internal-terms"]
+    elif expertise == "engineer":
+        purpose, desired, template = "technical-review", "contribute", "engineering-overview"
+        sections = ["architecture", "tests", "contribution-entry"]
+        excluded = ["profile", "private-memory", "secrets", "unrelated-diagnostics"]
+    elif any(term in folded for term in feedback_terms):
+        purpose, desired, template = "request-feedback", "evaluate", "general-overview"
+        sections = ["what-it-is", "problem", "one-example", "how-to-try", "feedback-request"]
+        excluded = ["source-code", "diagnostics", "profile", "private-memory", "internal-terms"]
+    else:
+        purpose, desired, template = "show-project", "understand", "general-overview"
+        sections = ["what-it-is", "problem", "one-example"]
+        excluded = ["source-code", "diagnostics", "profile", "private-memory", "internal-terms"]
+
+    channel = (
+        "email"
+        if any(term in folded for term in ("email", "邮箱", "邮件"))
+        else "chat"
+        if any(term in folded for term in ("微信", "whatsapp", "message", "私信"))
+        else "public"
+        if any(term in folded for term in ("公开", "public", "publish"))
+        and not any(term in folded for term in ("别公开", "不要公开", "do not publish", "not public"))
+        else "unspecified"
+    )
+    disclosure = (
+        "public"
+        if channel == "public"
+        else "private-recipient"
+        if channel != "unspecified"
+        else "local-only"
+    )
+    needs_question = purpose == "show-project" and relationship == "personal"
+    return CommunicationContract(
+        active=True,
+        communication_purpose=purpose,
+        relationship_context=relationship,
+        recipient_expertise=expertise,
+        desired_effect=desired,
+        recommended_artifact="local-preview",
+        channel=channel,
+        disclosure=disclosure,
+        template=template,
+        sections=sections,
+        excluded_disclosures=excluded,
+        needs_purpose_question=needs_question,
+        question="你是想让她看懂你做了什么，还是请她试用并挑问题？" if needs_question else "",
+    )
 
 
 def _destination(text: str, risk: dict[str, Any]) -> IntentDestination:
@@ -139,7 +244,7 @@ def _destination(text: str, risk: dict[str, Any]) -> IntentDestination:
         return IntentDestination(kind="external", value=email.group(0))
     if url:
         return IntentDestination(kind="external", value=url.group(0))
-    for marker in ("github", "gitlab", "origin", "remote", "互联网", "外部"):
+    for marker in ("github", "gitlab", "origin"):
         if marker in folded:
             return IntentDestination(kind="external", value=marker)
     if risk.get("effect") == "read_public":
@@ -168,6 +273,7 @@ def build_typed_contract(
     authorization_hint: str,
     alternatives: list[str],
     source_map: list[dict[str, Any]],
+    additional_required_slots: list[str] | None = None,
 ) -> TypedIntentContract:
     owner = ActionOwner(
         kind="skill" if primary_skill else "memory" if mode in {"remember", "recall"} else "host",
@@ -192,6 +298,7 @@ def build_typed_contract(
         required_slots.append("destination")
     if short_confirmation_missing:
         required_slots.append("pending_action")
+    required_slots.extend(additional_required_slots or [])
 
     grants: list[str] = []
     challenge = risk.get("confirmation_challenge", {})
@@ -239,6 +346,7 @@ def build_typed_contract(
         required_slots=sorted(set(required_slots)),
         risk=IntentRisk.model_validate(risk),
         authorization=authorization,
+        communication=_communication_contract(" ".join((utterance, pending_action, action_text))),
         alternatives=alternatives,
         source_map=[SourceMapEntry.model_validate(item) for item in source_map],
     )

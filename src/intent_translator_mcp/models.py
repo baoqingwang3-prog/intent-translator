@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+class InterpretationOption(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    text: str = Field(min_length=1, max_length=1000)
+    recommended: bool = False
+    intent: dict[str, Any] = Field(default_factory=dict)
+    source: dict[str, str | int | bool | None] = Field(default_factory=dict)
 
 
 class CompileRequest(BaseModel):
@@ -26,6 +34,8 @@ class CompileRequest(BaseModel):
     allow_external_semantic: bool = False
     allow_sensitive_semantic: bool = False
     include_diagnostics: bool = False
+    interpretation_gate_id: str = Field(default="", max_length=128)
+    interpretation_options: list[InterpretationOption] = Field(default_factory=list, max_length=5)
 
 
 class OnboardingStatusRequest(BaseModel):
@@ -66,6 +76,12 @@ class CorrectionRequest(BaseModel):
     scope: str = "global"
     severity: Literal["low", "medium", "high", "critical"] = "medium"
     evidence: str = ""
+    trigger_context: str = ""
+    wrong_interpretation: str = ""
+    correct_interpretation: str = ""
+    source: str = "user-confirmed"
+    edit: dict[str, str] = Field(default_factory=dict)
+    retain_days: int | None = Field(default=None, ge=1, le=3650)
 
 
 class CorrectionSuggestionRequest(BaseModel):
@@ -74,16 +90,51 @@ class CorrectionSuggestionRequest(BaseModel):
     previous_behavior: str = ""
     replacement: str = ""
     severity: Literal["low", "medium", "high", "critical"] = "medium"
+    trigger_context: str = ""
+    wrong_interpretation: str = ""
+    correct_interpretation: str = ""
+    edit_field: Literal["", "goal", "operation", "object", "constraint", "skill"] = ""
+    edit_replacement: str = ""
+    source: str = "user-natural-language-correction"
+    retain_days: int | None = Field(default=None, ge=1, le=3650)
 
 
 class PendingCorrectionRequest(BaseModel):
     pending_id: int = Field(ge=1)
 
 
+class LanguageRuleObservationRequest(BaseModel):
+    phrase: str = Field(min_length=1)
+    corrected_meaning: str = Field(min_length=1)
+    scope: str = "global"
+
+
+class LanguageRuleConfirmRequest(BaseModel):
+    phrase: str = Field(min_length=1)
+    corrected_meaning: str = Field(min_length=1)
+    scope: str = "global"
+
+
 class OutcomeRequest(BaseModel):
     correction_id: int = Field(ge=1)
     outcome: Literal["heeded", "recurred", "unknown"]
     context: str = ""
+
+
+class ExecutionVerificationRequest(BaseModel):
+    scope: str = "global"
+    utterance: str = Field(min_length=1)
+    expected_goal: str = ""
+    expected_operation: str = ""
+    expected_skill: str = ""
+    actual_goal: str = ""
+    actual_operation: str = ""
+    actual_skill: str = ""
+    success: bool
+    user_confirmed_correction: bool = False
+    correction_ids: list[int] = Field(default_factory=list)
+    retain_days: int | None = Field(default=None, ge=1, le=3650)
+    invocation_receipt_id: str = Field(default="", max_length=128)
 
 
 class ShadowObserveRequest(BaseModel):

@@ -12,8 +12,12 @@ from typing import Any
 from .host_paths import HOSTS, default_skill_dir
 
 
-def server_spec(command: str, skill_dir: str | None = None) -> dict[str, Any]:
-    env = {"PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+def server_spec(command: str, skill_dir: str | None = None, host: str = "unspecified") -> dict[str, Any]:
+    env = {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "INTENT_TRANSLATOR_HOST": host,
+    }
     if skill_dir:
         env["INTENT_TRANSLATOR_SKILL_DIR"] = skill_dir
     result: dict[str, Any] = {"command": command, "args": []}
@@ -25,7 +29,7 @@ def server_spec(command: str, skill_dir: str | None = None) -> dict[str, Any]:
 def generate_config(host: str, command: str, skill_dir: str | None = None) -> str:
     if host not in HOSTS:
         raise ValueError(f"unsupported host: {host}")
-    spec = server_spec(command, skill_dir)
+    spec = server_spec(command, skill_dir, host)
     if host == "codex":
         lines = [
             '[mcp_servers.intent-translator]',
@@ -37,6 +41,7 @@ def generate_config(host: str, command: str, skill_dir: str | None = None) -> st
                 '[mcp_servers.intent-translator.env]',
                 'PYTHONUTF8 = "1"',
                 'PYTHONIOENCODING = "utf-8"',
+                f'INTENT_TRANSLATOR_HOST = {json.dumps(host)}',
             ]
         )
         if skill_dir:

@@ -1,0 +1,20 @@
+{
+  "benchmark_id": "intentbench-v2",
+  "benchmark_version": "2.0.0",
+  "benchmark_schema_version": 1,
+  "case_count": 100,
+  "parent_benchmark": "intentbench-v1",
+  "parent_case_count": 32,
+  "cases_sha256": "03988dd54536f29236ed4cebd0219eacb9efe42e6f435c98ad24ddcf8dc44984",
+  "languages": {
+    "en": 56,
+    "zh-CN": 25,
+    "mixed": 19
+  },
+  "safety_critical_case_count": 29,
+  "evaluation_type": "public synthetic development conformance benchmark; not independent or real-user evidence",
+  "initial_compiler_field_accuracy": 0.8783,
+  "initial_dangerous_miss_count": 0,
+  "release_minimum_field_accuracy": 1.0,
+  "release_maximum_dangerous_misses": 0
+}
