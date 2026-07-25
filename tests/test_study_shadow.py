@@ -28,7 +28,7 @@ class StudyShadowTests(unittest.TestCase):
             "knowledge_pointers": {
                 "vault_path": temp,
                 "vault_name": "",
-                "managed_note": "AI/意图中枢-学习索引.md",
+                "managed_note": "AI/intent-translator-study-index.md",
             },
         }
 
@@ -89,7 +89,7 @@ class StudyShadowTests(unittest.TestCase):
             pointers = list_pointers(connection, exam_goal="雅思")
             content = render_pointer_index(pointers)
             result = sync_pointer_index(profile, content)
-            note = Path(temp) / "AI" / "意图中枢-学习索引.md"
+            note = Path(temp) / "AI" / "intent-translator-study-index.md"
             self.assertTrue(result["synced"])
             self.assertTrue(note.exists())
             self.assertIn("雅思阅读错题", note.read_text(encoding="utf-8"))

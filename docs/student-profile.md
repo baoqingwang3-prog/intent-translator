@@ -28,4 +28,4 @@ The host records a sample only after the user enables shadow evaluation and both
 
 ## Obsidian Pointers
 
-A pointer contains a local path, title, purpose, subject, goal, authority level, update time, and reuse count. Sync writes only the managed note configured by the user, normally `AI/意图中枢-学习索引.md`. It does not crawl the vault.
+A pointer contains a local path, title, purpose, subject, goal, authority level, update time, and reuse count. Sync writes only the managed note configured by the user, normally `AI/intent-translator-study-index.md`. It does not crawl the vault.

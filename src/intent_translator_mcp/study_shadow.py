@@ -329,7 +329,7 @@ def sync_pointer_index(
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> dict[str, Any]:
     settings = profile.get("knowledge_pointers", {})
-    note = str(settings.get("managed_note", "AI/意图中枢-学习索引.md")).replace("\\", "/").lstrip("/")
+    note = str(settings.get("managed_note", "AI/intent-translator-study-index.md")).replace("\\", "/").lstrip("/")
     vault_name = str(settings.get("vault_name", "")).strip()
     executable = shutil.which("obsidian")
     if executable and vault_name:

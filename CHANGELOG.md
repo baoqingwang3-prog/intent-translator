@@ -20,6 +20,7 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 - A newly initialized but uncustomized profile remains generic and no longer claims personal knowledge.
 - Confirmed phrase mappings no longer activate when the user's shorter utterance is only a fragment of the saved phrase.
+- Public student profile packs use generic managed-note names instead of names reused by the creator's local setup.
 
 ## [0.6.0] - 2026-07-25
 

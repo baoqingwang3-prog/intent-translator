@@ -110,13 +110,17 @@ class PersonalizationFirewallTests(unittest.TestCase):
             self.assertEqual(full["phrase_match"]["phrase"], "you can consider")
 
     def test_repository_contamination_metrics_are_zero(self):
-        private_term = "definitely-not-" + "present-private-handle"
-        report = audit_repository(REPO_ROOT, private_terms=[private_term])
+        private_terms = [
+            "definitely-not-" + "present-private-handle",
+            "大学生" + "状态.md",
+            "意图中枢-" + "学习索引.md",
+        ]
+        report = audit_repository(REPO_ROOT, private_terms=private_terms)
         self.assertEqual(report["creator_shadow_leakage"], 0)
         self.assertEqual(report["default_user_contamination_rate"], 0.0)
         self.assertEqual(report["findings"], [])
         self.assertGreater(report["tracked_text_files"], 20)
-        self.assertEqual(report["private_terms_checked"], 1)
+        self.assertEqual(report["private_terms_checked"], len(private_terms))
 
 
 if __name__ == "__main__":

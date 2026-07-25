@@ -15,7 +15,7 @@
     "student_state": {
       "enabled": true,
       "authority": "canonical-markdown",
-      "managed_note": "AI/大学生状态.md",
+      "managed_note": "AI/university-state.md",
       "local_path": "",
       "due_soon_days": 7,
       "context_item_limit": 8,
@@ -59,7 +59,7 @@
       "adapter": "obsidian",
       "vault_name": "",
       "vault_path": "",
-      "managed_note": "AI/意图中枢-学习索引.md",
+      "managed_note": "AI/intent-translator-study-index.md",
       "scan_vault": false,
       "sync_policy": "explicit-or-session-end"
     }
