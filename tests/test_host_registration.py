@@ -145,6 +145,24 @@ class HostRegistrationTests(unittest.TestCase):
         self.assertEqual(status["state"], "registered-pending-restart")
         self.assertTrue(status["matches_runtime"])
 
+    def test_matching_registration_accepts_canonical_skill_path_alias(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            command = self._runtime(home)
+            skill_dir = home / ".codex" / "skills" / "intent-translator"
+            aliased_skill_dir = skill_dir.parent / ".." / "skills" / "intent-translator"
+            with (
+                patch("intent_translator_mcp.host_registration.find_codex_cli", return_value=Path("codex")),
+                patch("intent_translator_mcp.host_registration._codex_is_running", return_value=False),
+                patch(
+                    "intent_translator_mcp.host_registration._run_codex",
+                    return_value=completed(stdout=self._registered(command, aliased_skill_dir)),
+                ),
+            ):
+                status = codex_registration_status(home=home, env={})
+        self.assertEqual(status["state"], "registered")
+        self.assertTrue(status["matches_runtime"])
+
     def test_active_runtime_state_is_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp)

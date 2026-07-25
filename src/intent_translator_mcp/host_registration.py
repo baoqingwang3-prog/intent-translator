@@ -166,13 +166,13 @@ def _path_equal(left: str | Path | None, right: str | Path | None) -> bool:
 def _matches_runtime(spec: Mapping[str, Any], runtime: Mapping[str, Any], skill_dir: Path) -> bool:
     transport = spec.get("transport") if isinstance(spec.get("transport"), Mapping) else {}
     registered_env = transport.get("env") if isinstance(transport.get("env"), Mapping) else {}
-    expected_env = {**REQUIRED_ENV, "INTENT_TRANSLATOR_SKILL_DIR": str(skill_dir)}
     return bool(
         spec.get("enabled", True)
         and transport.get("type") == "stdio"
         and _path_equal(transport.get("command"), runtime.get("command"))
         and list(transport.get("args") or []) == []
-        and all(str(registered_env.get(key, "")) == value for key, value in expected_env.items())
+        and all(str(registered_env.get(key, "")) == value for key, value in REQUIRED_ENV.items())
+        and _path_equal(registered_env.get("INTENT_TRANSLATOR_SKILL_DIR"), skill_dir)
     )
 
 
