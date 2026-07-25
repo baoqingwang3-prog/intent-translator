@@ -105,9 +105,32 @@ class PersonalizationFirewallTests(unittest.TestCase):
                 "scope": "global",
             }
             short = self.compile_with_profile(temp, profile, "consider")
-            full = self.compile_with_profile(temp, profile, "you can consider this approach")
+            exact = self.compile_with_profile(temp, profile, "you can consider")
+            longer = self.compile_with_profile(temp, profile, "you can consider this approach")
             self.assertIsNone(short["phrase_match"])
-            self.assertEqual(full["phrase_match"]["phrase"], "you can consider")
+            self.assertEqual(exact["phrase_match"]["phrase"], "you can consider")
+            self.assertIsNone(longer["phrase_match"])
+
+    def test_contains_phrase_matching_requires_explicit_opt_in(self):
+        with tempfile.TemporaryDirectory() as temp:
+            profile = default_profile()
+            profile["phrase_mappings"]["review sharply"] = {
+                "meaning": "challenge the plan before implementation",
+                "scope": "global",
+                "match_mode": "contains",
+            }
+            result = self.compile_with_profile(temp, profile, "Please review sharply before changing files")
+            self.assertEqual(result["phrase_match"]["match_mode"], "contains")
+
+    def test_short_chinese_approval_mapping_does_not_hijack_a_long_request(self):
+        with tempfile.TemporaryDirectory() as temp:
+            profile = default_profile()
+            profile["phrase_mappings"]["可以"] = {
+                "meaning": "approve only the previously proposed action",
+                "scope": "global",
+            }
+            result = self.compile_with_profile(temp, profile, "这个可以做成默认关闭的可选插件")
+            self.assertIsNone(result["phrase_match"])
 
     def test_repository_contamination_metrics_are_zero(self):
         private_terms = [

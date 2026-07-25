@@ -105,12 +105,21 @@ def _contains(text: str, terms: tuple[str, ...]) -> bool:
 
 
 def _phrase_mapping(profile: dict[str, Any], utterance: str, scope: str) -> dict[str, Any] | None:
-    normalized = utterance.strip()
+    normalized = utterance.strip().casefold()
     candidates: list[tuple[int, str, Any]] = []
     for phrase, raw in profile.get("phrase_mappings", {}).items():
-        if phrase not in normalized:
-            continue
         mapping = raw if isinstance(raw, dict) else {"meaning": str(raw), "scope": "global"}
+        phrase_normalized = phrase.strip().casefold()
+        if not phrase_normalized:
+            continue
+        match_mode = mapping.get("match_mode", "exact")
+        if match_mode not in {"exact", "contains"}:
+            match_mode = "exact"
+        matched = normalized == phrase_normalized or (
+            match_mode == "contains" and phrase_normalized in normalized
+        )
+        if not matched:
+            continue
         if mapping.get("scope", "global") not in {"global", scope}:
             continue
         candidates.append((len(phrase), phrase, mapping))

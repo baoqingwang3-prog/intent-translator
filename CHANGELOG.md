@@ -15,11 +15,13 @@ All notable changes are recorded here. The project follows semantic versioning a
 - CLI and MCP onboarding entry points for three skippable local preferences.
 - Cross-platform clean-room acceptance covering install, generic first use, third-party Skill routing, onboarding, uninstall, and data preservation.
 - Tracked-content creator-shadow scanning with local private-term fingerprints.
+- Disabled-by-default `memory-breathing` and `reversible-context` plugins with a host-neutral local JSON runner.
+- Bounded relevant handoff loading, decision and correction snapshots, source pointers, SHA-256 markers, and verified context expansion.
 
 ### Changed
 
 - A newly initialized but uncustomized profile remains generic and no longer claims personal knowledge.
-- Confirmed phrase mappings no longer activate when the user's shorter utterance is only a fragment of the saved phrase.
+- Confirmed phrase mappings use exact matching unless a profile explicitly opts into `match_mode: contains`.
 - Public student profile packs use generic managed-note names instead of names reused by the creator's local setup.
 
 ## [0.6.0] - 2026-07-25

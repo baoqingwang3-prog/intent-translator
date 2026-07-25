@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
-  "name": "session-hooks",
+  "name": "memory-breathing",
+  "profile_key": "session_hooks",
+  "entrypoint": "session_lifecycle.py",
+  "default_state": "~/.intent-translator/plugins/memory-breathing.db",
   "default_enabled": false,
-  "events": {
-    "session_start": "python session_lifecycle.py --db <memory.db> start --project <scope>",
-    "session_end": "python session_lifecycle.py --db <memory.db> end --project <scope> --summary <text> --next-action <text>"
-  },
+  "operations": ["session_start", "session_end"],
   "writes": ["local SQLite session_snapshots table"],
-  "network": false
+  "network": false,
+  "inspired_by": "https://github.com/HelloRuru/claude-memory-engine"
 }

@@ -157,6 +157,8 @@ def validate_profile(profile: dict[str, Any]) -> list[str]:
                 errors.append("phrase_mappings keys must be non-empty strings")
             if isinstance(mapping, dict) and not str(mapping.get("meaning", "")).strip():
                 errors.append(f"phrase mapping requires meaning: {phrase}")
+            elif isinstance(mapping, dict) and mapping.get("match_mode", "exact") not in {"exact", "contains"}:
+                errors.append(f"phrase mapping match_mode must be exact or contains: {phrase}")
             elif not isinstance(mapping, (str, dict)):
                 errors.append(f"phrase mapping must be a string or object: {phrase}")
     adaptation = profile.get("adaptation", {})
@@ -227,6 +229,7 @@ def set_phrase_mapping(
     profile.setdefault("phrase_mappings", {})[phrase.strip()] = {
         "meaning": meaning.strip(),
         "scope": scope.strip(),
+        "match_mode": "exact",
         "confidence": "confirmed",
         "updated_at": now_iso(),
     }

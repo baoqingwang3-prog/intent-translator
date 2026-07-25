@@ -56,6 +56,13 @@ class CleanRoomAcceptanceTests(unittest.TestCase):
 
             subprocess.run(install, check=True, capture_output=True, env=env)
             self.assertTrue((skill_root / "intent-translator" / "SKILL.md").is_file())
+            self.assertTrue((skill_root / "intent-translator" / "scripts" / "plugin_manager.py").is_file())
+            self.assertTrue(
+                (skill_root / "intent-translator" / "optional" / "session-hooks" / "adapter.json").is_file()
+            )
+            self.assertTrue(
+                (skill_root / "intent-translator" / "optional" / "reversible-context" / "adapter.json").is_file()
+            )
             clean_profile = json.loads(profile.read_text(encoding="utf-8"))
             self.assertEqual(clean_profile["phrase_mappings"], {})
             self.assertNotIn("study", clean_profile)

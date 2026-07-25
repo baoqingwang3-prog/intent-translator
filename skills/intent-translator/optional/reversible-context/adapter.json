@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "name": "reversible-context",
+  "profile_key": "reversible_context",
+  "entrypoint": "context_pack.py",
+  "default_state": "~/.intent-translator/plugins/reversible-context.db",
   "default_enabled": false,
-  "commands": {
-    "pack": "python context_pack.py --store <context.db> pack --input <sections.json>",
-    "get": "python context_pack.py --store <context.db> get --hash <sha256-or-prefix>"
-  },
+  "operations": ["pack", "get"],
   "writes": ["local SQLite context_blobs table"],
-  "network": false
+  "network": false,
+  "inspired_by": "https://github.com/open-compress/claw-compactor"
 }

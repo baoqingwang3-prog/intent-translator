@@ -258,6 +258,7 @@ def confirm_language_rule(
     profile.setdefault("phrase_mappings", {})[phrase] = {
         "meaning": corrected_meaning,
         "scope": scope,
+        "match_mode": "exact",
         "confidence": "confirmed",
         "updated_at": now_iso(),
     }

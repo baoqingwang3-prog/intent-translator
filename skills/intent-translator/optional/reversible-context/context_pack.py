@@ -13,6 +13,15 @@ from pathlib import Path
 from typing import Any
 
 
+PLUGIN_API_VERSION = 1
+MARKER_PREFIX = "context-ref:sha256:"
+MAX_PREVIEW_CHARS = 500
+MIN_HASH_PREFIX_CHARS = 16
+MAX_ID_CHARS = 200
+MAX_SUMMARY_CHARS = 1000
+MAX_SOURCE_POINTER_CHARS = 2000
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -32,6 +41,16 @@ def connect(path: Path) -> sqlite3.Connection:
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS context_sources (
+            content_hash TEXT NOT NULL,
+            source_pointer TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY(content_hash, source_pointer)
+        )
+        """
+    )
     connection.commit()
     return connection
 
@@ -44,11 +63,21 @@ def normalize_sections(payload: Any) -> list[dict[str, str]]:
     for index, section in enumerate(sections, start=1):
         if not isinstance(section, dict) or not isinstance(section.get("content"), str):
             raise ValueError(f"section {index} requires string content")
+        section_id = str(section.get("id", index)).strip()
+        source = str(section.get("source_pointer", section.get("source", ""))).strip()
+        summary = str(section.get("summary", "")).strip()
+        if not section_id or len(section_id) > MAX_ID_CHARS:
+            raise ValueError(f"section {index} id must contain at most {MAX_ID_CHARS} characters")
+        if len(source) > MAX_SOURCE_POINTER_CHARS:
+            raise ValueError(f"section {index} source pointer exceeds {MAX_SOURCE_POINTER_CHARS} characters")
+        if len(summary) > MAX_SUMMARY_CHARS:
+            raise ValueError(f"section {index} summary exceeds {MAX_SUMMARY_CHARS} characters")
         normalized.append(
             {
-                "id": str(section.get("id", index)),
+                "id": section_id,
                 "content": section["content"],
-                "source": str(section.get("source", "")),
+                "source": source,
+                "summary": summary,
             }
         )
     return normalized
@@ -57,6 +86,7 @@ def normalize_sections(payload: Any) -> list[dict[str, str]]:
 def pack_sections(
     connection: sqlite3.Connection, sections: list[dict[str, str]], *, preview_chars: int = 120
 ) -> list[dict[str, Any]]:
+    preview_chars = max(0, min(int(preview_chars), MAX_PREVIEW_CHARS))
     manifest: list[dict[str, Any]] = []
     for section in sections:
         digest = hashlib.sha256(section["content"].encode("utf-8")).hexdigest()
@@ -67,15 +97,27 @@ def pack_sections(
             """,
             (digest, section["content"], section["source"], now_iso()),
         )
-        preview = " ".join(section["content"].split())[: max(0, preview_chars)]
+        if section["source"]:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO context_sources(content_hash, source_pointer, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (digest, section["source"], now_iso()),
+            )
+        preview = " ".join(section["content"].split())[:preview_chars]
+        summary = " ".join(section.get("summary", "").split()) or preview
+        marker = f"[{MARKER_PREFIX}{digest}]"
         manifest.append(
             {
                 "id": section["id"],
-                "marker": f"[context:{digest}]",
+                "marker": marker,
                 "content_hash": digest,
-                "source": section["source"],
+                "source_pointer": section["source"],
                 "characters": len(section["content"]),
                 "preview": preview,
+                "summary": summary,
+                "compact_text": f"{summary} {marker}".strip(),
             }
         )
     connection.commit()
@@ -83,6 +125,15 @@ def pack_sections(
 
 
 def retrieve(connection: sqlite3.Connection, digest_or_prefix: str) -> dict[str, Any]:
+    digest_or_prefix = digest_or_prefix.strip().casefold()
+    if digest_or_prefix.startswith("[") and digest_or_prefix.endswith("]"):
+        digest_or_prefix = digest_or_prefix[1:-1]
+    if digest_or_prefix.startswith(MARKER_PREFIX):
+        digest_or_prefix = digest_or_prefix[len(MARKER_PREFIX):]
+    if not digest_or_prefix or any(character not in "0123456789abcdef" for character in digest_or_prefix):
+        raise ValueError("context hash must be a hexadecimal SHA-256 prefix or marker")
+    if len(digest_or_prefix) < MIN_HASH_PREFIX_CHARS:
+        raise ValueError(f"context hash prefix must contain at least {MIN_HASH_PREFIX_CHARS} characters")
     rows = connection.execute(
         "SELECT * FROM context_blobs WHERE content_hash LIKE ? ORDER BY content_hash LIMIT 2",
         (f"{digest_or_prefix}%",),
@@ -91,7 +142,42 @@ def retrieve(connection: sqlite3.Connection, digest_or_prefix: str) -> dict[str,
         raise ValueError("context hash not found")
     if len(rows) > 1:
         raise ValueError("context hash prefix is ambiguous")
-    return dict(rows[0])
+    result = dict(rows[0])
+    actual = hashlib.sha256(result["content"].encode("utf-8")).hexdigest()
+    legacy_source = result.pop("source")
+    source_pointers = [
+        row[0]
+        for row in connection.execute(
+            "SELECT source_pointer FROM context_sources WHERE content_hash = ? ORDER BY created_at, source_pointer",
+            (result["content_hash"],),
+        ).fetchall()
+    ]
+    if legacy_source and legacy_source not in source_pointers:
+        source_pointers.insert(0, legacy_source)
+    result["source_pointer"] = source_pointers[0] if source_pointers else ""
+    result["source_pointers"] = source_pointers
+    result["integrity_verified"] = actual == result["content_hash"]
+    if not result["integrity_verified"]:
+        raise ValueError("stored context failed SHA-256 integrity verification")
+    return result
+
+
+def invoke(operation: str, payload: dict[str, Any], state_path: Path) -> dict[str, Any]:
+    connection = connect(state_path)
+    try:
+        if operation == "pack":
+            return {
+                "sections": pack_sections(
+                    connection,
+                    normalize_sections(payload),
+                    preview_chars=payload.get("preview_chars", 120),
+                )
+            }
+        if operation == "get":
+            return retrieve(connection, str(payload.get("hash", payload.get("marker", ""))))
+        raise ValueError(f"unsupported operation: {operation}")
+    finally:
+        connection.close()
 
 
 def build_parser() -> argparse.ArgumentParser:

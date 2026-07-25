@@ -30,7 +30,7 @@ Profile packs are optional starting points, not inferred identities. Applying on
 - `adaptation`: Confirmed expertise, plain-language, accessibility, and domain preferences.
 - `risk_policy`: Evidence and consent defaults for high-stakes work and sensitive memory.
 - `optional_adapters`: Explicit switches for host hooks and reversible context storage. Defaults are off.
-- `phrase_mappings`: User-confirmed shorthand and scoped meanings.
+- `phrase_mappings`: User-confirmed shorthand and scoped meanings. Matching is exact by default; substring matching requires an explicit `match_mode: contains` entry.
 - `memory`: Adapter and local storage location.
 - `cognitive_priors`: Optional, explicitly chosen interpretive hints.
 - `study`, `knowledge_pointers`, and `shadow_evaluation`: Optional pack-provided workflow preferences that remain local and must not silently scan files or retain full utterances.

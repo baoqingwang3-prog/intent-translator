@@ -124,6 +124,21 @@ export INTENT_TRANSLATOR_SEMANTIC_MODEL='your-local-model'
 
 如果包装器会把内容发出电脑，还必须设置 `INTENT_TRANSLATOR_SEMANTIC_EXTERNAL=1`，并在每次请求里单独允许外发；涉及敏感内容时还要第二次授权。模型可以提出解释、假设、备选含义和风险，但不能降低规则已经判定的风险，也不能替用户授予发布、删除或外发权限。只有模型识别出的新动作一律先确认再执行。
 
+## 可选插件
+
+仓库附带两个默认关闭、完全本地的插件：
+
+- `memory-breathing`：会话开始最多加载少量相关交接，会话结束保存摘要、下一步、决策和纠错。
+- `reversible-context`：压缩时保留来源指针与完整 SHA-256，之后可按标记展开并校验原文完整性。
+
+```bash
+python skills/intent-translator/scripts/plugin_manager.py list
+python skills/intent-translator/scripts/plugin_manager.py enable memory-breathing
+python skills/intent-translator/scripts/plugin_manager.py enable reversible-context
+```
+
+插件不会自动修改宿主 Hook。Claude Code 等有生命周期 Hook 的宿主可以绑定统一 JSON 入口；没有可靠结束事件的宿主使用显式调用。协议与示例见 [可选插件说明](skills/intent-translator/references/optional-adapters.md)。
+
 ## 隐私边界
 
 - 画像和记忆默认保存在 `~/.intent-translator/`，不会进入仓库。

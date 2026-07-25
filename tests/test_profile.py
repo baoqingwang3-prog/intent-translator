@@ -50,6 +50,7 @@ class ProfileTests(unittest.TestCase):
         )
         self.assertEqual(mapping["confidence"], "confirmed")
         self.assertEqual(mapping["scope"], "global")
+        self.assertEqual(mapping["match_mode"], "exact")
         self.assertEqual(validate_profile(profile), [])
 
     def test_student_pack_is_generic_and_preserves_private_profile_fields(self):

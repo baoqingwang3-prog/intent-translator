@@ -187,14 +187,22 @@ The system adapts to task-specific expertise, plain-language needs, accessibilit
 
 Routing uses explicit aliases for known Skills and conservative multi-keyword matching against installed Skill descriptions. This allows third-party professional Skills to participate without adding every profession to this repository.
 
-## Optional Adapters
+## Optional Plugins
 
-Two adapters ship disabled:
+Two local plugins ship disabled:
 
-- `session-hooks`: host-neutral session start/end snapshots. It does not register host hooks automatically.
-- `reversible-context`: stores exact context sections locally by hash and emits compact retrieval markers.
+- `memory-breathing`: loads a small set of relevant project handoffs at session start and saves bounded handoffs, decisions, and corrections at session end.
+- `reversible-context`: stores exact context sections with source pointers and SHA-256 markers, then verifies integrity when expanding them.
 
-Enable them explicitly in the local profile after reviewing `skills/intent-translator/references/optional-adapters.md`.
+Both use a host-neutral JSON plugin contract, perform no network access, and never register hooks automatically. Enable and inspect them with:
+
+```bash
+python skills/intent-translator/scripts/plugin_manager.py list
+python skills/intent-translator/scripts/plugin_manager.py enable memory-breathing
+python skills/intent-translator/scripts/plugin_manager.py enable reversible-context
+```
+
+See `skills/intent-translator/references/optional-adapters.md` for lifecycle payloads and retrieval examples.
 
 ## Commands
 
@@ -235,6 +243,9 @@ intent-translator-semantic-eval --cases evals/semantic_cases.jsonl
 
 # Diagnose an installation without printing exact home paths
 intent-translator-doctor --json
+
+# List or invoke disabled-by-default local plugins
+python skills/intent-translator/scripts/plugin_manager.py list
 
 # Review silent shadow samples and sync the managed pointer index
 intent-translator-study shadow-review
