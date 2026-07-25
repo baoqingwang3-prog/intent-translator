@@ -22,7 +22,7 @@ jobs:
         run: python tests/check_release_metadata.py --tag "${GITHUB_REF_NAME:-}"
       - name: Release quality gate
         run: |
-          python -m pip install build
+          python -m pip install build .
           python scripts/release_gate.py --mode ci
       - name: Build distributions
         run: python -m build

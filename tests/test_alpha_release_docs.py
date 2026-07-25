@@ -41,6 +41,9 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
 
     def test_browser_smoke_is_reproducible_and_ci_gated(self):
         workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        package_workflow = (REPO_ROOT / ".github" / "workflows" / "package.yml").read_text(
+            encoding="utf-8"
+        )
         release_gate = (REPO_ROOT / "docs" / "release-gate.md").read_text(encoding="utf-8")
         evidence_path = REPO_ROOT / "docs" / "evidence" / "studio-browser-smoke-0.7.0a2.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
@@ -52,6 +55,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
             "PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers",
             workflow,
         )
+        self.assertIn("python -m pip install build .", package_workflow)
         self.assertIn("scripts/studio_browser_smoke.py", release_gate)
         self.assertIn("studio-browser-smoke-0.7.0a2.json", release_gate)
         self.assertTrue(evidence["passed"])
