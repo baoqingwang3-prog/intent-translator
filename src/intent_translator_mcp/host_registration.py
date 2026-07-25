@@ -57,17 +57,21 @@ def _runtime_spec(home: Path, env: Mapping[str, str]) -> dict[str, Any] | None:
 
 
 def find_codex_cli(
-    *, home: Path | None = None, env: Mapping[str, str] | None = None
+    *,
+    home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+    platform: str | None = None,
 ) -> Path | None:
     env = dict(os.environ if env is None else env)
     home = _resolved_home(home, env)
+    platform = platform or os.name
     configured = str(env.get("CODEX_CLI_PATH", "")).strip()
     if configured:
         candidate = Path(configured).expanduser()
         if candidate.is_file():
             return candidate.resolve()
 
-    if os.name == "nt":
+    if platform == "nt":
         local_app_data = Path(env.get("LOCALAPPDATA", home / "AppData" / "Local"))
         bin_root = local_app_data / "OpenAI" / "Codex" / "bin"
         candidates = list(bin_root.glob("*/codex.exe")) if bin_root.is_dir() else []
@@ -76,7 +80,7 @@ def find_codex_cli(
             return candidates[0].resolve()
 
     discovered = shutil.which(
-        "codex.exe" if os.name == "nt" else "codex",
+        "codex.exe" if platform == "nt" else "codex",
         path=env.get("PATH", ""),
     )
     if discovered:
@@ -154,9 +158,9 @@ def _registered_spec(
 def _path_equal(left: str | Path | None, right: str | Path | None) -> bool:
     if not left or not right:
         return False
-    return os.path.normcase(os.path.abspath(os.fspath(left))) == os.path.normcase(
-        os.path.abspath(os.fspath(right))
-    )
+    left_path = Path(left).expanduser().resolve(strict=False)
+    right_path = Path(right).expanduser().resolve(strict=False)
+    return os.path.normcase(os.fspath(left_path)) == os.path.normcase(os.fspath(right_path))
 
 
 def _matches_runtime(spec: Mapping[str, Any], runtime: Mapping[str, Any], skill_dir: Path) -> bool:

@@ -68,13 +68,17 @@ class HostRegistrationTests(unittest.TestCase):
             desktop_cli = local / "OpenAI" / "Codex" / "bin" / "build-id" / "codex.exe"
             desktop_cli.parent.mkdir(parents=True)
             desktop_cli.touch()
-            with (
-                patch("intent_translator_mcp.host_registration.os.name", "nt"),
-                patch("intent_translator_mcp.host_registration.shutil.which", return_value="blocked-path-shim.exe"),
+            with patch(
+                "intent_translator_mcp.host_registration.shutil.which",
+                return_value="blocked-path-shim.exe",
             ):
                 from intent_translator_mcp.host_registration import find_codex_cli
 
-                discovered = find_codex_cli(home=home, env={"LOCALAPPDATA": str(local), "PATH": "ignored"})
+                discovered = find_codex_cli(
+                    home=home,
+                    env={"LOCALAPPDATA": str(local), "PATH": "ignored"},
+                    platform="nt",
+                )
         self.assertEqual(discovered, desktop_cli.resolve())
 
     def test_process_detection_failure_fails_closed(self):

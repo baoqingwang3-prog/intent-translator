@@ -48,6 +48,7 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("scripts/studio_browser_smoke.py", workflow)
         self.assertIn("playwright@1.61.1", workflow)
         self.assertIn("playwright install", workflow)
+        self.assertIn("PLAYWRIGHT_BROWSERS_PATH", workflow)
         self.assertIn("scripts/studio_browser_smoke.py", release_gate)
         self.assertIn("studio-browser-smoke-0.7.0a2.json", release_gate)
         self.assertTrue(evidence["passed"])

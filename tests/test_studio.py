@@ -36,11 +36,23 @@ class StudioTests(unittest.TestCase):
             ),
             encoding="utf-8",
         )
+        skill_root = root / "skills"
+        for name, description in {
+            "agent-reach": "Search and research GitHub and the public internet.",
+            "skill-creator": "Create or revise an Agent Skill.",
+        }.items():
+            skill_dir = skill_root / name
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(
+                f"---\nname: {name}\ndescription: {description}\n---\n",
+                encoding="utf-8",
+            )
         return {
             "INTENT_TRANSLATOR_HOME": str(root),
             "INTENT_TRANSLATOR_PROFILE": str(profile),
             "INTENT_TRANSLATOR_MEMORY_DB": str(root / "memory.db"),
             "INTENT_TRANSLATOR_DATA_DIR": str(root / "data"),
+            "INTENT_TRANSLATOR_SKILL_ROOTS": str(skill_root),
         }
 
     def test_status_is_redacted_and_does_not_claim_host_mcp_connection(self):

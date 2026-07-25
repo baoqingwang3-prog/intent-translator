@@ -82,6 +82,8 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
