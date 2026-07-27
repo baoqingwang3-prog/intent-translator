@@ -16,6 +16,7 @@ print(result.contract.operation)
 print(result.contract.prohibitions)
 print(result.selected_skill)
 print(result.tool_decision)
+print(result.value_receipt)  # observable activity, not a no-Skill benefit claim
 
 if result.can_execute:
     # The host may now invoke its own tool layer.
@@ -75,4 +76,5 @@ The SDK cannot mint broader permission through `receipt()`. It only returns the 
 - `requires_confirmation`
 - `model_used`
 - `interpretation_gate`
+- `value_receipt`: counts observable preflight activity and leaves counterfactual benefit fields unset until an A/B run exists
 - `to_dict()`: a defensive copy of the complete envelope
