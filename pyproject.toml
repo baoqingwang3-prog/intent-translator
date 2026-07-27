@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-translator-mcp"
-version = "0.7.1a2"
-description = "Local-first intent compiler SDK and routing MCP server"
+version = "0.7.1a3"
+description = "Local-first cross-host intent preflight, evidence, and evaluation SDK"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Personal Intent Compiler contributors" }]
-keywords = ["agent-skills", "mcp", "intent", "local-first", "prompt-engineering"]
+keywords = ["agent-skills", "mcp", "intent", "local-first", "agent-observability", "evaluation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",
