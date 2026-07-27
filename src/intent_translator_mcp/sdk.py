@@ -49,6 +49,11 @@ class CompilationResult:
         return self._envelope.get("semantic", {}).get("status") == "applied"
 
     @property
+    def value_receipt(self) -> dict[str, Any]:
+        """Observable activity for this preflight, not a no-Skill benefit claim."""
+        return copy.deepcopy(self._envelope.get("value_receipt") or {})
+
+    @property
     def interpretation_gate(self) -> dict[str, Any] | None:
         gate = self._envelope.get("interpretation_gate", {})
         return copy.deepcopy(gate) if gate.get("required") else None
