@@ -252,7 +252,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
-  margin: 24px 0 22px;
+  margin: 10px 0 0;
   padding: 1px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -278,10 +278,17 @@ h3 {
   border-radius: 0 5px 5px 0;
 }
 
-.example-tabs button.active {
-  background: var(--blue-soft);
-  color: #184e84;
-  font-weight: 700;
+.example-details {
+  margin-top: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.example-details summary {
+  cursor: pointer;
+  color: #40505d;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .input-label,
@@ -336,7 +343,11 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
-.context-details textarea {
+.context-fields {
+  padding-bottom: 2px;
+}
+
+.context-fields textarea {
   min-height: 68px;
   margin-bottom: 12px;
   font-size: 13px;
@@ -519,6 +530,16 @@ textarea:focus {
   gap: 16px;
 }
 
+.processing-band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.processing-band > div {
+  min-width: 0;
+}
+
 .runtime-band p {
   margin: 0;
   color: #3d4a55;
@@ -539,6 +560,25 @@ textarea:focus {
   line-height: 1.5;
 }
 
+.details-toolbar {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font: 12px/1.4 "Cascadia Mono", Consolas, monospace;
+}
+
+.compact-icon-button {
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 17px;
+}
+
+.sdk-details pre,
 .advanced-details pre {
   max-width: 100%;
   overflow: auto;
@@ -595,6 +635,11 @@ textarea:focus {
   }
 
   .result-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .processing-band {
     grid-template-columns: 1fr;
     gap: 18px;
   }

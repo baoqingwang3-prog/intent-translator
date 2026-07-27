@@ -15,6 +15,7 @@ from memory_store import (  # noqa: E402
     confirm_pending_correction,
     check_intent,
     connect,
+    connect_readonly,
     export_store,
     list_memories,
     list_quarantined_memories,
@@ -28,6 +29,39 @@ from memory_store import (  # noqa: E402
 
 
 class MemoryStoreTests(unittest.TestCase):
+    def test_readonly_search_supports_legacy_schema_without_migrating(self):
+        with tempfile.TemporaryDirectory() as temp:
+            db_path = Path(temp) / "memory.db"
+            legacy = sqlite3.connect(db_path)
+            legacy.execute(
+                "CREATE TABLE memories (id INTEGER PRIMARY KEY, kind TEXT, scope TEXT, text TEXT, confidence TEXT, source TEXT, created_at TEXT, updated_at TEXT, UNIQUE(kind, scope, text))"
+            )
+            legacy.execute(
+                "CREATE TABLE corrections (id INTEGER PRIMARY KEY, scope TEXT, trigger_text TEXT, correction TEXT, severity TEXT, evidence TEXT, status TEXT, retrieved_count INTEGER, heeded_count INTEGER, recurred_count INTEGER, created_at TEXT, updated_at TEXT)"
+            )
+            legacy.execute(
+                "INSERT INTO memories VALUES (1, 'preference', 'global', 'Prefer concise answers', 'confirmed', '', '2026-01-01', '2026-01-01')"
+            )
+            legacy.execute(
+                "INSERT INTO corrections VALUES (1, 'global', 'ship it', 'ask before publishing', 'critical', '', 'active', 0, 0, 0, '2026-01-01', '2026-01-01')"
+            )
+            legacy.commit()
+            legacy.close()
+
+            readonly = connect_readonly(db_path)
+            try:
+                memories = search_memories(
+                    readonly, query="concise answers", scope="global", track_access=False
+                )
+                corrections = search_corrections(
+                    readonly, query="ship it", scope="global", track_access=False
+                )
+                self.assertEqual(memories[0]["text"], "Prefer concise answers")
+                self.assertEqual(corrections[0]["correction"], "ask before publishing")
+                self.assertEqual(readonly.execute("PRAGMA user_version").fetchone()[0], 0)
+            finally:
+                readonly.close()
+
     def test_external_facts_are_non_authoritative_but_recallable(self):
         with tempfile.TemporaryDirectory() as temp:
             connection = connect(Path(temp) / "memory.db")

@@ -122,6 +122,35 @@ def _memory_sources(envelope: dict[str, Any]) -> list[dict[str, Any]]:
     return sources
 
 
+def _sdk_contract(envelope: dict[str, Any]) -> dict[str, Any]:
+    contract = envelope.get("intent_contract", {})
+    fields = (
+        "schema_version",
+        "original_utterance",
+        "goal",
+        "mode",
+        "operation",
+        "effect",
+        "data_egress",
+        "active_task_source",
+        "action_owner",
+        "object",
+        "constraints",
+        "prohibitions",
+        "artifact",
+        "destination",
+        "scope",
+        "pending_action",
+        "required_slots",
+        "risk",
+        "authorization",
+        "communication",
+        "alternatives",
+        "source_map",
+    )
+    return {field: contract.get(field) for field in fields if field in contract}
+
+
 def studio_view(envelope: dict[str, Any]) -> dict[str, Any]:
     risk = envelope.get("risk", {})
     gate = envelope.get("interpretation_gate", {})
@@ -137,6 +166,15 @@ def studio_view(envelope: dict[str, Any]) -> dict[str, Any]:
     blocked = bool(risk.get("blocked", False))
     clarification_required = bool(envelope.get("clarification_required", False))
     mode = str(envelope.get("mode", "answer"))
+    semantic_status = str(semantic.get("status", "unavailable"))
+    semantic_provider = semantic.get("provider")
+    model_usage = (
+        "used"
+        if semantic_status == "applied"
+        else "attempted"
+        if semantic_status == "error" and semantic_provider
+        else "none"
+    )
     action_state = (
         "blocked"
         if blocked
@@ -184,9 +222,18 @@ def studio_view(envelope: dict[str, Any]) -> dict[str, Any]:
         },
         "local_mode": {
             "active": bool(envelope.get("base_mode", {}).get("active", True)),
-            "semantic_status": semantic.get("status", "unavailable"),
-            "semantic_provider": semantic.get("provider"),
+            "semantic_status": semantic_status,
+            "semantic_provider": semantic_provider,
         },
+        "processing": {
+            "engine": "semantic-assisted" if semantic_status == "applied" else "deterministic-local",
+            "model_usage": model_usage,
+            "semantic_status": semantic_status,
+            "semantic_provider": semantic_provider,
+            "host_prompt_generated": False,
+            "contract_format": "typed-intent-contract/v1",
+        },
+        "sdk_contract": _sdk_contract(envelope),
         "debate": {
             "available": bool(envelope.get("conditional_review", {}).get("available", False)),
             "recommended": bool(envelope.get("conditional_review", {}).get("use_pua", False)),
@@ -217,7 +264,12 @@ def compile_payload(payload: dict[str, Any]) -> dict[str, Any]:
     request_data["include_prompt"] = False
     request = CompileRequest.model_validate(request_data)
     envelope = IntentCompiler(entrypoint="studio").compile(request)
-    return studio_view(envelope)
+    view = studio_view(envelope)
+    view["processing"]["input_characters"] = sum(
+        len(str(request_data.get(field, "")))
+        for field in ("utterance", "context", "pending_action")
+    )
+    return view
 
 
 def correction_demo_payload() -> dict[str, Any]:

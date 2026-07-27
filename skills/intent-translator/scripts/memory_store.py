@@ -358,6 +358,10 @@ def table_exists(connection: sqlite3.Connection, table: str) -> bool:
     ).fetchone() is not None
 
 
+def table_columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row["name"]) for row in connection.execute(f"PRAGMA table_info({table})")}
+
+
 def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {key: row[key] for key in row.keys()}
 
@@ -685,11 +689,19 @@ def search_memories(
     if not query_tokens:
         return []
     candidate_ids = fts_candidate_ids(connection, "memories_fts", query)
-    sql = "SELECT * FROM memories WHERE status = 'active' AND trust_level != 'quarantined'"
+    columns = table_columns(connection, "memories")
+    where: list[str] = []
+    if "status" in columns:
+        where.append("status = 'active'")
+    if "trust_level" in columns:
+        where.append("trust_level != 'quarantined'")
+    sql = "SELECT * FROM memories"
     params: list[Any] = []
     if scope:
-        sql += " AND scope IN (?, 'global')"
+        where.append("scope IN (?, 'global')")
         params.append(scope)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
     rows = connection.execute(sql, tuple(params)).fetchall()
     if candidate_ids:
         filtered = [row for row in rows if int(row["id"]) in candidate_ids]
@@ -700,6 +712,15 @@ def search_memories(
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
+        if "trust_level" not in record:
+            defense = memory_defense_assessment(
+                text=str(record.get("text", "")),
+                kind=str(record.get("kind", "fact")),
+                source_type="legacy",
+            )
+            record.update(defense)
+            if defense["trust_level"] == "quarantined":
+                continue
         haystack = f"{record['text']} {record['source']} {record['kind']} {record['scope']}"
         semantic_match = overlap_score(query_tokens, semantic_tokens(haystack))
         if not semantic_match:
@@ -1001,11 +1022,20 @@ def search_corrections(
     if not query_tokens:
         return []
     candidate_ids = fts_candidate_ids(connection, "corrections_fts", query)
-    sql = "SELECT * FROM corrections WHERE status = 'active' AND (expires_at = '' OR expires_at > ?)"
-    params: list[Any] = [now_iso()]
+    columns = table_columns(connection, "corrections")
+    where: list[str] = []
+    params: list[Any] = []
+    if "status" in columns:
+        where.append("status = 'active'")
+    if "expires_at" in columns:
+        where.append("(expires_at = '' OR expires_at > ?)")
+        params.append(now_iso())
     if scope:
-        sql += " AND scope IN (?, 'global')"
+        where.append("scope IN (?, 'global')")
         params.append(scope)
+    sql = "SELECT * FROM corrections"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
     rows = connection.execute(sql, tuple(params)).fetchall()
     if candidate_ids:
         filtered = [row for row in rows if int(row["id"]) in candidate_ids]

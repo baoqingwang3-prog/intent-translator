@@ -15,7 +15,9 @@ async function waitForResult(page) {
 
 async function runScenario(page, scenario) {
   await page.locator("#reset-session").click();
+  await page.locator("#example-details").evaluate((details) => { details.open = true; });
   await page.locator(`[data-example="${scenario.id}"]`).click();
+  if (scenario.id !== "correction") await page.locator("#compile-button").click();
   await waitForResult(page);
   check(!(await page.locator("#empty-result").isVisible()), `${scenario.id}: empty state still occupies the result pane`);
 
@@ -23,6 +25,8 @@ async function runScenario(page, scenario) {
   const selectedSkill = (await page.locator("#selected-skill").innerText()).trim();
   const permission = (await page.locator("#permission-state").innerText()).trim();
   const sourceMap = (await page.locator("#source-map").innerText()).trim();
+  const modelUsage = (await page.locator("#model-usage").innerText()).trim();
+  const sdkOutput = ((await page.locator("#sdk-output").textContent()) || "").trim();
   const comparisonVisible = await page.locator("#comparison-text").isVisible();
   const comparison = comparisonVisible
     ? (await page.locator("#comparison-text").innerText()).trim()
@@ -44,6 +48,8 @@ async function runScenario(page, scenario) {
   if (scenario.requires_comparison) {
     check(comparisonVisible && comparison.length > 0, `${scenario.id}: correction comparison missing`);
   }
+  check(modelUsage === "未调用" || modelUsage === "Not called", `${scenario.id}: unexpected model usage '${modelUsage}'`);
+  check(sdkOutput.includes('"operation"'), `${scenario.id}: typed SDK output is missing`);
 
   return {
     id: scenario.id,
@@ -53,6 +59,8 @@ async function runScenario(page, scenario) {
     permission,
     source_map: sourceMap,
     correction_comparison_visible: comparisonVisible,
+    model_usage: modelUsage,
+    sdk_output_visible: true,
   };
 }
 

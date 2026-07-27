@@ -37,6 +37,21 @@ Choose the smallest setup that matches your goal:
 
 For most first-time users, install the Skill only. Add MCP after the basic workflow behaves as expected. No account, API key, cloud model, or Obsidian vault is required.
 
+Developers embedding the compiler can use the Python SDK directly without MCP:
+
+```python
+from intent_translator_mcp import IntentTranslator
+
+sdk = IntentTranslator()
+result = sdk.compile("Search GitHub for high-star Agent Skills", semantic_mode="off")
+
+print(result.contract.operation)  # search
+print(result.selected_skill)      # agent-reach, when installed
+print(result.tool_decision)       # allow / human_review / deny
+```
+
+The SDK defaults to a typed result with no generated host prompt. See [Python SDK](docs/sdk.md).
+
 After Skill-only installation, you can start talking immediately in generic mode. After installing the optional MCP runtime, either ask the agent to set up Intent Translator or run the three-minute setup. It asks only about local memory, ambiguity handling, and response tone:
 
 ```bash
@@ -55,11 +70,11 @@ After installing the optional MCP package, start the local compiler inspection U
 intent-translator-studio --host 127.0.0.1 --port 8765
 ```
 
-Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current interpretation, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. Routing distinguishes installed selection from intended-but-unverified capability and never claims the host activated a Skill. It inspects the compiler and does not execute the task. A healthy Studio does not prove that another Agent host calls MCP on every turn. If the local compiler is unavailable, the page reports degraded status.
+Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the current interpretation, non-obvious wording map, selected Skill, local memory sources, authorization boundary, actual runtime version, and whether the host needs a restart. It also exposes a copyable, sanitized typed SDK contract and reports whether the result used the deterministic local path or an optional semantic adapter; Studio compilation never generates the host prompt. Routing distinguishes installed selection from intended-but-unverified capability and never claims the host activated a Skill. It inspects the compiler and does not execute the task. A healthy Studio does not prove that another Agent host calls MCP on every turn. If the local compiler is unavailable, the page reports degraded status.
 
 ## Status
 
-P1 Alpha, version `0.7.1a1`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+P1 Alpha, version `0.7.1a2`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 

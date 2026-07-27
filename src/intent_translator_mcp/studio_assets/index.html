@@ -38,22 +38,27 @@
         <button id="reset-session" class="icon-button" type="button" title="重新开始" aria-label="重新开始">↺</button>
       </div>
 
-      <div class="example-tabs" role="tablist" aria-label="示例">
-        <button type="button" data-example="continue">继续任务</button>
-        <button type="button" data-example="negative">不发布</button>
-        <button type="button" data-example="route">选对 Skill</button>
-        <button type="button" data-example="correction">纠正后复现</button>
-      </div>
-
       <label class="input-label" for="intent-input" id="intent-label">自然语言</label>
       <textarea id="intent-input" rows="8" placeholder="例如：继续完善本地测试，不上传 GitHub"></textarea>
 
-      <details class="context-details">
-        <summary id="context-summary">当前上下文</summary>
-        <label for="context-input" id="context-label">最近背景</label>
-        <textarea id="context-input" rows="3"></textarea>
-        <label for="pending-input" id="pending-label">上一条具体待办</label>
-        <textarea id="pending-input" rows="3"></textarea>
+      <details id="example-details" class="example-details">
+        <summary id="example-summary">尝试示例</summary>
+        <div class="example-tabs" aria-label="可选示例">
+          <button type="button" data-example="continue">续接示例</button>
+          <button type="button" data-example="negative">禁止示例</button>
+          <button type="button" data-example="route">路由示例</button>
+          <button type="button" data-example="correction">纠错演示</button>
+        </div>
+      </details>
+
+      <details class="context-details" open>
+        <summary id="context-summary">上下文（可选）</summary>
+        <div class="context-fields">
+          <label for="context-input" id="context-label">最近背景</label>
+          <textarea id="context-input" rows="3"></textarea>
+          <label for="pending-input" id="pending-label">上一条具体待办</label>
+          <textarea id="pending-input" rows="3"></textarea>
+        </div>
       </details>
 
       <div class="composer-actions">
@@ -98,6 +103,21 @@
           </div>
         </section>
 
+        <section class="result-band processing-band">
+          <div>
+            <h3 id="processing-title">处理路径</h3>
+            <p id="processing-engine" class="strong-value"></p>
+          </div>
+          <div>
+            <h3 id="model-title">模型调用</h3>
+            <p id="model-usage" class="strong-value"></p>
+          </div>
+          <div>
+            <h3 id="prompt-title">宿主提示词</h3>
+            <p id="prompt-state" class="strong-value"></p>
+          </div>
+        </section>
+
         <section class="result-band">
           <h3 id="why-title">为何询问</h3>
           <ul id="why-ask" class="plain-list"></ul>
@@ -124,6 +144,15 @@
         <details class="result-band debate-details">
           <summary id="debate-summary">查看尖锐审查状态</summary>
           <p id="debate-content"></p>
+        </details>
+
+        <details class="result-band sdk-details">
+          <summary id="sdk-summary">SDK 输出</summary>
+          <div class="details-toolbar">
+            <span id="sdk-format">typed-intent-contract/v1</span>
+            <button id="copy-sdk-output" class="icon-button compact-icon-button" type="button" title="复制 SDK 输出" aria-label="复制 SDK 输出">⧉</button>
+          </div>
+          <pre id="sdk-output"></pre>
         </details>
 
         <details class="result-band advanced-details">

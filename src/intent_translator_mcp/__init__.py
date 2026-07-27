@@ -2,5 +2,12 @@
 
 from .version import __version__
 from .core import IntentCompiler
+from .sdk import CompilationResult, IntentTranslator, IntentTranslatorSDK
 
-__all__ = ["IntentCompiler", "__version__"]
+__all__ = [
+    "CompilationResult",
+    "IntentCompiler",
+    "IntentTranslator",
+    "IntentTranslatorSDK",
+    "__version__",
+]

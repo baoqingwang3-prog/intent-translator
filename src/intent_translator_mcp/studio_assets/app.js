@@ -9,7 +9,8 @@ const copy = {
     inspectorTitle: "当前理解",
     intentLabel: "自然语言",
     placeholder: "例如：继续完善本地测试，不上传 GitHub",
-    contextSummary: "当前上下文",
+    exampleSummary: "尝试示例",
+    contextSummary: "上下文（可选）",
     contextLabel: "最近背景",
     pendingLabel: "上一条具体待办",
     compile: "确认理解",
@@ -25,6 +26,18 @@ const copy = {
     memory: "使用的本地来源",
     version: "当前运行",
     restart: "需要重启",
+    processing: "处理路径",
+    model: "模型调用",
+    prompt: "宿主提示词",
+    deterministic: "本地确定性",
+    semanticAssisted: "语义增强",
+    modelNone: "未调用",
+    modelUsed: "已调用",
+    modelAttempted: "调用失败",
+    promptNotGenerated: "未生成",
+    sdk: "SDK 输出",
+    copySdk: "复制 SDK 输出",
+    copiedSdk: "已复制",
     debateSummary: "查看尖锐审查状态",
     debateReady: "本次可按需查看完整尖锐审查。",
     debateOff: "本次没有触发尖锐审查。",
@@ -41,12 +54,13 @@ const copy = {
     runtimeStale: "运行版本已过期",
     runtimeDegraded: "基础模式",
     disconnected: "本地接口未连接，当前保护未启用",
+    compilerUnavailable: "本地接口已连接，但编译器暂时不可用",
     genericLocal: "通用模式 · 无个人记忆",
     localOnly: "本地处理 · 无云增强",
     localEnhanced: "本地处理 · 可选增强已配置",
     allWrong: "都不是，用一句话纠正",
     correctionComparison: "纠正前：{before}",
-    examples: ["继续任务", "不发布", "选对 Skill", "纠正后复现"],
+    examples: ["续接示例", "禁止示例", "路由示例", "纠错演示"],
     memoryKinds: {
       memory: "记忆记录",
       correction: "纠错记录",
@@ -61,7 +75,8 @@ const copy = {
     inspectorTitle: "Current understanding",
     intentLabel: "Natural language",
     placeholder: "Example: continue the local tests, do not upload to GitHub",
-    contextSummary: "Current context",
+    exampleSummary: "Try an example",
+    contextSummary: "Context (optional)",
     contextLabel: "Recent background",
     pendingLabel: "Specific previous action",
     compile: "Confirm understanding",
@@ -77,6 +92,18 @@ const copy = {
     memory: "Local sources used",
     version: "Running version",
     restart: "Restart required",
+    processing: "Processing path",
+    model: "Model call",
+    prompt: "Host prompt",
+    deterministic: "Local deterministic",
+    semanticAssisted: "Semantic assisted",
+    modelNone: "Not called",
+    modelUsed: "Called",
+    modelAttempted: "Call failed",
+    promptNotGenerated: "Not generated",
+    sdk: "SDK output",
+    copySdk: "Copy SDK output",
+    copiedSdk: "Copied",
     debateSummary: "View critical review status",
     debateReady: "A full critical review is available on request.",
     debateOff: "No critical review was triggered.",
@@ -93,12 +120,13 @@ const copy = {
     runtimeStale: "Running version is stale",
     runtimeDegraded: "Base mode",
     disconnected: "Local interface is disconnected; protection is not active",
+    compilerUnavailable: "Local interface is connected, but the compiler is unavailable",
     genericLocal: "Generic mode · no personal memory",
     localOnly: "Local processing · no cloud enhancement",
     localEnhanced: "Local processing · optional enhancement configured",
     allWrong: "None of these; correct in one sentence",
     correctionComparison: "Before correction: {before}",
-    examples: ["Continue", "Do not publish", "Choose Skill", "Correction replay"],
+    examples: ["Continuation", "Prohibition", "Routing", "Correction demo"],
     memoryKinds: {
       memory: "Memory record",
       correction: "Correction record",
@@ -148,6 +176,7 @@ function applyLanguage() {
   setText("#inspector-title", t("inspectorTitle"));
   setText("#intent-label", t("intentLabel"));
   $("#intent-input").placeholder = t("placeholder");
+  setText("#example-summary", t("exampleSummary"));
   setText("#context-summary", t("contextSummary"));
   setText("#context-label", t("contextLabel"));
   setText("#pending-label", t("pendingLabel"));
@@ -162,6 +191,12 @@ function applyLanguage() {
   setText("#memory-title", t("memory"));
   setText("#version-title", t("version"));
   setText("#restart-badge", t("restart"));
+  setText("#processing-title", t("processing"));
+  setText("#model-title", t("model"));
+  setText("#prompt-title", t("prompt"));
+  setText("#sdk-summary", t("sdk"));
+  $("#copy-sdk-output").title = t("copySdk");
+  $("#copy-sdk-output").setAttribute("aria-label", t("copySdk"));
   setText("#debate-summary", t("debateSummary"));
   setText("#advanced-summary", t("advanced"));
   $("#language-toggle").textContent = language === "zh" ? "EN" : "中";
@@ -210,6 +245,12 @@ function permissionLabel(auth) {
   if (auth.action_state === "waiting-confirmation") return t("wait");
   if (auth.action_state === "answer-only") return t("answerOnly");
   return t("notExecutable");
+}
+
+function modelUsageLabel(processing) {
+  if (processing?.model_usage === "used") return t("modelUsed");
+  if (processing?.model_usage === "attempted") return t("modelAttempted");
+  return t("modelNone");
 }
 
 function renderInterpretations(data) {
@@ -303,6 +344,15 @@ function renderResult(data, comparison = "") {
   $("#understanding-text").textContent = data.understanding;
   $("#selected-skill").textContent = data.selected_skill || t("noSkill");
   $("#permission-state").textContent = permissionLabel(data.authorization);
+  $("#processing-engine").textContent = data.processing.engine === "semantic-assisted"
+    ? t("semanticAssisted")
+    : t("deterministic");
+  $("#model-usage").textContent = modelUsageLabel(data.processing);
+  $("#prompt-state").textContent = data.processing.host_prompt_generated
+    ? t("modelUsed")
+    : t("promptNotGenerated");
+  $("#sdk-format").textContent = data.processing.contract_format;
+  $("#sdk-output").textContent = JSON.stringify(data.sdk_contract, null, 2);
   const comparisonElement = $("#comparison-text");
   comparisonElement.textContent = comparison;
   comparisonElement.hidden = !comparison;
@@ -337,13 +387,20 @@ async function compileIntent() {
         semantic_mode: "auto",
       }),
     });
-    if (!response.ok) throw new Error("compile failed");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "compile failed");
+    }
     previousResult = lastResult;
     renderResult(await response.json());
+    $("#connection-alert").hidden = true;
   } catch (error) {
-    $("#connection-alert").textContent = t("disconnected");
+    const compilerUnavailable = error.message === "local compiler unavailable";
+    $("#connection-alert").textContent = compilerUnavailable
+      ? t("compilerUnavailable")
+      : t("disconnected");
     $("#connection-alert").hidden = false;
-    $("#runtime-dot").className = "status-dot error";
+    if (!compilerUnavailable) $("#runtime-dot").className = "status-dot error";
   } finally {
     button.disabled = false;
     button.textContent = t("compile");
@@ -372,9 +429,7 @@ async function runCorrectionDemo() {
 
 function selectExample(name) {
   activeExample = name;
-  $$("[data-example]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.example === name);
-  });
+  $("#example-details").open = false;
   if (name === "correction") {
     runCorrectionDemo();
     return;
@@ -383,7 +438,7 @@ function selectExample(name) {
   $("#intent-input").value = example.utterance;
   $("#context-input").value = example.context;
   $("#pending-input").value = example.pending;
-  compileIntent();
+  $("#intent-input").focus();
 }
 
 function resetSession() {
@@ -395,8 +450,8 @@ function resetSession() {
   $("#pending-input").value = "";
   $("#result-content").hidden = true;
   $("#empty-result").hidden = false;
+  $("#example-details").open = false;
   $("#undo-interpretation").disabled = true;
-  $$("[data-example]").forEach((button) => button.classList.remove("active"));
 }
 
 $("#compile-button").addEventListener("click", compileIntent);
@@ -412,9 +467,21 @@ $("#undo-interpretation").addEventListener("click", () => {
   renderResult(previousResult);
   previousResult = current;
 });
+$("#copy-sdk-output").addEventListener("click", async (event) => {
+  event.preventDefault();
+  if (!lastResult) return;
+  const button = $("#copy-sdk-output");
+  await navigator.clipboard.writeText(JSON.stringify(lastResult.sdk_contract, null, 2));
+  button.title = t("copiedSdk");
+  setTimeout(() => {
+    button.title = t("copySdk");
+  }, 1200);
+});
 $$('[data-example]').forEach((button) => {
   button.addEventListener("click", () => selectExample(button.dataset.example));
 });
 
 applyLanguage();
 loadStatus();
+window.addEventListener("focus", loadStatus);
+window.setInterval(loadStatus, 5000);

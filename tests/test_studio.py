@@ -89,6 +89,12 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(result["authorization"]["action_state"], "answer-only")
         self.assertIn("不要发布", [item["text"] for item in result["authorization"]["constraints"]])
         self.assertIn("runtime", result)
+        self.assertEqual(result["processing"]["engine"], "deterministic-local")
+        self.assertEqual(result["processing"]["model_usage"], "none")
+        self.assertFalse(result["processing"]["host_prompt_generated"])
+        self.assertEqual(result["sdk_contract"]["operation"], "answer")
+        self.assertEqual(result["sdk_contract"]["effect"], "none")
+        self.assertIn("input_characters", result["processing"])
         self.assertNotIn("host_prompt", result)
         self.assertNotIn("student_state", result)
         self.assertNotIn(temp, serialized)
@@ -112,18 +118,29 @@ class StudioTests(unittest.TestCase):
         index = (studio_asset_dir() / "index.html").read_text(encoding="utf-8")
         for identifier in (
             'id="intent-input"',
+            'id="example-details"',
+            'id="example-summary"',
+            'class="context-details" open',
+            'id="context-summary"',
+            'class="context-fields"',
             'id="compile-button"',
             'id="runtime-state"',
             'id="interpretation-options"',
             'id="source-map"',
             'id="undo-interpretation"',
             'id="language-toggle"',
+            'id="processing-engine"',
+            'id="model-usage"',
+            'id="sdk-output"',
+            'id="copy-sdk-output"',
         ):
             self.assertIn(identifier, index)
         for technical_term in ("ExecutionEnvelope", "SQLite", "adapter", "MCP"):
             self.assertNotIn(technical_term, index)
         self.assertTrue((studio_asset_dir() / "styles.css").is_file())
-        self.assertTrue((studio_asset_dir() / "app.js").is_file())
+        app = (studio_asset_dir() / "app.js").read_text(encoding="utf-8")
+        self.assertIn('window.addEventListener("focus", loadStatus)', app)
+        self.assertIn("window.setInterval(loadStatus, 5000)", app)
 
     def test_asset_rejects_unsafe_names_before_accessing_the_asset_root(self):
         handler = object.__new__(StudioHandler)

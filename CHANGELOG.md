@@ -4,6 +4,18 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.1a2] - 2026-07-27
+
+### Added
+
+- A local-first Python SDK facade with typed compile, risk-check, gate-resolution, and confirmation-receipt helpers.
+- A natural-language-first Studio workflow with a copyable sanitized SDK contract.
+
+### Fixed
+
+- Read-only compatibility for legacy local memory databases.
+- Raw memory and correction diagnostics are excluded from default SDK results.
+
 ## [0.7.1a1] - 2026-07-26
 
 ### Added
