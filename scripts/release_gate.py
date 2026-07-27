@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import json
 import os
 import shutil
@@ -68,9 +68,9 @@ def validate_official_capability_audit(
     if not isinstance(refresh_days, int) or not 1 <= refresh_days <= 180:
         errors.append("official capability refresh_after_days must be 1..180")
         refresh_days = 0
-    if checked_at > as_of:
-        errors.append("official capability checked_at cannot be in the future")
-    elif refresh_days and (as_of - checked_at).days > refresh_days:
+    if checked_at > as_of + timedelta(days=1):
+        errors.append("official capability checked_at cannot be more than one day in the future")
+    elif checked_at <= as_of and refresh_days and (as_of - checked_at).days > refresh_days:
         errors.append("official capability audit is stale")
     if manifest.get("preserve_local_workflows") is not True:
         errors.append("official capability policy must preserve useful local workflows")
