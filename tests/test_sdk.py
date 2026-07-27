@@ -55,6 +55,9 @@ class SDKTests(unittest.TestCase):
         self.assertNotIn("host_prompt", result.to_dict())
         self.assertNotIn("memories", result.to_dict())
         self.assertNotIn("corrections", result.to_dict())
+        self.assertEqual(result.value_receipt["benefit_claim"], "observable-activity-only")
+        self.assertEqual(result.value_receipt["counterfactual_status"], "not-run")
+        self.assertTrue(result.value_receipt["skill_route_selected"])
 
     def test_compile_exposes_internal_diagnostics_only_when_requested(self):
         with tempfile.TemporaryDirectory() as temp:
