@@ -37,6 +37,28 @@ Choose the smallest setup that matches your goal:
 
 For most first-time users, install the Skill only. Add MCP after the basic workflow behaves as expected. No account, API key, cloud model, or Obsidian vault is required.
 
+### Fastest first install: no Git required
+
+If Git, a local proxy, or an Agent's documentation helper is unavailable, do not debug those services before trying the Skill:
+
+1. Download [`main.zip`](https://github.com/baoqingwang3-prog/intent-translator/archive/refs/heads/main.zip).
+2. Extract it and open the folder containing `install.ps1`, `install.sh`, and `pyproject.toml`.
+3. Ask the Agent to read only the local `README.md`, or run the Skill-only installer directly.
+
+Windows PowerShell:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -TargetHost Codex
+```
+
+macOS or Linux:
+
+```bash
+sh ./install.sh --host codex
+```
+
+If output mentions an inactive proxy such as `127.0.0.1:7890`, or an optional documentation helper returns `403`, that does not mean this public repository or the Skill requires authorization. Stop the automatic clone or documentation lookup and use the ZIP path above. Do not change global Git settings unless you own that configuration.
+
 Developers embedding the compiler can use the Python SDK directly without MCP:
 
 ```python

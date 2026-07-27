@@ -35,6 +35,28 @@
 
 第一次使用建议先只装 Skill。确认行为符合预期后，再加 MCP。它不要求账号、API Key、云模型或 Obsidian。
 
+### 最快首次安装：不需要 Git
+
+如果 Git、本地代理或 Agent 的文档查询不可用，不要先花时间修这些服务：
+
+1. 下载 [`main.zip`](https://github.com/baoqingwang3-prog/intent-translator/archive/refs/heads/main.zip)。
+2. 解压并打开包含 `install.ps1`、`install.sh` 和 `pyproject.toml` 的文件夹。
+3. 让 Agent 只读取本地 `README.md`，或者直接运行 Skill-only 安装器。
+
+Windows PowerShell：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -TargetHost Codex
+```
+
+macOS / Linux：
+
+```bash
+sh ./install.sh --host codex
+```
+
+如果输出提到未运行的代理，例如 `127.0.0.1:7890`，或者可选的官方文档 helper 返回 `403`，不代表这个公开仓库或 Skill 需要额外权限。停止自动 clone 或文档查询，改用上面的 ZIP 路径。除非你清楚该配置的用途，否则不要修改全局 Git 设置。
+
 只安装 Skill 后即可直接以通用模式使用，不会假装已经了解你。安装可选 MCP 后，可以让 Agent“设置意图中枢”，也可以运行可跳过的三分钟设置。它只询问本地记忆、歧义确认和回答语气：
 
 ```bash

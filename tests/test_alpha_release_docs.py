@@ -17,6 +17,13 @@ class AlphaReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("intent-translator-studio", readme)
         self.assertIn("Agent Reach", readme)
         self.assertIn("docs/support-matrix.md", readme)
+        self.assertIn("Fastest first install: no Git required", readme)
+        self.assertIn("archive/refs/heads/main.zip", readme)
+        self.assertIn("documentation helper returns `403`", readme)
+
+        chinese_readme = (REPO_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+        self.assertIn("最快首次安装：不需要 Git", chinese_readme)
+        self.assertIn("官方文档 helper 返回 `403`", chinese_readme)
 
     def test_support_matrix_distinguishes_verified_and_unverified_hosts(self):
         matrix = (REPO_ROOT / "docs" / "support-matrix.md").read_text(encoding="utf-8")
