@@ -37,6 +37,12 @@ class ReleaseMetadataTests(unittest.TestCase):
             [],
         )
 
+    def test_official_capability_audit_allows_one_day_timezone_skew(self):
+        self.assertEqual(
+            validate_official_capability_audit(as_of=date(2026, 7, 27)),
+            [],
+        )
+
     def test_official_capability_audit_rejects_stale_or_unofficial_sources(self):
         stale = deepcopy(OFFICIAL_CAPABILITY_AUDIT)
         stale["checked_at"] = "2026-01-01"
