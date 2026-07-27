@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date, datetime
 import json
 import os
 import shutil
@@ -12,9 +13,91 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+OFFICIAL_CAPABILITY_AUDIT = {
+    "checked_at": "2026-07-28",
+    "refresh_after_days": 45,
+    "preserve_local_workflows": True,
+    "native_host_first": True,
+    "hosts": {
+        "codex": [
+            "https://learn.chatgpt.com/docs/prompting",
+            "https://learn.chatgpt.com/docs/personalize",
+            "https://learn.chatgpt.com/docs/skills-and-plugins",
+            "https://learn.chatgpt.com/docs/permission-modes",
+        ],
+        "claude": [
+            "https://code.claude.com/docs/en/memory",
+            "https://code.claude.com/docs/en/skills",
+            "https://code.claude.com/docs/en/permissions",
+            "https://code.claude.com/docs/en/hooks-guide",
+        ],
+        "grok": [
+            "https://docs.x.ai/build/overview",
+            "https://docs.x.ai/build/modes-and-commands",
+            "https://docs.x.ai/developers/model-capabilities/text/structured-outputs",
+            "https://docs.x.ai/developers/tools/function-calling",
+            "https://docs.x.ai/developers/advanced-api-usage/context-compaction",
+        ],
+    },
+}
+OFFICIAL_CAPABILITY_DOMAINS = {
+    "codex": {"learn.chatgpt.com", "developers.openai.com"},
+    "claude": {"code.claude.com", "docs.anthropic.com"},
+    "grok": {"docs.x.ai"},
+}
+
+
+def validate_official_capability_audit(
+    manifest: dict[str, Any] = OFFICIAL_CAPABILITY_AUDIT,
+    *,
+    as_of: date | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    as_of = as_of or date.today()
+    try:
+        checked_at = datetime.strptime(str(manifest.get("checked_at", "")), "%Y-%m-%d").date()
+    except ValueError:
+        errors.append("official capability checked_at must use YYYY-MM-DD")
+        checked_at = as_of
+    refresh_days = manifest.get("refresh_after_days")
+    if not isinstance(refresh_days, int) or not 1 <= refresh_days <= 180:
+        errors.append("official capability refresh_after_days must be 1..180")
+        refresh_days = 0
+    if checked_at > as_of:
+        errors.append("official capability checked_at cannot be in the future")
+    elif refresh_days and (as_of - checked_at).days > refresh_days:
+        errors.append("official capability audit is stale")
+    if manifest.get("preserve_local_workflows") is not True:
+        errors.append("official capability policy must preserve useful local workflows")
+    if manifest.get("native_host_first") is not True:
+        errors.append("official capability policy must be native-host-first")
+    hosts = manifest.get("hosts")
+    if not isinstance(hosts, dict):
+        return [*errors, "official capability hosts must be an object"]
+    for host in ("codex", "claude", "grok"):
+        sources = hosts.get(host)
+        if not isinstance(sources, list) or not sources:
+            errors.append(f"official capability sources missing for {host}")
+            continue
+        for source in sources:
+            parsed = urlparse(str(source))
+            if parsed.scheme != "https" or parsed.hostname not in OFFICIAL_CAPABILITY_DOMAINS[host]:
+                errors.append(f"unofficial capability source for {host}: {source}")
+    return errors
+
+
+def official_capability_step() -> dict[str, Any]:
+    errors = validate_official_capability_audit()
+    result: dict[str, Any] = {"name": "official-capability-audit", "passed": not errors}
+    if errors:
+        result["errors"] = errors
+    return result
+
 
 
 def run_step(
@@ -162,6 +245,7 @@ def installed_wheel_steps(
 def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
     steps = [
         run_step("release-metadata", [python, "tests/check_release_metadata.py"]),
+        official_capability_step(),
         run_step("compileall", [python, "-m", "compileall", "-q", "skills", "src", "tests", "scripts"]),
     ]
     if mode == "quick":
