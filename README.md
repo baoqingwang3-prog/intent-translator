@@ -8,6 +8,10 @@ A local-first Agent Skill that turns terse, implicit, or context-dependent langu
 
 It provides bounded interpretations, routing recommendations, and authorization preflight results. It becomes a mandatory gate only when the Agent host actually integrates and calls the MCP tools.
 
+Claude, Codex, and Grok already provide native prompting, memory, Skills/plugins, permissions, hooks, and context management. Intent Translator keeps the local workflows that users find useful, but treats those host features as integrations rather than unique inventions. Its independent value is the portable evidence layer: a typed source-mapped contract, an honest per-turn activity receipt, correction-recurrence tracking, same-model A/B evaluation, and planned-versus-actual invocation traces. See the [official host capability audit](docs/value-p0.md#official-host-capability-audit).
+
+A value receipt reports what this preflight visibly did, such as recovered non-obvious fields, preserved constraints, correction hits, selected routing, and added review. It deliberately leaves "clarifications avoided" and "unsafe actions prevented" unset until a no-Skill counterfactual proves them.
+
 The project does not claim to read minds or understand every profession by itself. It provides a general intent and routing layer; domain Skills, trusted sources, and high-stakes policies provide specialized judgment.
 
 The first Alpha is for people who frequently use Codex, Claude Code, or similar agents, keep several Skills installed, continue work with short natural-language messages, and want visible preflight signals intended to reduce misunderstanding, wrong routing, or over-broad authorization.
@@ -96,7 +100,7 @@ Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the curre
 
 ## Status
 
-P1 Alpha, version `0.7.1a2`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+P1 Alpha, version `0.7.1a3`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
 
 ## Compatibility
 

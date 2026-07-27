@@ -4,6 +4,18 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.7.1a3] - 2026-07-28
+
+### Added
+
+- An official Claude, Codex, and Grok capability baseline with a 45-day release freshness gate.
+- Honest per-turn value receipts that quantify observable preflight activity while reserving counterfactual benefit claims for paired evaluation.
+
+### Changed
+
+- Public positioning is now native-host-first: local memory, Skill routing, permissions, hooks, and compaction remain useful adapters and fallbacks, while cross-host evidence and evaluation are the independent core.
+- The local workflows that already help existing users remain enabled; this release does not remove personal correction or continuity behavior.
+
 ## [0.7.1a2] - 2026-07-27
 
 ### Added

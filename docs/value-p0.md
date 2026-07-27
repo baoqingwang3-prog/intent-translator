@@ -41,3 +41,31 @@ It is a deterministic regression gate, not a claim that every user or model will
 The executable regressions live in `tests/test_value_p0.py` and `tests/test_role_matrix_p0.py`.
 
 The broader public conformance contract lives in [IntentBench v1](../benchmarks/intentbench-v1/README.md). Its gold labels are public and were used to repair the implementation, so its final score proves conformance to declared behavior rather than generalization to unfamiliar users. The contribution and prior-art boundary is documented in [contribution-boundary.md](contribution-boundary.md), and the controls are mapped to threats in [threat-model.md](threat-model.md).
+
+## Per-turn value receipt
+
+Each compile result now includes a compact `value_receipt`. It counts observable activity only: non-obvious source-map transforms, preserved constraints and prohibitions, memory/correction hits, Skill routing, clarification or confirmation gates, preflight blocking, semantic calls observed, and approximate context size.
+
+The fields `route_changed_vs_no_skill`, `clarifications_avoided`, and `unsafe_action_prevented` remain `null` until a valid paired baseline exists. The receipt uses `benefit_claim=observable-activity-only`; same-model A/B or an equivalent counterfactual is required before claiming improvement.
+
+Official host overlap and the native-host-first boundary are tracked below.
+
+## Official host capability audit
+
+Checked **2026-07-28** and enforced by a 45-day freshness gate in `scripts/release_gate.py`. Claude, Codex, and Grok already provide native prompting, persistent instructions or memory, Skills/plugins, permission controls, hooks or tool calls, and context management. Intent Translator therefore treats those surfaces as host integrations or local fallbacks, not unique inventions.
+
+The independent core is the portable evidence layer: a typed source-mapped contract, observable per-turn value receipts, correction-recurrence evaluation, same-model counterfactual evaluation, and planned-versus-actual invocation traces. Local memory, phrase mappings, Studio, deterministic routing, and study continuity remain available because they are useful in practice.
+
+Product rules:
+
+- Prefer verified host-native memory, Skills/plugins, permissions, hooks, and compaction.
+- Preserve local and offline workflows instead of deleting useful behavior.
+- Never report planned routing as actual invocation without host evidence.
+- Never report a blocked preflight as harm prevented without a no-Skill counterfactual.
+- Refresh the audit before release when it is older than 45 days.
+
+Official sources:
+
+- Codex: [Prompting](https://learn.chatgpt.com/docs/prompting), [Personalization](https://learn.chatgpt.com/docs/personalize), [Skills and plugins](https://learn.chatgpt.com/docs/skills-and-plugins), [Permission modes](https://learn.chatgpt.com/docs/permission-modes)
+- Claude Code: [Memory](https://code.claude.com/docs/en/memory), [Skills](https://code.claude.com/docs/en/skills), [Permissions](https://code.claude.com/docs/en/permissions), [Hooks](https://code.claude.com/docs/en/hooks-guide)
+- Grok/xAI: [Build overview](https://docs.x.ai/build/overview), [Modes](https://docs.x.ai/build/modes-and-commands), [Structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs), [Function calling](https://docs.x.ai/developers/tools/function-calling), [Context compaction](https://docs.x.ai/developers/advanced-api-usage/context-compaction)

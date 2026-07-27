@@ -24,6 +24,7 @@ from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, s
 from .skill_integrity import verify_skill_script
 from .student_state import read_state_summary, state_db_path
 from .tool_gateway import decide_tool_access
+from .presentation import build_value_receipt
 from .version import __version__
 
 
@@ -2313,6 +2314,11 @@ class IntentCompiler:
                 "verify": mode in {"build", "change", "route"},
                 "report_evidence": mode in {"build", "change", "diagnose"},
             },
+            "input_usage": {
+                "utterance_chars": len(request.utterance),
+                "context_chars": len(request.context),
+                "pending_action_chars": len(request.pending_action),
+            },
             "host_prompt": prompt if request.include_prompt else None,
         }
         try:
@@ -2320,4 +2326,5 @@ class IntentCompiler:
         except RuntimeError:
             receipt = None
         envelope["decision_receipt"] = receipt
+        envelope["value_receipt"] = build_value_receipt(envelope)
         return envelope
