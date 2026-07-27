@@ -117,7 +117,7 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(alignment["status"], "warn")
             self.assertTrue(alignment["details"]["restart_host"])
             self.assertEqual(report["runtime_status"]["state"], "stale")
-            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], "0.7.1a2")
+            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], "0.7.1a3")
             self.assertEqual(report["runtime_status"]["versions"]["profile_schema"], None)
             self.assertIn(
                 "active Skill and installed MCP runtime differ",
@@ -142,12 +142,12 @@ class DoctorTests(unittest.TestCase):
     def test_installed_runtime_without_codex_registration_is_degraded(self):
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp)
-            runtime = home / ".intent-translator" / "mcp" / "runtimes" / "0.7.1a2" / "venv" / "Scripts"
+            runtime = home / ".intent-translator" / "mcp" / "runtimes" / "0.7.1a3" / "venv" / "Scripts"
             runtime.mkdir(parents=True)
             command = runtime / "intent-translator-mcp.exe"
             command.touch()
             (home / ".intent-translator" / "mcp" / "current.json").write_text(
-                json.dumps({"version": "0.7.1a2", "command": str(command)}),
+                json.dumps({"version": "0.7.1a3", "command": str(command)}),
                 encoding="utf-8",
             )
             registration = {
