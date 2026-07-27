@@ -4,6 +4,55 @@ from __future__ import annotations
 
 from typing import Any
 
+def build_value_receipt(envelope: dict[str, Any]) -> dict[str, Any]:
+    """Count observable preflight activity without inventing no-Skill benefit."""
+    contract = envelope.get("intent_contract") if isinstance(envelope.get("intent_contract"), dict) else {}
+    routing = envelope.get("routing") if isinstance(envelope.get("routing"), dict) else {}
+    risk = envelope.get("risk") if isinstance(envelope.get("risk"), dict) else {}
+    gateway = envelope.get("tool_gateway") if isinstance(envelope.get("tool_gateway"), dict) else {}
+    semantic = envelope.get("semantic") if isinstance(envelope.get("semantic"), dict) else {}
+    usage = envelope.get("input_usage") if isinstance(envelope.get("input_usage"), dict) else {}
+    memories = envelope.get("memories") or envelope.get("memory_refs") or []
+    corrections = envelope.get("corrections") or envelope.get("correction_refs") or []
+    source_map = contract.get("source_map") or envelope.get("prompt_source_map") or []
+    constraints = contract.get("constraints") or envelope.get("constraints") or []
+    prohibitions = contract.get("prohibitions") or []
+    non_obvious = [
+        item
+        for item in source_map
+        if isinstance(item, dict) and item.get("obvious") is False
+    ]
+    context_chars = sum(
+        int(usage.get(key, 0) or 0)
+        for key in ("utterance_chars", "context_chars", "pending_action_chars")
+    )
+    gateway_decision = str(gateway.get("decision", "unknown"))
+    execution_allowed = bool(envelope.get("completion_contract", {}).get("execute", False))
+    semantic_status = str(semantic.get("status", ""))
+    return {
+        "schema_version": 1,
+        "evidence_scope": "single-preflight",
+        "recovered_fields_count": len(non_obvious),
+        "preserved_constraints_count": len(constraints),
+        "preserved_prohibitions_count": len(prohibitions),
+        "memory_hits": len([item for item in memories if isinstance(item, dict)]),
+        "correction_hits": len([item for item in corrections if isinstance(item, dict)]),
+        "skill_route_selected": bool(routing.get("primary_skill")),
+        "skill_route_state": routing.get("selection_state"),
+        "clarification_triggered": bool(envelope.get("clarification_required", False)),
+        "confirmation_added": bool(risk.get("confirmation_required", False)),
+        "blocked_by_preflight": gateway_decision != "allow" and not execution_allowed,
+        "semantic_model_calls_observed": 1 if semantic_status in {"applied", "error"} else 0,
+        "context_chars_loaded": context_chars,
+        "estimated_context_tokens": (context_chars + 3) // 4,
+        "route_changed_vs_no_skill": None,
+        "clarifications_avoided": None,
+        "unsafe_action_prevented": None,
+        "counterfactual_status": "not-run",
+        "benefit_claim": "observable-activity-only",
+    }
+
+
 
 def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     """Return the stable public result without raw memory or diagnostics."""
@@ -66,6 +115,24 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         )
         if key in envelope
     }
+    value_receipt = envelope.get("value_receipt", {})
+    if value_receipt:
+        compact["value_receipt"] = {
+            key: value_receipt[key]
+            for key in (
+                "benefit_claim",
+                "counterfactual_status",
+                "recovered_fields_count",
+                "preserved_constraints_count",
+                "preserved_prohibitions_count",
+                "memory_hits",
+                "correction_hits",
+                "skill_route_selected",
+                "blocked_by_preflight",
+                "estimated_context_tokens",
+            )
+            if value_receipt.get(key) is not None
+        }
     compact["risk"] = risk
     compact["intent_contract"] = contract
     for key in ("phrase_match", "constraints", "gate_resolution", "prompt_source_map"):
@@ -120,4 +187,4 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     return compact
 
 
-__all__ = ["compact_envelope"]
+__all__ = ["build_value_receipt", "compact_envelope"]
