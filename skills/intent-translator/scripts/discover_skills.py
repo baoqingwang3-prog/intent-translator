@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,22 @@ from typing import Any, Iterable
 
 
 KEY_RE = re.compile(r"^([A-Za-z0-9_-]+):(?:\s*(.*))?$")
+IGNORED_DIRECTORY_PREFIXES = (".backup", ".backups", ".archive", ".retired")
+
+
+def ignored_skill_path(skill_md: Path, root: Path) -> bool:
+    try:
+        relative = skill_md.relative_to(root)
+    except ValueError:
+        return False
+    return any(
+        part.casefold().startswith(IGNORED_DIRECTORY_PREFIXES)
+        for part in relative.parts[:-1]
+    )
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _decode_scalar(value: str) -> Any:
@@ -126,6 +143,8 @@ def discover_skills(roots: Iterable[Path]) -> dict[str, Any]:
         if not root.exists():
             continue
         for skill_md in sorted(root.rglob("SKILL.md"), key=lambda item: str(item).lower()):
+            if ignored_skill_path(skill_md, root):
+                continue
             try:
                 metadata = parse_frontmatter(skill_md)
                 name = str(metadata.get("name", "")).strip()
@@ -139,6 +158,8 @@ def discover_skills(roots: Iterable[Path]) -> dict[str, Any]:
                     "source_root": str(root),
                     "precedence": precedence,
                     "model_invoked": not bool(metadata.get("disable-model-invocation", False)),
+                    "skill_md": str(skill_md.resolve()),
+                    "sha256": file_sha256(skill_md),
                 }
                 if name not in selected:
                     selected[name] = record
@@ -150,7 +171,7 @@ def discover_skills(roots: Iterable[Path]) -> dict[str, Any]:
                 errors.append({"path": str(skill_md), "error": str(exc)})
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "roots": [str(root) for root in root_list],
         "skills": sorted(selected.values(), key=lambda item: item["name"].lower()),
         "duplicates": [
@@ -158,6 +179,11 @@ def discover_skills(roots: Iterable[Path]) -> dict[str, Any]:
             for name, alternates in sorted(duplicates.items())
         ],
         "errors": errors,
+        "summary": {
+            "selected": len(selected),
+            "duplicate_names": len(duplicates),
+            "errors": len(errors),
+        },
     }
 
 

@@ -30,11 +30,12 @@ from semantic_search import (  # noqa: E402
 )
 
 
-DB_SCHEMA_VERSION = 5
+DB_SCHEMA_VERSION = 6
 CONFIDENCE_VALUES = {"confirmed", "observed", "inferred"}
 SEVERITY_VALUES = {"low", "medium", "high", "critical"}
 OUTCOME_VALUES = {"heeded", "recurred", "unknown"}
 MEMORY_STATUS_VALUES = {"active", "superseded", "retracted", "expired"}
+MEMORY_TIER_VALUES = {"hot", "warm", "cold"}
 SENSITIVITY_VALUES = {"standard", "sensitive"}
 CONFLICT_RESOLUTIONS = {"flag", "replace", "reject"}
 SOURCE_TYPE_VALUES = {
@@ -162,6 +163,10 @@ def connect(db_path: Path) -> sqlite3.Connection:
             "trust_level": "TEXT NOT NULL DEFAULT 'trusted'",
             "instruction_like": "INTEGER NOT NULL DEFAULT 0",
             "quarantine_reason": "TEXT NOT NULL DEFAULT ''",
+            "tier": "TEXT NOT NULL DEFAULT 'warm'",
+            "reinforcement_count": "INTEGER NOT NULL DEFAULT 0",
+            "negative_count": "INTEGER NOT NULL DEFAULT 0",
+            "last_reinforced_at": "TEXT NOT NULL DEFAULT ''",
         },
     )
     connection.execute(
@@ -266,6 +271,25 @@ def connect(db_path: Path) -> sqlite3.Connection:
             correction_id INTEGER,
             created_at TEXT NOT NULL,
             FOREIGN KEY(correction_id) REFERENCES corrections(id)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS learning_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fingerprint TEXT NOT NULL UNIQUE,
+            scope TEXT NOT NULL,
+            signal_type TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            source_type TEXT NOT NULL DEFAULT 'agent_inferred',
+            occurrence_count INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'candidate',
+            memory_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(memory_id) REFERENCES memories(id)
         )
         """
     )
@@ -388,6 +412,7 @@ def decorate_memory(record: dict[str, Any], *, score: int | None = None) -> dict
     result["expired"] = memory_is_expired(result)
     result["stale"] = memory_is_stale(result)
     result["instruction_like"] = bool(result.get("instruction_like", 0))
+    result["tier"] = result.get("tier", "warm")
     result["memory_defense"] = {
         "source_type": result.get("source_type", "legacy"),
         "trust_level": result.get("trust_level", "trusted"),
@@ -709,6 +734,7 @@ def search_memories(
 
     confidence_weight = {"confirmed": 30, "observed": 20, "inferred": 10}
     trust_weight = {"trusted": 20, "untrusted": -30}
+    tier_weight = {"hot": 12, "warm": 0, "cold": -12}
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for row in rows:
         record = row_to_dict(row)
@@ -731,6 +757,7 @@ def search_memories(
             semantic_match * 12
             + confidence_weight.get(str(record["confidence"]), 0)
             + trust_weight.get(str(record.get("trust_level", "trusted")), -30)
+            + tier_weight.get(str(record.get("tier", "warm")), 0)
             + scope_weight
             + min(int(record.get("access_count", 0)), 10)
             - stale_penalty
@@ -1436,6 +1463,7 @@ def export_store(connection: sqlite3.Connection) -> dict[str, Any]:
         "correction_events",
         "pending_corrections",
         "execution_outcomes",
+        "learning_signals",
         "intent_checks",
         "schema_migrations",
     )
@@ -1462,6 +1490,7 @@ def purge_store(connection: sqlite3.Connection, *, scope: str | None = None) -> 
         for correction_id in correction_ids:
             connection.execute("DELETE FROM correction_events WHERE correction_id = ?", (correction_id,))
         connection.execute("DELETE FROM execution_outcomes WHERE scope = ?", (scope,))
+        connection.execute("DELETE FROM learning_signals WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM memories WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM corrections WHERE scope = ?", (scope,))
         connection.execute("DELETE FROM pending_corrections WHERE scope = ?", (scope,))
@@ -1474,6 +1503,7 @@ def purge_store(connection: sqlite3.Connection, *, scope: str | None = None) -> 
             "correction_events",
             "pending_corrections",
             "execution_outcomes",
+            "learning_signals",
             "intent_checks",
             "memories",
             "corrections",

@@ -196,6 +196,12 @@ PROTECTED_DATA_PATTERNS = (
 )
 NEGATED_ACTION_PATTERNS = (
     re.compile(
+        r"(?P<text>(?:不要|不得|无需|禁止|不|别)\s*(?:再\s*)?"
+        r"(?P<action>删除|删掉|移除|卸载|清空|销毁|覆盖)"
+        r"(?:\s*(?:现有|已有|旧的?|其他)?\s*(?:软件|应用|程序|文件|数据|配置|内容|副本))?)",
+        re.I,
+    ),
+    re.compile(
         r"(?P<text>(?:不要|不得|无需|禁止|不)\s*"
         r"(?P<action>(?:创建\s*remote|push|公开发布|上传|发布|公开|上架|部署|外发|推送)"
         r"(?:(?:\s*[、，,]\s*|\s*(?:或|和|以及)\s*)"
@@ -239,6 +245,11 @@ NEGATED_ACTION_PATTERNS = (
     re.compile(
         r"(?P<text>(?:暂时|现在|先)?\s*(?:不要|别|无需)\s*"
         r"(?P<action>安装|创建|新建|改写|重写))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:不|不得|禁止)\s*(?:再\s*)?"
+        r"(?P<action>安装)(?:\s*(?:其他|额外|更多)?\s*(?:软件|应用|程序|工具))?)",
         re.I,
     ),
     re.compile(
@@ -287,6 +298,13 @@ DEFERRED_ACTION_PATTERNS = (
     ),
 )
 ACTION_NAMES = {
+    "删除": "delete",
+    "删掉": "delete",
+    "移除": "delete",
+    "卸载": "uninstall",
+    "清空": "delete",
+    "销毁": "delete",
+    "覆盖": "overwrite",
     "上传": "upload",
     "发布": "publish",
     "公开": "publish",
@@ -334,9 +352,19 @@ def _candidate_skill_dirs(
     return candidate_skill_dirs(home=home, env=env)
 
 
+def _support_skill_dirs() -> list[Path]:
+    directories = _candidate_skill_dirs()
+    repository_skill = Path(__file__).resolve().parents[2] / "skills" / "intent-translator"
+    if repository_skill.exists() and repository_skill.resolve() not in {
+        path.resolve() for path in directories
+    }:
+        directories.append(repository_skill.resolve())
+    return directories
+
+
 @lru_cache(maxsize=None)
 def _load_skill_script(name: str) -> ModuleType:
-    for skill_dir in _candidate_skill_dirs():
+    for skill_dir in _support_skill_dirs():
         script = skill_dir / "scripts" / f"{name}.py"
         if not script.exists():
             continue
@@ -904,6 +932,14 @@ def _route_skill(
     installed = {item["name"]: item for item in discovered.get("skills", [])}
 
     def eligible(name: str) -> bool:
+        request_text = text.casefold()
+        if name == "diagnosing-bugs":
+            return mode == "diagnose"
+        if name == "browser":
+            return _contains(
+                request_text,
+                ("browser", "playwright", "浏览器", "网页", "页面", "studio", "ui"),
+            )
         if name == "agent-reach":
             return operation in {"search", "research"}
         if name == "skill-lookup":
@@ -985,6 +1021,24 @@ def _route_skill(
         if exact_name or len(matched) >= 2:
             score = 80 if exact_name else 40 + len(matched) * 5
             scores.append((score, name, [name] if exact_name else matched))
+    try:
+        registry_search = _load_skill_script("skill_registry")
+    except RuntimeError:
+        registry_search = None
+    for match in (
+        registry_search.search_registry(discovered, text, limit=10)
+        if registry_search is not None
+        else []
+    ):
+        name = str(match.get("name", ""))
+        if name in installed and eligible(name):
+            scores.append(
+                (
+                    int(match.get("score", 0)),
+                    name,
+                    ["skill-registry-metadata"],
+                )
+            )
     best: dict[str, tuple[int, list[str]]] = {}
     for score, name, matched in scores:
         if name not in best or score > best[name][0]:

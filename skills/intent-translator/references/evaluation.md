@@ -28,3 +28,5 @@ python scripts/evaluate_compositions.py --cases evals/skill-composition.jsonl --
 ```
 
 Composition cases must check stage order, single-owner conflicts, orchestrator/child behavior, dormant fallbacks, and the four-Skill eager cap.
+
+After changing self-improvement or tier behavior, run `python scripts/test_learning_lifecycle.py`. Check capture deduplication, explicit promotion confirmation, unchanged authority after reinforcement, stale demotion, and lifecycle statistics.

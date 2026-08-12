@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from intent_translator_mcp import __version__  # noqa: E402
 from intent_translator_mcp.doctor import run_doctor  # noqa: E402
 
 
@@ -117,7 +117,7 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(alignment["status"], "warn")
             self.assertTrue(alignment["details"]["restart_host"])
             self.assertEqual(report["runtime_status"]["state"], "stale")
-            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], "0.8.0a1")
+            self.assertEqual(report["runtime_status"]["versions"]["actual_runtime"], __version__)
             self.assertEqual(report["runtime_status"]["versions"]["profile_schema"], None)
             self.assertIn(
                 "active Skill and installed MCP runtime differ",

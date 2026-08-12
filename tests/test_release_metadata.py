@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import date
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -7,13 +8,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "tests"))
 
 from check_release_metadata import check_versions  # noqa: E402
 from scripts.release_gate import (  # noqa: E402
     OFFICIAL_CAPABILITY_AUDIT,
+    source_tree_environment,
     validate_official_capability_audit,
 )
+from intent_translator_mcp import __version__  # noqa: E402
 
 
 class ReleaseMetadataTests(unittest.TestCase):
@@ -21,7 +25,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(check_versions(), [])
 
     def test_matching_tag_passes(self):
-        self.assertEqual(check_versions("v0.8.0a1"), [])
+        self.assertEqual(check_versions(f"v{__version__}"), [])
 
     def test_project_urls_point_to_public_repository(self):
         metadata = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -59,6 +63,13 @@ class ReleaseMetadataTests(unittest.TestCase):
                     unofficial, as_of=date(2026, 7, 28)
                 )
             )
+        )
+
+    def test_source_tree_environment_prepends_src(self):
+        env = source_tree_environment({"PYTHONPATH": "existing"})
+        self.assertEqual(
+            env["PYTHONPATH"],
+            str(REPO_ROOT / "src") + os.pathsep + "existing",
         )
 
 

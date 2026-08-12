@@ -22,9 +22,11 @@ def candidate_skill_dirs(
     package_repo = Path(__file__).resolve().parents[2]
     configured_home = str(env.get("INTENT_TRANSLATOR_HOME", "")).strip()
     home = (home or (Path(configured_home) if configured_home else Path.home())).expanduser()
+    repository_skill = package_repo / "skills" / "intent-translator"
+    include_repository_skill = configured is None and home == Path.home().expanduser()
     candidates = [
         Path(configured).expanduser() if configured else None,
-        package_repo / "skills" / "intent-translator",
+        repository_skill if include_repository_skill else None,
         *(default_skill_dir(host, home=home, env=env) for host in HOSTS),
         home / ".agents" / "skills" / "intent-translator",
     ]

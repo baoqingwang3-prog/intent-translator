@@ -546,7 +546,7 @@ class MemoryStoreTests(unittest.TestCase):
                     confidence="confirmed",
                 )
                 exported = export_store(connection)
-                self.assertEqual(exported["schema_version"], 5)
+                self.assertEqual(exported["schema_version"], 6)
                 self.assertEqual(len(exported["tables"]["memories"]), 1)
                 self.assertGreaterEqual(len(exported["tables"]["memory_events"]), 1)
             finally:
@@ -564,7 +564,7 @@ class MemoryStoreTests(unittest.TestCase):
 
             connection = connect(db_path)
             try:
-                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             finally:
                 connection.close()
             backups = list(Path(temp).glob("memory.db.bak-v0-*") )

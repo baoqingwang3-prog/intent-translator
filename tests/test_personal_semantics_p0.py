@@ -317,7 +317,7 @@ class PersonalSemanticsP0Tests(unittest.TestCase):
         self.assertNotIn("考研", result["normalized_goal"])
         self.assertFalse(result["completion_contract"]["execute"])
 
-    def test_schema_four_migrates_to_five_without_losing_correction_data(self):
+    def test_schema_four_migrates_to_six_without_losing_correction_data(self):
         memory = _load_skill_script("memory_store")
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -355,7 +355,7 @@ class PersonalSemanticsP0Tests(unittest.TestCase):
 
             connection = memory.connect(db)
             try:
-                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
                 stored = connection.execute("SELECT * FROM corrections").fetchone()
                 self.assertEqual(stored["correction"], "恢复具体测试任务")
                 self.assertIn("edit_json", stored.keys())

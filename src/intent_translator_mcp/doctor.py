@@ -164,7 +164,15 @@ def run_doctor(
             )
         )
 
-    skill_dirs = _candidate_skill_dirs(home=home, env=env)
+    configured_skill = str(env.get("INTENT_TRANSLATOR_SKILL_DIR", "")).strip()
+    configured_path = Path(configured_skill).expanduser().resolve() if configured_skill else None
+    skill_dirs = [
+        path
+        for path in _candidate_skill_dirs(home=home, env=env)
+        if configured_path == path.resolve()
+        or path.resolve() == home
+        or home in path.resolve().parents
+    ]
     skill_copies = [
         {
             "location": _display_path(path, home, show_paths),
@@ -347,12 +355,14 @@ def run_doctor(
         "registered-stale",
         "registration-unknown",
         "installed-invalid",
-    } and runtime_status["state"] != "stale":
+    } and (runtime_status["state"] != "stale" or not skill_dirs):
         runtime_status = {
             **runtime_status,
             "state": "degraded",
             "active": False,
+            "stale_runtime": False,
             "degraded": True,
+            "restart_required": False,
             "reasons": [
                 *runtime_status["reasons"],
                 f"Codex host registration is {registration_state}",

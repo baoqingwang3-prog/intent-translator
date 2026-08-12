@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from urllib.parse import urlparse
 
 
@@ -97,6 +97,14 @@ def official_capability_step() -> dict[str, Any]:
     if errors:
         result["errors"] = errors
     return result
+
+
+def source_tree_environment(base: Mapping[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ if base is None else base)
+    env["PYTHONPATH"] = str(REPO_ROOT / "src") + (
+        os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
+    )
+    return env
 
 
 
@@ -243,6 +251,7 @@ def installed_wheel_steps(
 
 
 def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
+    source_env = source_tree_environment()
     steps = [
         run_step("release-metadata", [python, "tests/check_release_metadata.py"]),
         official_capability_step(),
@@ -274,6 +283,7 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
                     "--minimum-field-accuracy",
                     "1.0",
                 ],
+                env=source_env,
             ),
             run_step(
                 "intentbench-v2",
@@ -289,6 +299,7 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
                     "--minimum-field-accuracy",
                     "1.0",
                 ],
+                env=source_env,
             ),
             run_step("stranger-smoke", [python, "scripts/stranger_smoke.py"]),
             run_step("release-audit", [python, "scripts/release_audit.py", "--repo", str(REPO_ROOT)]),
@@ -299,6 +310,7 @@ def run_gate(mode: str, python: str = sys.executable) -> dict[str, Any]:
             run_step(
                 "codex-operator-host-trace",
                 [python, "scripts/codex_host_trace_smoke.py", "--python", python],
+                env=source_env,
             )
         )
 

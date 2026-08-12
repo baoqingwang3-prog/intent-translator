@@ -11,7 +11,7 @@ Choose one primary Skill by ownership. Add a supporting Skill only for a separat
 | Challenge and sharpen a plan | `grilling` | Use only when an interview is wanted; otherwise use the semantic review path internally |
 | Find or install Skills | `skill-lookup` | `agent-reach` when the registry is unavailable; `skill-creator` if no suitable Skill exists |
 | Obsidian read, search, create, or update | `obsidian-cli` | `obsidian-markdown`, `obsidian-bases`, or `json-canvas` by file type |
-| Cross-task context transfer | `handoff` | `obsidian-cli` to retain durable pointers or preferences |
+| Cross-task context transfer | `intent-translator` `compress` mode | `obsidian-cli` to retain durable pointers or preferences |
 | General exam learning | `study-assistant` | Its `study-*` subskills selected by the orchestrator |
 | Exam or certification planning | `study-assistant` | Use an installed subject Skill only when its declared ownership matches the request |
 | Mistake capture and review | `mistake-book` | `mistake-extract` or `mistake-restructure` for later processing |
@@ -21,6 +21,7 @@ Choose one primary Skill by ownership. Add a supporting Skill only for a separat
 | Documents and office files | `docx`, `pdf`, `pptx`, or `xlsx` | `doc-coauthoring` for content development |
 | Image or information visualization | `imagegen`, `baoyu-infographic`, `visualize`, or `excalidraw-diagram` | Select by raster image, infographic, interactive view, or diagram |
 | Career and job search | `career-ops` | `agent-reach` for live listings or company research |
+| Repeated failure or learning maintenance | `intent-translator` learning lifecycle | `skill-creator` and `writing-for-agents` for reviewed source repair; the owning tests for verification |
 
 ## Routing Rules
 

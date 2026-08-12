@@ -10,7 +10,8 @@ from unittest.mock import patch
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from intent_translator_mcp.core import IntentCompiler  # noqa: E402
+from intent_translator_mcp.authorization import issue_confirmation_receipt  # noqa: E402
+from intent_translator_mcp.core import IntentCompiler, _extract_constraints  # noqa: E402
 from intent_translator_mcp.local_policy import record_misunderstanding  # noqa: E402
 from intent_translator_mcp.models import CompileRequest  # noqa: E402
 from intent_translator_mcp.semantic import SemanticProposal  # noqa: E402
@@ -450,6 +451,66 @@ class EnterpriseP0Tests(unittest.TestCase):
         self.assertFalse(result["risk"]["sensitive"])
         self.assertIn("install", result["risk"]["confirmation_challenge"]["grants"])
         self.assertFalse(result["completion_contract"]["execute"])
+
+    def test_install_action_owns_negated_delete_uninstall_and_extra_install_constraints(self):
+        pending_actions = (
+            "安装 Zotero 和 Anki；不删除现有软件。",
+            "安装 Zotero 和 Anki；不要卸载旧软件。",
+            "安装 Zotero 和 Anki；不安装其他应用。",
+        )
+        for pending_action in pending_actions:
+            with self.subTest(pending_action=pending_action), tempfile.TemporaryDirectory() as temp:
+                result = self._compile(
+                    Path(temp),
+                    CompileRequest(
+                        utterance="继续",
+                        pending_action=pending_action,
+                        semantic_mode="off",
+                        include_prompt=False,
+                    ),
+                )
+            self.assertEqual(result["intent_contract"]["operation"], "install")
+            self.assertEqual(result["intent_contract"]["effect"], "system_change")
+            self.assertTrue(result["risk"]["system_change"])
+            self.assertNotEqual(result["risk"]["reversible"], "no")
+            self.assertIn(
+                "prohibited-action",
+                [item["type"] for item in result["constraints"]],
+            )
+
+    def test_install_receipt_matches_when_pending_action_contains_negated_constraints(self):
+        pending_action = (
+            "安装第一批学习与安全工具：Zotero、Anki、SumatraPDF、Bitwarden；"
+            "仅这四项，使用官方 winget 来源，串行安装，支持自定义路径时优先 D 盘，"
+            "逐项验证版本和实际路径；不安装其他应用，不删除现有软件。"
+        )
+        action_text, constraints = _extract_constraints(pending_action)
+        receipt = issue_confirmation_receipt(
+            action_text,
+            "global",
+            grants=["install"],
+        )["receipt"]
+        with tempfile.TemporaryDirectory() as temp:
+            result = self._compile(
+                Path(temp),
+                CompileRequest(
+                    utterance="继续",
+                    pending_action=pending_action,
+                    confirmation_receipt=receipt,
+                    semantic_mode="off",
+                    include_prompt=False,
+                ),
+            )
+
+        self.assertEqual({item["type"] for item in constraints}, {"prohibited-action"})
+        self.assertEqual(result["intent_contract"]["operation"], "install")
+        self.assertEqual(result["intent_contract"]["effect"], "system_change")
+        self.assertTrue(result["risk"]["receipt_verified"])
+        self.assertEqual(
+            result["risk"]["receipt_status"]["reason"],
+            "action-bound confirmation receipt verified",
+        )
+        self.assertTrue(result["completion_contract"]["execute"])
 
     def test_low_risk_repeated_operation_preference_becomes_memory_without_granting_push(self):
         with tempfile.TemporaryDirectory() as temp:

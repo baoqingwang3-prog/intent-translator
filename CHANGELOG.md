@@ -4,6 +4,20 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.10.0a1] - 2026-08-12
+
+### Added
+
+- A governed learning lifecycle for capturing, reviewing, explicitly promoting, reinforcing, and maintaining local memory candidates without turning inference into authority.
+- A generated Skill registry and compact capability catalog with duplicate detection, source precedence, fingerprints, and metadata-based routing.
+- Regression coverage for the learning lifecycle, Skill registry, Chinese installation prohibitions, source-tree release execution, and deployed-runtime acceptance.
+
+### Changed
+
+- Intent compilation now preserves more Chinese prohibited actions, including deletion, uninstallation, overwrite, and installing additional software.
+- Runtime and doctor checks now distinguish configured installations from repository source copies and report degraded host registration more accurately.
+- Release gates now run source-tree benchmarks and Codex host traces against the repository package explicitly before validating built artifacts.
+
 ## [0.8.0a1] - 2026-08-12
 
 ### Added

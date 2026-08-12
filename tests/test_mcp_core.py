@@ -45,7 +45,49 @@ REGISTRY = {
 }
 
 
+IELTS_REGISTRY = {
+    "skills": [
+        {
+            "name": "kaoyan-english",
+            "description": "考研英语入口路由器。用于英语二词汇、阅读和写作训练。",
+        },
+        {
+            "name": "ielts-writing",
+            "description": "雅思写作批改教练。四维评分、句子级标注、改写对比和审题检查。",
+        },
+    ],
+    "errors": [],
+}
+
+
 class McpCoreTests(unittest.TestCase):
+    def test_specific_installed_skill_metadata_beats_broad_study_profile_preference(self):
+        profile = {
+            "schema_version": 1,
+            "profile_id": "specific-study-routing",
+            "language": "zh-CN",
+            "phrase_mappings": {},
+            "memory": {"adapter": "none", "location": ""},
+            "study": {
+                "enabled": True,
+                "goals": ["考研", "雅思"],
+                "active_goal": "考研",
+                "routing": [
+                    {
+                        "subject": "english",
+                        "terms": ["英语", "雅思", "写作"],
+                        "preferred_skills": ["kaoyan-english"],
+                    }
+                ],
+            },
+        }
+        result = IntentCompiler(
+            registry=IELTS_REGISTRY,
+            profile=profile,
+            profile_exists=True,
+        ).compile(CompileRequest(utterance="帮我批改雅思作文", semantic_mode="off"))
+        self.assertEqual(result["routing"]["primary_skill"], "ielts-writing")
+
     def test_continue_without_conversation_context_resumes_confirmed_local_focus(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(
             os.environ,

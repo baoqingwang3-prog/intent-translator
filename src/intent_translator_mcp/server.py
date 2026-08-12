@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.server import Settings as FastMCPSettings
 from mcp.types import ToolAnnotations
 
 from .core import (
@@ -72,6 +73,8 @@ from .study_shadow import (
     upsert_pointer,
 )
 
+
+FastMCPSettings.model_rebuild()
 
 mcp = FastMCP(
     "intent-translator",
