@@ -21,7 +21,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(check_versions(), [])
 
     def test_matching_tag_passes(self):
-        self.assertEqual(check_versions("v0.7.1a3"), [])
+        self.assertEqual(check_versions("v0.8.0a1"), [])
 
     def test_project_urls_point_to_public_repository(self):
         metadata = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")

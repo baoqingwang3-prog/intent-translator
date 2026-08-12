@@ -30,3 +30,5 @@ Choose one primary Skill by ownership. Add a supporting Skill only for a separat
 4. When a required Skill is unavailable, preserve the brief and use the nearest safe fallback. Report the missing capability only if it affects the result.
 5. Search for a new Skill only after local routing fails to cover a required behavior.
 6. Treat prompt services as optional optimizers. The local semantic and execution schemas remain authoritative.
+7. For multi-stage outcomes, use [skill-composition.md](skill-composition.md) and validate the route with `scripts/compose_skills.py`; do not represent an ordered workflow as an unordered supporting-Skill list.
+8. Keep one capability owner per stage. Search routers are mutually exclusive as eager owners; office-format Skills own rendering, not content strategy; orchestrators own their child sequencing.

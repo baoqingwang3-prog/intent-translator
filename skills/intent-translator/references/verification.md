@@ -11,6 +11,7 @@ Do not claim that work is complete, installed, fixed, published, remembered, or 
 | Installation works | Install into an isolated destination and run a smoke test |
 | Memory was written | Read the stored record back from the selected adapter |
 | Routing works | Discovery output plus an evaluation or realistic forward test |
+| Skill composition works | Discovery output, composition regression cases, and inspection that eager stages stay within the size cap |
 | External publication succeeded | Remote URL or API response showing the artifact |
 | Cross-platform support | CI matrix or real tests on each claimed platform |
 

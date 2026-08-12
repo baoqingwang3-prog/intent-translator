@@ -1,4 +1,4 @@
 interface:
   display_name: "意图转译中枢"
   short_description: "在执行前检查理解、授权、本地记忆和 Skill 路由"
-  default_prompt: "Use $intent-translator to review understanding, authorization, local memory, and Skill routing before the agent acts."
+  default_prompt: "Use $intent-translator to review understanding, authorization, local memory, routing, and the smallest staged Skill composition before the agent acts."

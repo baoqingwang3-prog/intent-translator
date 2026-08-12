@@ -4,6 +4,17 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+## [0.8.0a1] - 2026-08-12
+
+### Added
+
+- A deterministic staged Skill composition planner with preparation, primary, verification/rendering, and dormant fallback stages.
+- Regression cases and focused unit tests for search-to-report workflows, diagnosis-to-fix verification, study orchestrator ownership, and missing primary Skills.
+
+### Changed
+
+- Multi-Skill routing now keeps one capability owner per stage, caps eager compositions at four Skills, and preserves authorization boundaries across handoffs.
+
 ## [0.7.1a3] - 2026-07-28
 
 ### Added

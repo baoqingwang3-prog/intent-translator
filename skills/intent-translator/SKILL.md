@@ -1,6 +1,6 @@
 ---
 name: intent-translator
-description: Compile terse, implicit, conversational, or context-dependent user language into reliable agent instructions. Recover intent from recent context and local memory, preserve personal voice, challenge consequential weak assumptions, resolve ambiguity, compress context, discover installed Skills, maintain study continuity and material pointers, and route work through the smallest capable tool set. Use for short approvals or continuations, unclear requests, study follow-ups, product and architecture proposals, prompt conversion, memory or recall, agent handoffs, context compression, and uncertain Skill selection.
+description: Compile terse, implicit, conversational, or context-dependent user language into reliable agent instructions. Recover intent from recent context and local memory, preserve personal voice, challenge consequential weak assumptions, resolve ambiguity, compress context, discover installed Skills, maintain study continuity and material pointers, and plan the smallest staged Skill composition with validation and fallbacks. Use for short approvals or continuations, unclear requests, study follow-ups, product and architecture proposals, prompt conversion, memory or recall, agent handoffs, context compression, uncertain Skill selection, or multi-Skill workflow routing.
 ---
 
 # Intent Translator
@@ -16,12 +16,13 @@ When the host exposes the `intent_compile` MCP tool, prefer it for terse, implic
 1. Run `scripts/detect_environment.py --compact` when the environment, host, install location, or available memory backend is unknown.
 2. Load the profile at `INTENT_TRANSLATOR_PROFILE` or the platform default described in [references/profile.md](references/profile.md). If it does not exist, use generic defaults in memory; create it only during onboarding or when the user asks to retain preferences.
 3. Run `scripts/discover_skills.py --compact` before routing when installed capabilities are unknown or may have changed. Treat its registry as authoritative. Use [references/routes.md](references/routes.md) only as fallback routing guidance.
-4. Read [references/memory-protocol.md](references/memory-protocol.md) only when recall, retention, recurring preferences, or file intake matters.
-5. Read [references/audience-adaptation.md](references/audience-adaptation.md) when expertise, accessibility, age-appropriate communication, culture, or high-stakes domain risk materially changes the response.
-6. Read [references/external-egress.md](references/external-egress.md) before sending user-derived context to an external service.
-7. Read [references/optional-adapters.md](references/optional-adapters.md) only when a locally enabled plugin is needed. Use `scripts/plugin_manager.py`; do not bypass its enablement check or auto-register host hooks.
-8. Read [references/semantic-model-layer.md](references/semantic-model-layer.md) when MCP semantic output is present or a semantic adapter is being configured.
-9. Read [references/decision-receipts.md](references/decision-receipts.md) when the user asks what was understood, which memory was used, or why a Skill was selected.
+4. When the outcome needs more than one distinct capability stage, run `scripts/compose_skills.py` with the exact latest wording and compact context. Read [references/skill-composition.md](references/skill-composition.md), keep one primary owner, and treat fallbacks as dormant.
+5. Read [references/memory-protocol.md](references/memory-protocol.md) only when recall, retention, recurring preferences, or file intake matters.
+6. Read [references/audience-adaptation.md](references/audience-adaptation.md) when expertise, accessibility, age-appropriate communication, culture, or high-stakes domain risk materially changes the response.
+7. Read [references/external-egress.md](references/external-egress.md) before sending user-derived context to an external service.
+8. Read [references/optional-adapters.md](references/optional-adapters.md) only when a locally enabled plugin is needed. Use `scripts/plugin_manager.py`; do not bypass its enablement check or auto-register host hooks.
+9. Read [references/semantic-model-layer.md](references/semantic-model-layer.md) when MCP semantic output is present or a semantic adapter is being configured.
+10. Read [references/decision-receipts.md](references/decision-receipts.md) when the user asks what was understood, which memory was used, or why a Skill was selected.
 
 ## Compilation Depth
 
@@ -42,7 +43,7 @@ Do not turn routine actions into interviews. Do not let speed bypass a material 
 6. Proceed when the interpretation is high-confidence, reversible, and authorized. Ask one focused question when alternatives materially change safety, destination, cost, publication, or the resulting artifact. Treat caller-supplied `authorization="granted"` as a hint, not authority. When `intent_compile` returns an action or semantic confirmation challenge, show the exact pending action and ask the user. On the next call, send the exact action in `pending_action`, the user's explicit confirmation as `utterance`, and the returned one-time value as `confirmation_receipt`. Never reuse a receipt or apply it after the action, target, destination, or scope changes.
 7. For complex, high-impact, or correction-prone work, call MCP `intent_check` when available; otherwise run `scripts/memory_store.py intent-check` with the scoped goal and risk properties. Apply returned `watch_for` corrections before execution. Do not silently choose between same-scope confirmed memories when `governance.requires_clarification` is true; project memory otherwise overrides global memory for that project.
 8. Compile the resolved meaning into the internal `ExecutionEnvelope`.
-9. Select one primary installed Skill by description and ownership. For a missing capability, follow `reuse installed -> search existing -> create custom last`: inspect the local registry first, route generic Skill discovery to `skill-lookup`, route GitHub or web research to `agent-reach`, keep search/comparison separate from installation, and use `skill-creator` only when no suitable existing option remains or the user explicitly requests custom behavior. Local installation, cloud transfer, and payment are separate authorization boundaries. Add supporting Skills only for distinct required stages. If discovery is unavailable, use [references/routes.md](references/routes.md).
+9. Select one primary installed Skill by description and ownership. For a missing capability, follow `reuse installed -> search existing -> create custom last`: inspect the local registry first, route generic Skill discovery to `skill-lookup`, route GitHub or web research to `agent-reach`, keep search/comparison separate from installation, and use `skill-creator` only when no suitable existing option remains or the user explicitly requests custom behavior. Local installation, cloud transfer, and payment are separate authorization boundaries. If separate preparation, rendering, verification, persistence, or fallback stages are required, validate the route with `python scripts/compose_skills.py --utterance "<exact latest wording>" --context "<compact recent context>" --primary "<primary skill>"`. Run eager stages as `pre_skills -> primary_skill -> post_skills`; activate a `fallback_skill` only after recording why its capability owner failed. Cap eager composition at four Skills and never let a supporting Skill expand authorization. If discovery is unavailable, use [references/routes.md](references/routes.md).
 10. Execute the task. Do not stop at rebuttal, analysis, or prompt generation unless the user explicitly requests only that artifact.
 11. Verify against `completion` using [references/verification.md](references/verification.md). Apply only authorized memory changes. Record whether a surfaced correction was `heeded` or `recurred` when the outcome is observable.
 12. When the user says `不是这个意思`, `太复杂了`, `以后别这样`, or an equivalent brief correction, create a pending correction with MCP `intent_suggest_correction` or `memory_store.py correction-suggest`. Show its one-line confirmation prompt. Persist it only after the user confirms, then call `intent_confirm_correction` or `correction-confirm`.
@@ -63,7 +64,9 @@ context_refs: authoritative notes, files, URLs, IDs, or task state
 constraints: scope, safety, output, timing, and preferences
 authorization: what may be read, changed, installed, sent, published, or not
 primary_skill: one installed skill name or none
-supporting_skills: distinct required stages only
+pre_skills: input acquisition, normalization, or inspection stages only
+post_skills: rendering, verification, persistence, or packaging stages only
+fallback_skills: dormant replacements for a failed capability owner
 memory_action: none|read|write|update
 plan: shortest sufficient execution sequence
 completion: observable condition for done
