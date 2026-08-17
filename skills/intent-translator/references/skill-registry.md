@@ -10,6 +10,20 @@ Use this workflow after installing a Skill collection or downloading a project t
 - Full Skill instructions remain in the source `SKILL.md`; load only the selected file during execution.
 - Duplicate names are conflicts to inspect, not evidence that one host mirror should be deleted.
 
+## Capability Roles And Routing Precedence
+
+- `control-plane`: manages Skills, routing, installation, refactoring, provenance, or orchestration itself. A managed Skill name is an object, not the execution owner.
+- `orchestrator`: broad entry point that coordinates a domain when the requested subdomain is unclear. It must not preempt a matching specialist.
+- `specialist`: owns a narrower subdomain or action. Explicit specialist names and specific object+action evidence outrank parent routers and generic orchestrators.
+- `renderer`: owns one output or file-format stage. It may support another primary owner, but should be primary when the requested outcome is explicitly that artifact.
+- `capability-owner`: ordinary domain owner without a known parent relationship.
+
+Precedence is `affirmative explicit invocation > exact specialist action+object > exact capability owner > renderer/file stage > alias or metadata > profile fallback`. Compare evidence class before comparing numeric scores; a lower class never replaces a higher class. Prefix overlap is not evidence: invoking `ielts-reading` must not also invoke `ielts`, and mentioning a Skill during audit, update, retirement, or routing repair must not execute that Skill. Negated invocation makes the Skill an object rather than an owner. `pua` is a governance modifier and supporting Skill; it replaces the primary owner only when no other action owner exists. One stage has one owner; supporting Skills remain subordinate and cannot expand authorization.
+
+## Task Orchestration
+
+Delegate independent, bounded, non-conflicting work to parallel subagents when useful. Keep shared-core writes, conflict resolution, authorization boundaries, and final acceptance in the main task. Create a separate user-visible task only when the user explicitly requests it. Delegation does not expand authorization.
+
 ## Intake Workflow
 
 1. **Scan** only declared Skill roots. Ignore `.backup*`, `.backups*`, `.archive*`, and `.retired*` directories.

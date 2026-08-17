@@ -66,6 +66,42 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     if not contract.get("communication", {}).get("active"):
         contract.pop("communication", None)
 
+    # A passive answer has no executable frame to inspect. Keep its public
+    # decision fields without repeating the internal default projection.
+    if (
+        contract.get("mode") == "answer"
+        and contract.get("operation") == "answer"
+        and contract.get("effect") == "none"
+        and contract.get("data_egress") == "none"
+        and not contract.get("actions")
+        and not contract.get("branches")
+        and not contract.get("constraints")
+        and not contract.get("prohibitions")
+        and not contract.get("required_slots")
+        and not contract.get("required_grants")
+        and not contract.get("confirmation_required")
+    ):
+        authorization = contract.get("authorization", {})
+        contract = {
+            "schema_version": contract.get("schema_version"),
+            "goal": contract.get("goal"),
+            "mode": "answer",
+            "operation": "answer",
+            "effect": "none",
+            "data_egress": "none",
+            "scope": contract.get("scope"),
+            "active_task_source": contract.get("active_task_source"),
+            "action_owner": contract.get("action_owner"),
+            "actions": [],
+            "branches": [],
+            "constraints": [],
+            "prohibitions": [],
+            "authorization": {
+                key: authorization.get(key)
+                for key in ("state", "receipt_verified", "required_grants", "action_digest")
+            },
+        }
+
     risk_source = envelope.get("risk", {})
     risk = {
         key: risk_source.get(key)
@@ -81,6 +117,7 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
             "blocked",
             "confirmation_required",
             "receipt_verified",
+            "action_digest",
             "reasons",
         )
         if key in risk_source
@@ -115,6 +152,10 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         )
         if key in envelope
     }
+    if compact.get("short_confirmation_status", {}).get("state") == "resolved" and compact[
+        "short_confirmation_status"
+    ].get("source") == "not-applicable":
+        compact.pop("short_confirmation_status", None)
     value_receipt = envelope.get("value_receipt", {})
     if value_receipt:
         compact["value_receipt"] = {
@@ -142,8 +183,18 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         compact["interpretation_gate"] = envelope["interpretation_gate"]
     if envelope.get("host_prompt"):
         compact["host_prompt"] = envelope["host_prompt"]
+    primary_role = routing.get("primary_capability_role") or {}
     compact["routing"] = {
         "primary_skill": routing.get("primary_skill"),
+        "primary_capability_role": (
+            {
+                key: primary_role[key]
+                for key in ("role", "parent_skill")
+                if primary_role.get(key)
+            }
+            if primary_role
+            else None
+        ),
         "selection_state": routing.get("selection_state"),
         "activation_state": routing.get("activation_state"),
         "installed": routing.get("capability_facts", {}).get("installed", False),
@@ -178,6 +229,14 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         "restart_required": runtime.get("restart_required", False),
         "version": runtime.get("versions", {}).get("actual_runtime"),
     }
+    orchestration = envelope.get("orchestration", {})
+    if orchestration.get("recommended"):
+        compact["orchestration"] = {
+            "delegate": "parallel-independent",
+            "visible_task": "explicit-only",
+            "main_retains": ["shared-writes", "conflicts", "acceptance"],
+            "authority": "unchanged",
+        }
     diagnostic_refs = {
         "correction_ids": [item.get("id") for item in envelope.get("corrections", [])],
         "memory_ids": [item.get("id") for item in envelope.get("memories", [])],

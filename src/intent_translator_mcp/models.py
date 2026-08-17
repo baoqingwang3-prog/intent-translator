@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class InterpretationOption(BaseModel):
@@ -15,10 +15,31 @@ class InterpretationOption(BaseModel):
     source: dict[str, str | int | bool | None] = Field(default_factory=dict)
 
 
+class CurrentGoalLock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_goal: str = Field(min_length=1, max_length=4000)
+    completion_gate: list[str] = Field(min_length=1, max_length=20)
+    owner: str = Field(min_length=1, max_length=200)
+    allowed_actions: list[str] = Field(min_length=1, max_length=50)
+    dedupe_key: str = Field(min_length=1, max_length=200)
+    status: Literal["active", "pass", "cancelled", "replaced"] = "active"
+
+
 class CompileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     utterance: str = Field(min_length=1, description="The user's latest exact wording.")
-    context: str = Field(default="", description="Compact recent conversation context.")
-    pending_action: str = Field(default="", description="Last explicitly proposed unfinished action.")
+    context: str = Field(
+        default="",
+        validation_alias=AliasChoices("context", "recent_context"),
+        description="Compact recent conversation context.",
+    )
+    pending_action: str = Field(
+        default="",
+        validation_alias=AliasChoices("pending_action", "last_proposed_action"),
+        description="Last explicitly proposed unfinished action.",
+    )
     scope: str = Field(default="global", min_length=1)
     authorization: Literal["granted", "unknown", "denied"] = Field(
         default="unknown",
@@ -36,6 +57,7 @@ class CompileRequest(BaseModel):
     include_diagnostics: bool = False
     interpretation_gate_id: str = Field(default="", max_length=128)
     interpretation_options: list[InterpretationOption] = Field(default_factory=list, max_length=5)
+    current_goal_lock: CurrentGoalLock | None = None
 
 
 class OnboardingStatusRequest(BaseModel):

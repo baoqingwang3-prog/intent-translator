@@ -320,7 +320,7 @@ class EnterpriseP0Tests(unittest.TestCase):
         )
         self.assertEqual(
             result["routing"]["acquisition_policy"],
-            ["reuse-installed", "search-existing", "create-custom-last"],
+            ["reuse-installed", "search-existing"],
         )
 
     def test_explicit_custom_skill_request_still_routes_to_creator(self):
@@ -485,14 +485,19 @@ class EnterpriseP0Tests(unittest.TestCase):
             "逐项验证版本和实际路径；不安装其他应用，不删除现有软件。"
         )
         action_text, constraints = _extract_constraints(pending_action)
-        receipt = issue_confirmation_receipt(
-            action_text,
-            "global",
-            grants=["install"],
-        )["receipt"]
         with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = self._compile(
+                root,
+                CompileRequest(
+                    utterance=pending_action,
+                    semantic_mode="off",
+                    include_prompt=False,
+                ),
+            )
+            receipt = first["risk"]["confirmation_challenge"]["receipt"]
             result = self._compile(
-                Path(temp),
+                root,
                 CompileRequest(
                     utterance="继续",
                     pending_action=pending_action,

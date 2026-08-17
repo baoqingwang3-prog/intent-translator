@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-translator-mcp"
-version = "0.10.0a1"
+version = "1.0.0a5"
 description = "Local-first cross-host intent preflight, evidence, and evaluation SDK"
 readme = "README.md"
 requires-python = ">=3.10"
