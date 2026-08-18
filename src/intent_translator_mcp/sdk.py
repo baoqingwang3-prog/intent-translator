@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any, Literal
 
+from .control_plane import ClaimLevel, ControlState, ExecutionEnvelope
 from .core import IntentCompiler, _load_skill_script, _memory_enabled, _memory_path
 from .intent_contract import TypedIntentContract
 from .models import CheckRequest, CompileRequest, InterpretationOption
@@ -60,6 +61,44 @@ class CompilationResult:
 
     def to_dict(self) -> dict[str, Any]:
         return copy.deepcopy(self._envelope)
+
+    def execution_envelope(
+        self,
+        *,
+        goal_id: str,
+        task_id: str,
+        dedupe_key: str,
+        frame_id: str,
+        destination: str,
+        data_class: str,
+        authorization_id: str,
+        owner_thread: str,
+        generation: int,
+        provenance: list[str],
+        required_artifacts: list[str] | None = None,
+        cannot_prove: list[str] | None = None,
+    ) -> ExecutionEnvelope:
+        """Bind one compilation to the immutable identity used for admission."""
+        return ExecutionEnvelope(
+            goal_id=goal_id,
+            task_id=task_id,
+            dedupe_key=dedupe_key,
+            frame_id=frame_id,
+            object=self.contract.object.value,
+            operation=self.contract.operation,
+            effect=self.contract.effect,
+            destination=destination,
+            data_class=data_class,
+            authorization_id=authorization_id,
+            owner_thread=owner_thread,
+            generation=generation,
+            provenance=list(provenance),
+            claim_level=ClaimLevel.READ_ONLY_FORM,
+            state=ControlState.ADMITTED,
+            reason_code="COMPILED",
+            required_artifacts=list(required_artifacts or []),
+            cannot_prove=list(cannot_prove or []),
+        )
 
 
 class IntentTranslatorSDK:

@@ -243,6 +243,8 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     }
     if any(diagnostic_refs.values()):
         compact["diagnostic_refs"] = diagnostic_refs
+    if envelope.get("control"):
+        compact["control"] = envelope["control"]
     return compact
 
 

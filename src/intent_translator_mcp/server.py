@@ -12,6 +12,13 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import Settings as FastMCPSettings
 from mcp.types import ToolAnnotations
 
+from .control_plane import (
+    AdmissionDecision,
+    ClaimLevel,
+    ControlPlane,
+    ExecutionEnvelope,
+    ExecutionEvidence,
+)
 from .core import (
     IntentCompiler,
     _candidate_skill_dirs,
@@ -23,6 +30,8 @@ from .core import (
 from .models import (
     CheckRequest,
     CompileRequest,
+    ControlRecordRequest,
+    ControlResumeRequest,
     CorrectionRequest,
     CorrectionSuggestionRequest,
     ExecutionVerificationRequest,
@@ -163,16 +172,197 @@ def compiler() -> IntentCompiler:
     return _cached_compiler(_compiler_cache_key())
 
 
+def _control_state_path() -> Path:
+    configured = os.environ.get("INTENT_TRANSLATOR_CONTROL_DB", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return (Path.home() / ".intent-translator" / "control-plane.db").resolve()
+
+
+@lru_cache(maxsize=8)
+def _cached_control_plane(state_path: str) -> ControlPlane:
+    return ControlPlane(state_path=state_path)
+
+
+def control_plane() -> ControlPlane:
+    return _cached_control_plane(str(_control_state_path()))
+
+
+def _server_claim_level(envelope: dict[str, Any]) -> ClaimLevel:
+    risk = envelope.get("risk", {})
+    contract = envelope.get("intent_contract", {})
+    if (
+        not envelope.get("completion_contract", {}).get("execute", False)
+        or envelope.get("tool_gateway", {}).get("decision") != "allow"
+        or envelope.get("clarification_required", False)
+        or risk.get("blocked", False)
+    ):
+        return ClaimLevel.READ_ONLY_FORM
+    protected = bool(
+        risk.get("external")
+        or risk.get("sensitive")
+        or risk.get("high_stakes")
+        or risk.get("system_change")
+        or risk.get("reversible") == "no"
+        or contract.get("required_grants")
+    )
+    if protected and not risk.get("receipt_verified", False):
+        return ClaimLevel.READ_ONLY_FORM
+    if risk.get("external") or contract.get("data_egress") not in {None, "", "none"}:
+        return ClaimLevel.ONE_SEND_AUTHORIZED
+    if protected:
+        return ClaimLevel.EXECUTION_AUTHORIZED
+    return ClaimLevel.ACTION_AUTHORIZED
+
+
+def _execution_envelope(
+    request: CompileRequest,
+    compiled: dict[str, Any],
+    invocation_receipt: dict[str, Any],
+) -> ExecutionEnvelope:
+    if request.control is None:
+        raise ValueError("control identity is required")
+    contract = compiled["intent_contract"]
+    risk = compiled.get("risk", {})
+    destination = contract.get("destination") or {}
+    destination_value = (
+        destination.get("endpoint_ref")
+        or destination.get("value")
+        or destination.get("kind")
+        or "unresolved"
+    )
+    action_digest = str(risk.get("action_digest") or contract.get("authorization", {}).get("action_digest") or "")
+    if risk.get("receipt_verified", False) and action_digest:
+        authorization_id = f"confirmation:{action_digest}"
+    elif risk.get("confirmation_required", False):
+        authorization_id = "ungranted"
+    else:
+        authorization_id = "compiler:unprotected"
+    data_class = "sensitive" if risk.get("sensitive", False) else request.control.data_class
+    return ExecutionEnvelope(
+        goal_id=request.control.goal_id,
+        task_id=request.control.task_id,
+        dedupe_key=request.control.dedupe_key,
+        frame_id=request.control.frame_id,
+        object=str(contract.get("object", {}).get("value") or contract.get("goal") or request.utterance),
+        operation=str(contract.get("operation") or compiled.get("mode") or "unknown"),
+        effect=str(contract.get("effect") or "unknown"),
+        destination=str(destination_value),
+        data_class=data_class,
+        authorization_id=authorization_id,
+        owner_thread=request.control.owner_thread,
+        generation=request.control.generation,
+        provenance=(f"intent_compile:{invocation_receipt['receipt_id']}",),
+        required_artifacts=tuple(request.control.required_artifacts),
+        cannot_prove=tuple(request.control.cannot_prove),
+        reason_code="COMPILED",
+    )
+
+
+def _control_projection(
+    decision: AdmissionDecision,
+    *,
+    plane: ControlPlane,
+    include_receipts: bool,
+) -> dict[str, Any]:
+    lease = decision.lease
+    projected: dict[str, Any] = {
+        "schema_version": 1,
+        "state": decision.state.value,
+        "admitted": decision.admitted,
+        "execute": decision.execute,
+        "completed": decision.completed,
+        "claim_level": decision.claim_level.value,
+        "reason_code": decision.reason_code,
+        "next_action": decision.next_action,
+        "envelope": decision.envelope.model_dump(mode="json"),
+        "lease": (
+            {
+                "owner_thread": lease.owner_thread,
+                "generation": lease.generation,
+                "lease_epoch": lease.lease_epoch,
+                "last_heartbeat": lease.last_heartbeat.isoformat(),
+                "expires_at": lease.expires_at.isoformat(),
+            }
+            if lease is not None
+            else None
+        ),
+        "enforcement_scope": "intent-mcp-path-only",
+        "host_enforcement_verified": False,
+    }
+    if decision.evidence is not None:
+        projected["evidence"] = decision.evidence.model_dump(mode="json")
+    if include_receipts and decision.admitted and decision.lease is not None:
+        projected["admission_receipt"] = plane.seal_admission_receipt(decision)
+        projected["resume_receipt"] = plane.seal_resume_receipt(decision)
+    return projected
+
+
 @mcp.tool(
     title="Compile user intent",
-    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
 def intent_compile(request: CompileRequest) -> dict[str, Any]:
     """Compile wording into an envelope, optionally using an explicitly configured semantic adapter."""
     envelope = compiler().compile(request)
-    envelope["invocation_receipt"] = build_invocation_receipt(request, envelope)
+    invocation_receipt = build_invocation_receipt(request, envelope)
+    envelope["invocation_receipt"] = invocation_receipt
+    if request.control is not None:
+        plane = control_plane()
+        claim_level = _server_claim_level(envelope)
+        decision = plane.authorize(
+            _execution_envelope(request, envelope, invocation_receipt),
+            claim_level,
+            continuation_receipt=request.control.continuation_receipt,
+            lease_ttl_seconds=request.control.lease_ttl_seconds,
+        )
+        if (
+            claim_level == ClaimLevel.READ_ONLY_FORM
+            and envelope.get("risk", {}).get("confirmation_required", False)
+        ):
+            decision = plane.wait_for_authorization(decision)
+        envelope["control"] = _control_projection(
+            decision,
+            plane=plane,
+            include_receipts=True,
+        )
     return envelope if request.include_diagnostics else compact_envelope(envelope)
+
+
+@mcp.tool(
+    title="Record controlled execution evidence",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def intent_control_record(request: ControlRecordRequest) -> dict[str, Any]:
+    """Record evidence only for a server-signed, still-current admission."""
+    plane = control_plane()
+    decision = plane.record_receipt(
+        request.admission_receipt,
+        ExecutionEvidence(
+            command=request.command,
+            session=request.session,
+            pid=request.pid,
+            artifact=request.artifact,
+            artifact_sha256=request.artifact_sha256,
+            true_exit=request.true_exit,
+            cannot_prove=tuple(request.cannot_prove),
+        ),
+    )
+    return _control_projection(decision, plane=plane, include_receipts=False)
+
+
+@mcp.tool(
+    title="Resume a controlled execution safely",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def intent_control_resume(request: ControlResumeRequest) -> dict[str, Any]:
+    """Invalidate the old owner and return a review-only recovery generation."""
+    plane = control_plane()
+    decision = plane.resume_receipt(request.resume_receipt)
+    return _control_projection(decision, plane=plane, include_receipts=False)
 
 
 @mcp.tool(

@@ -23,6 +23,7 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     ),
                     "INTENT_TRANSLATOR_PROFILE": str(Path(temp) / "profile.json"),
                     "INTENT_TRANSLATOR_MEMORY_DB": str(Path(temp) / "memory.db"),
+                    "INTENT_TRANSLATOR_CONTROL_DB": str(Path(temp) / "control.db"),
                 }
             )
             params = StdioServerParameters(
@@ -38,6 +39,8 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                         {tool.name for tool in listed.tools},
                         {
                             "intent_compile",
+                            "intent_control_record",
+                            "intent_control_resume",
                             "intent_onboarding_status",
                             "intent_apply_onboarding",
                             "intent_check",
@@ -72,6 +75,44 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                         called.structuredContent["routing"]["primary_skill"],
                         "skill-creator",
                     )
+                    controlled = await session.call_tool(
+                        "intent_compile",
+                        {
+                            "request": {
+                                "utterance": "在本地项目中运行单元测试",
+                                "semantic_mode": "off",
+                                "include_prompt": False,
+                                "control": {
+                                    "goal_id": "goal-protocol-b1",
+                                    "task_id": "task-protocol-b1",
+                                    "dedupe_key": "protocol-b1",
+                                    "frame_id": "frame-protocol-b1",
+                                    "owner_thread": "writer-protocol-b1",
+                                    "generation": 1,
+                                },
+                            }
+                        },
+                    )
+                    self.assertFalse(controlled.isError)
+                    self.assertTrue(controlled.structuredContent["control"]["execute"])
+                    recorded = await session.call_tool(
+                        "intent_control_record",
+                        {
+                            "request": {
+                                "admission_receipt": controlled.structuredContent["control"][
+                                    "admission_receipt"
+                                ],
+                                "command": "python -m unittest",
+                                "session": "protocol-session",
+                                "pid": 1234,
+                                "artifact": str(Path(temp) / "report.json"),
+                                "artifact_sha256": "a" * 64,
+                                "true_exit": 0,
+                            }
+                        },
+                    )
+                    self.assertFalse(recorded.isError)
+                    self.assertTrue(recorded.structuredContent["completed"])
                     onboarding = await session.call_tool(
                         "intent_onboarding_status",
                         {"request": {}},

@@ -26,6 +26,24 @@ class CurrentGoalLock(BaseModel):
     status: Literal["active", "pass", "cancelled", "replaced"] = "active"
 
 
+class ControlIdentity(BaseModel):
+    """Caller identity for the optional MCP execution-control path."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    goal_id: str = Field(min_length=1, max_length=200)
+    task_id: str = Field(min_length=1, max_length=200)
+    dedupe_key: str = Field(min_length=1, max_length=200)
+    frame_id: str = Field(min_length=1, max_length=200)
+    owner_thread: str = Field(min_length=1, max_length=200)
+    generation: int = Field(ge=1)
+    data_class: Literal["public", "internal", "sensitive"] = "internal"
+    required_artifacts: list[str] = Field(default_factory=list, max_length=50)
+    cannot_prove: list[str] = Field(default_factory=list, max_length=50)
+    continuation_receipt: str = Field(default="", max_length=20000)
+    lease_ttl_seconds: int = Field(default=300, ge=1, le=3600)
+
+
 class CompileRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -58,6 +76,26 @@ class CompileRequest(BaseModel):
     interpretation_gate_id: str = Field(default="", max_length=128)
     interpretation_options: list[InterpretationOption] = Field(default_factory=list, max_length=5)
     current_goal_lock: CurrentGoalLock | None = None
+    control: ControlIdentity | None = None
+
+
+class ControlRecordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    admission_receipt: str = Field(min_length=1, max_length=20000)
+    command: str = Field(default="", max_length=8000)
+    session: str = Field(default="", max_length=1000)
+    pid: int | None = Field(default=None, ge=1)
+    artifact: str = Field(default="", max_length=4000)
+    artifact_sha256: str = Field(default="", pattern=r"^[a-fA-F0-9]{64}$|^$")
+    true_exit: int | None = None
+    cannot_prove: list[str] = Field(default_factory=list, max_length=50)
+
+
+class ControlResumeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resume_receipt: str = Field(min_length=1, max_length=20000)
 
 
 class OnboardingStatusRequest(BaseModel):
