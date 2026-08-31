@@ -105,13 +105,26 @@ class HookOutcome:
     detail: dict[str, Any] = field(default_factory=dict)
 
     def emit(self, out=None, err=None) -> int:
-        out = sys.stdout if out is None else out
-        err = sys.stderr if err is None else err
         if self.payload is not None:
-            out.write(json.dumps(self.payload, ensure_ascii=False))
+            _write(sys.stdout if out is None else out, json.dumps(self.payload, ensure_ascii=False))
         if self.stderr:
-            err.write(self.stderr)
+            _write(sys.stderr if err is None else err, self.stderr)
         return self.exit_code
+
+
+def _write(stream, text: str) -> None:
+    """Write UTF-8 regardless of the host's console encoding.
+
+    A hook exchanges the user's own wording with the host, so the payload is often not
+    representable in a Windows console code page. Bypassing the text layer keeps the
+    reason readable instead of raising while a tool call waits on a decision.
+    """
+    buffer = getattr(stream, "buffer", None)
+    if buffer is None:
+        stream.write(text)
+        return
+    buffer.write(text.encode("utf-8"))
+    buffer.flush()
 
 
 def _session_ttl() -> int:
@@ -604,14 +617,13 @@ def install_hook(
 
 
 def _read_event(stream) -> Mapping[str, Any]:
-    raw = stream.read()
+    buffer = getattr(stream, "buffer", None)
+    raw = buffer.read().decode("utf-8", errors="replace") if buffer is not None else stream.read()
     payload = json.loads(raw) if raw.strip() else {}
     return payload if isinstance(payload, Mapping) else {}
 
 
 def _run(argv: argparse.Namespace) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
     try:
         event = _read_event(sys.stdin)
     except (json.JSONDecodeError, UnicodeError, OSError) as exc:
@@ -619,7 +631,7 @@ def _run(argv: argparse.Namespace) -> int:
         return outcome.emit()
     outcome = handle(event)
     if argv.explain:
-        sys.stderr.write(json.dumps({"decision": outcome.decision, **outcome.detail}, ensure_ascii=False))
+        _write(sys.stderr, json.dumps({"decision": outcome.decision, **outcome.detail}, ensure_ascii=False))
     return outcome.emit()
 
 
@@ -643,7 +655,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "run":
         return _run(args)
     if args.action == "print-settings":
-        print(json.dumps({"hooks": settings_block(matcher=args.matcher)}, ensure_ascii=False, indent=2))
+        block = json.dumps({"hooks": settings_block(matcher=args.matcher)}, ensure_ascii=False, indent=2)
+        _write(sys.stdout, block + "\n")
         return 0
     result = install_hook(
         scope=args.scope,
@@ -652,11 +665,12 @@ def main(argv: list[str] | None = None) -> int:
         matcher=args.matcher,
         remove=args.action == "uninstall",
     )
-    if args.json:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    else:
-        print(f"intent-translator Claude Code hook: {result['settings_path']}")
-        print(result["message"])
+    report = (
+        json.dumps(result, ensure_ascii=False, indent=2)
+        if args.json
+        else f"intent-translator Claude Code hook: {result['settings_path']}\n{result['message']}"
+    )
+    _write(sys.stdout, report + "\n")
     return 0
 
 

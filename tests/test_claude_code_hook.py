@@ -184,35 +184,45 @@ class HookDecisionTests(unittest.TestCase):
         if os.name != "nt":
             self.assertEqual(self.store.path.stat().st_mode & 0o077, 0)
 
+    def _hook_process(self, event: dict, *, extra: tuple[str, ...] = ()) -> subprocess.CompletedProcess:
+        """Run the hook the way a host does: a fresh process exchanging bytes."""
+        return subprocess.run(
+            [sys.executable, "-m", "intent_translator_mcp.host_hook", "run", *extra],
+            input=json.dumps(event, ensure_ascii=False).encode("utf-8"),
+            capture_output=True,
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
+        )
+
     def test_a_prompt_recorded_here_is_visible_to_the_next_hook_process(self):
         """Each hook call is a separate process, so the store must be shared."""
         self.decide(prompt_event("s", "帮我把这个仓库发到 github 上"))
-        completed = subprocess.run(
-            [sys.executable, "-m", "intent_translator_mcp.host_hook", "run", "--explain"],
-            input=json.dumps(tool_event("s", "Bash", command="git push origin main")),
-            capture_output=True,
-            text=True,
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
+        completed = self._hook_process(
+            tool_event("s", "Bash", command="git push origin main"), extra=("--explain",)
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        payload = json.loads(completed.stdout)
-        self.assertEqual(
-            payload["hookSpecificOutput"]["permissionDecision"],
-            "ask",
-            completed.stderr,
-        )
-        self.assertIn("git push origin main", payload["hookSpecificOutput"]["permissionDecisionReason"])
+        specific = json.loads(completed.stdout.decode("utf-8"))["hookSpecificOutput"]
+        self.assertEqual(specific["permissionDecision"], "ask", completed.stderr)
+        self.assertIn("git push origin main", specific["permissionDecisionReason"])
+
+    def test_wording_the_console_encoding_cannot_represent_still_decides(self):
+        """A host exchanges the user's own wording, which is often not ASCII."""
+        self.decide(prompt_event("s", "帮我整理一下 README，千万不要发布"))
+        completed = self._hook_process(tool_event("s", "Bash", command="git push origin main"))
+        self.assertEqual(completed.returncode, BLOCKING_EXIT_CODE, completed.stderr)
+        specific = json.loads(completed.stdout.decode("utf-8"))["hookSpecificOutput"]
+        self.assertEqual(specific["permissionDecision"], "deny")
+        self.assertIn("千万不要发布", specific["permissionDecisionReason"])
+        self.assertIn("千万不要发布", completed.stderr.decode("utf-8"))
 
     def test_unreadable_hook_input_escalates_instead_of_being_ignored(self):
         completed = subprocess.run(
             [sys.executable, "-m", "intent_translator_mcp.host_hook", "run"],
-            input="this is not json",
+            input=b"this is not json",
             capture_output=True,
-            text=True,
             env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
         )
         self.assertEqual(completed.returncode, 0)
-        payload = json.loads(completed.stdout)
+        payload = json.loads(completed.stdout.decode("utf-8"))
         self.assertEqual(payload["hookSpecificOutput"]["permissionDecision"], "ask")
 
     def test_preparing_for_a_pending_action_is_not_interrupted(self):

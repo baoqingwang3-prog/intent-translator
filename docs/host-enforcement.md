@@ -54,6 +54,8 @@ The default `PreToolUse` matcher is `Bash|PowerShell|Write|Edit|NotebookEdit|Web
 | `INTENT_TRANSLATOR_HOOK_SESSION_TTL` | Seconds a recorded prompt stays usable. Default 12 hours. |
 | `INTENT_TRANSLATOR_DATA_DIR` | Where the recorded prompt and the receipt ledger live. Every process that must agree needs the same directory. |
 
+The hook reads its input and writes its decision as UTF-8 directly, without going through the console's code page. A hook exchanges the user's own wording, which frequently cannot be represented in a Windows console encoding, and a decoding error while a tool call waits on a decision would be resolved by the error policy rather than by the request.
+
 The recorded prompt is the user's own text. It is kept as one row per session rather than a history, written with owner-only permissions, expired on a timer, and deleted when the session ends.
 
 ## Failure Behavior
