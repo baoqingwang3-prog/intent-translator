@@ -4,6 +4,16 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+### Added
+
+- Local decision records. The deterministic rules can only be tuned against evidence about what they actually decided, and nothing was recorded beyond a single response, so no install could answer how often it asked for confirmation, which rules fired, or which requests it let through. Each compile now appends one record to `decisions.jsonl` in the data directory, carrying the decision, typed classification, rule reasons, required slots, timing, and lengths.
+- `intent_decision_metrics` aggregates those records into the decision mix, review rate, most frequent risk reasons and missing slots, operation mix, and latency percentiles.
+- Process counters for decisions, risk reasons, and required slots, available through `observability.counters()`.
+
+### Changed
+
+- Records contain no request text. Repeated wording is counted through a digest salted with a local owner-only `digest-salt` file, so identical wording produces different digests on different installs and digests cannot be correlated across them. Recording is local only, never networked, adds roughly 0.1 ms per compile, is disabled by `INTENT_TRANSLATOR_TELEMETRY=off`, and swallows its own failures so it cannot change a safety decision or fail a request.
+
 ## [0.10.0a1] - 2026-08-12
 
 ### Added

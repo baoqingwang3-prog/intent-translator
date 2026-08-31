@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import tempfile
@@ -53,6 +54,7 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                             "intent_tool_gateway",
                             "intent_shadow_observe",
                             "intent_shadow_review",
+                            "intent_decision_metrics",
                             "intent_study_pointer",
                             "intent_student_state",
                         },
@@ -153,6 +155,14 @@ class McpProtocolTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertFalse(defense.isError)
                     self.assertFalse(defense.structuredContent["quarantined_text_exposed"])
+                    metrics = await session.call_tool(
+                        "intent_decision_metrics",
+                        {"request": {}},
+                    )
+                    self.assertFalse(metrics.isError)
+                    self.assertGreaterEqual(metrics.structuredContent["record_count"], 1)
+                    self.assertFalse(metrics.structuredContent["contains_request_text"])
+                    self.assertNotIn("可以", json.dumps(metrics.structuredContent, ensure_ascii=False))
                     state = await session.call_tool(
                         "intent_student_state",
                         {"request": {"action": "summary"}},

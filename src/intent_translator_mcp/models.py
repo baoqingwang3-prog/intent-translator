@@ -156,6 +156,10 @@ class ShadowReviewRequest(BaseModel):
     days: int = Field(default=30, ge=1, le=365)
 
 
+class DecisionMetricsRequest(BaseModel):
+    limit: int = Field(default=10, ge=1, le=50)
+
+
 class StudyPointerRequest(BaseModel):
     action: Literal["upsert", "list", "reuse", "sync"]
     path: str = ""

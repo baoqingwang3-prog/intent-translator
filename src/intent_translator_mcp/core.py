@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
@@ -18,6 +19,7 @@ from .authorization import issue_confirmation_receipt, verify_confirmation_recei
 from .intent_contract import build_typed_contract
 from .models import CompileRequest
 from .local_policy import assess_local_risk, autonomy_status, conditional_review, sparse_source_map
+from .observability import record_decision
 from .onboarding import interpretation_gate, language_learning_suggestions, personalization_status
 from .runtime_status import build_runtime_status, candidate_skill_dirs
 from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
@@ -1324,6 +1326,18 @@ class IntentCompiler:
             connection.close()
 
     def compile(self, request: CompileRequest) -> dict[str, Any]:
+        started = time.perf_counter()
+        envelope = self._compile(request)
+        record_decision(
+            envelope,
+            utterance=request.utterance,
+            scope=request.scope,
+            duration_ms=(time.perf_counter() - started) * 1000,
+            entrypoint=self.entrypoint,
+        )
+        return envelope
+
+    def _compile(self, request: CompileRequest) -> dict[str, Any]:
         utterance = request.utterance.strip()
         gate_resolution = _resolve_gate_selection(request)
         isolated_selection = gate_resolution is None and _selection_index(utterance) is not None
