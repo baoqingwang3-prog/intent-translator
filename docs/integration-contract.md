@@ -43,7 +43,8 @@ A host MUST NOT place remembered preferences, inferred personality traits, or fi
 | `pending_action` | Exact unfinished action | Required for action confirmation and context resumption |
 | `scope` | Project or global boundary | A receipt is invalid in another scope |
 | `authorization` | Compatibility hint | Untrusted; never sufficient for consequential execution |
-| `confirmation_receipt` | One-time action capability | Valid only for the exact action, scope, grants, and expiry |
+| `confirmation_receipt` | One-time action capability | Valid only for the exact action, scope, grants, actor, and expiry |
+| `actor` | Identity the approval belongs to | A receipt bound to one actor cannot be spent by another |
 | `semantic_mode` | `off`, `auto`, or `required` | External semantic calls require a separate receipt |
 | `allow_external_semantic` | Request to use external adapter | Boolean alone grants nothing |
 | `allow_sensitive_semantic` | Request to send sensitive input | Boolean alone grants nothing |
@@ -122,9 +123,27 @@ For publication, external transfer, destructive changes, local dependency instal
 3. The next compile MUST include that exact action in `pending_action`, the latest confirmation in `utterance`, and the receipt in `confirmation_receipt`.
 4. The host MUST NOT reuse the receipt. A changed file, branch, recipient, destination, action, grant, or scope requires a new challenge.
 
-The receipt proves that the compiler challenge flow was completed. It does not authenticate a human identity; the host remains responsible for the integrity of the user channel.
+The receipt proves that the compiler challenge flow was completed. It does not authenticate a human identity; the host remains responsible for the integrity of the user channel. A host that serves more than one person SHOULD pass `actor` so that the receipt is bound to whoever approved it and cannot be spent by anyone else. When `actor` is supplied at challenge time it MUST be supplied again at confirmation time, or verification fails with `actor mismatch`.
 
 External semantic interpretation uses `risk.semantic_confirmation_challenge.receipt` and follows the same one-time flow.
+
+### Receipt Storage And Deployment
+
+Receipts are signed with a key and recorded in a single-use ledger. Both are shared through the local data directory, so a receipt issued by one process remains verifiable in another process and after a restart, and single use is enforced across all of them.
+
+| Setting | Purpose |
+|---|---|
+| `INTENT_TRANSLATOR_DATA_DIR` | Location of `receipt-key` and `receipts.db`. Every process that must share receipts needs the same directory. |
+| `INTENT_TRANSLATOR_RECEIPT_SECRET` | Explicit signing key (hex, base64, or at least 32 bytes of text). Takes precedence over the key file. Required when processes cannot share a filesystem. |
+| `INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS` | Previous key kept verifiable during rotation. Set it while rotating, then remove it to retire the old key. |
+| `INTENT_TRANSLATOR_ACTOR` | Default `actor` when the request does not carry one. |
+
+When neither an explicit secret nor a writable data directory is available, the runtime degrades to a process-local key and ledger. A receipt then dies with the process, which fails closed but breaks any deployment running more than one worker. `authorization_backend` in the compile response reports this state, and it is included in the compact response only when receipts are *not* shared, so a host can surface the warning:
+
+```json
+{"key_source": "process-local", "shared_across_processes": false,
+ "warning": "receipts are process-local; a restart or a second worker invalidates them"}
+```
 
 ## Constraint Meanings
 

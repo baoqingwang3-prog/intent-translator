@@ -171,6 +171,9 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         compact["state_status"] = envelope.get("state_status", {})
     if envelope.get("adaptive_autonomy", {}).get("mode") == "cautious":
         compact["adaptive_autonomy"] = envelope["adaptive_autonomy"]
+    authorization_backend = envelope.get("authorization_backend", {})
+    if authorization_backend and not authorization_backend.get("shared_across_processes", True):
+        compact["authorization_backend"] = authorization_backend
     if envelope.get("personal_semantics", {}).get("status") != "none":
         compact["personal_semantics"] = envelope["personal_semantics"]
     compact["runtime_status"] = {

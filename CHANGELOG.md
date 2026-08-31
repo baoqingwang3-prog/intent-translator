@@ -4,6 +4,16 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+### Fixed
+
+- Confirmation receipts were signed with a key generated per process and recorded in an in-memory single-use set, so a receipt issued by one process failed verification in any other process with `invalid signature`, and every outstanding approval was silently invalidated by a restart. This failed closed rather than open, but it made the control unusable in any deployment running more than one worker, and it forced users to re-approve pending actions after each restart. The signing key and the single-use ledger are now shared through the local data directory, so a receipt survives a restart within its expiry and single use is enforced across processes.
+
+### Added
+
+- `actor` on `CompileRequest` (default `INTENT_TRANSLATOR_ACTOR`) binds a receipt to the identity that approved it. Verification of a receipt carrying an actor fails with `actor mismatch` for anyone else, which keeps one person's approval from being spent by another in a shared or multi-user host. Receipts without an actor keep working unchanged for single-user local installs.
+- `INTENT_TRANSLATOR_RECEIPT_SECRET` and `INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS` for an explicit signing key and single-step key rotation, for deployments whose processes cannot share a filesystem. The auto-created `receipt-key` file is written with owner-only permissions.
+- `authorization_backend` in the compile response reports whether receipts are shared across processes and survive a restart. It is included in the compact response only when they are not, so a host can surface the warning instead of silently running in the degraded mode.
+
 ## [0.10.0a1] - 2026-08-12
 
 ### Added

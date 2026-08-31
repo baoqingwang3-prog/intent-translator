@@ -14,7 +14,11 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from .authorization import issue_confirmation_receipt, verify_confirmation_receipt
+from .authorization import (
+    issue_confirmation_receipt,
+    receipt_backend_status,
+    verify_confirmation_receipt,
+)
 from .intent_contract import build_typed_contract
 from .models import CompileRequest
 from .local_policy import assess_local_risk, autonomy_status, conditional_review, sparse_source_map
@@ -1445,11 +1449,13 @@ class IntentCompiler:
             required_grants.append("sensitive")
         if preliminary_risk["system_change"]:
             required_grants.append("install")
+        actor = request.actor.strip() or os.environ.get("INTENT_TRANSLATOR_ACTOR", "").strip()
         receipt_status = (
             verify_confirmation_receipt(
                 request.confirmation_receipt,
                 action_text,
                 request.scope,
+                actor=actor,
                 required_grants=required_grants,
                 consume=bool(
                     short_confirmation
@@ -1490,6 +1496,7 @@ class IntentCompiler:
                 action_text,
                 request.scope,
                 grants=required_grants,
+                actor=actor,
             )
         local_risk = assess_local_risk(
             action_text,
@@ -1703,6 +1710,7 @@ class IntentCompiler:
             request.confirmation_receipt,
             action_text,
             request.scope,
+            actor=actor,
             required_grants=semantic_grants,
             consume=bool(short_confirmation and request.pending_action),
         )
@@ -1721,6 +1729,7 @@ class IntentCompiler:
                 action_text,
                 request.scope,
                 grants=semantic_grants,
+                actor=actor,
             )
         risk["semantic_authorization"] = {
             "required": bool(semantic_grants),
@@ -2348,6 +2357,7 @@ class IntentCompiler:
             "prompt_source_map": source_map,
             "intent_contract": typed_contract.model_dump(mode="json"),
             "tool_gateway": tool_gateway,
+            "authorization_backend": receipt_backend_status(),
             "adaptive_autonomy": autonomy,
             "current_status": current_status,
             "runtime_status": runtime_status,
