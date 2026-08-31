@@ -58,11 +58,26 @@ def _key_id(secret: bytes) -> str:
     return hashlib.sha256(b"intent-translator-receipt-key\x00" + secret).hexdigest()[:16]
 
 
-def _data_dir(env: Mapping[str, str]) -> Path:
+def _home() -> Path | None:
+    """Resolve the home directory, or nothing when the environment does not name one.
+
+    A stripped environment (a service unit, a container without HOME, a Windows
+    process started with an explicit environment) has no home directory, and asking
+    for one raises. Receipts still work there, so this must not be fatal.
+    """
+    try:
+        return Path.home()
+    except RuntimeError:
+        return None
+
+
+def _data_dir(env: Mapping[str, str]) -> Path | None:
     configured = str(env.get("INTENT_TRANSLATOR_DATA_DIR", "")).strip()
     if configured:
         return Path(configured).expanduser()
-    return Path(env.get("INTENT_TRANSLATOR_HOME", "") or Path.home()).expanduser() / ".intent-translator"
+    configured_home = str(env.get("INTENT_TRANSLATOR_HOME", "")).strip()
+    root = Path(configured_home).expanduser() if configured_home else _home()
+    return root / ".intent-translator" if root is not None else None
 
 
 def _decode_configured_secret(raw: str) -> bytes | None:
@@ -215,7 +230,7 @@ def _build_state(env: Mapping[str, str]) -> dict[str, Any]:
     data_dir = _data_dir(env)
     source = "configured-secret"
     active = configured
-    if active is None:
+    if active is None and data_dir is not None:
         active = _load_or_create_key_file(data_dir / "receipt-key")
         source = "shared-key-file"
     if active is None:
@@ -223,7 +238,7 @@ def _build_state(env: Mapping[str, str]) -> dict[str, Any]:
         source = "process-local"
 
     ledger: ReceiptLedger
-    if source == "process-local":
+    if source == "process-local" or data_dir is None:
         ledger = MemoryReceiptLedger()
     else:
         try:
@@ -252,7 +267,7 @@ def _state() -> dict[str, Any]:
         env.get("INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS", ""),
         env.get("INTENT_TRANSLATOR_DATA_DIR", ""),
         env.get("INTENT_TRANSLATOR_HOME", ""),
-        str(Path.home()),
+        str(_home() or ""),
     )
     with _STATE_LOCK:
         if _CACHE.get("fingerprint") != fingerprint:

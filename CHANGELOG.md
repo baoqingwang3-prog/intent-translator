@@ -7,6 +7,7 @@ All notable changes are recorded here. The project follows semantic versioning a
 ### Fixed
 
 - Confirmation receipts were signed with a key generated per process and recorded in an in-memory single-use set, so a receipt issued by one process failed verification in any other process with `invalid signature`, and every outstanding approval was silently invalidated by a restart. This failed closed rather than open, but it made the control unusable in any deployment running more than one worker, and it forced users to re-approve pending actions after each restart. The signing key and the single-use ledger are now shared through the local data directory, so a receipt survives a restart within its expiry and single use is enforced across processes.
+- Issuing or verifying a receipt raised `RuntimeError: Could not determine home directory.` in an environment that names no home directory, such as a service unit, a container without `HOME`, or a Windows process started with an explicit environment. The location of the shared key and ledger is resolved without requiring a home directory, and an unresolvable location degrades to the reported process-local mode instead of raising.
 
 ### Added
 

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +60,14 @@ class ReceiptDeploymentTests(unittest.TestCase):
         reset_receipt_state()
         self._temp.cleanup()
 
+    def _subprocess_env(self) -> dict[str, str]:
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(REPO_ROOT / "src")
+        env["INTENT_TRANSLATOR_DATA_DIR"] = os.environ["INTENT_TRANSLATOR_DATA_DIR"]
+        for key in ("INTENT_TRANSLATOR_RECEIPT_SECRET", "INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS"):
+            env.pop(key, None)
+        return env
+
     def _verify_elsewhere(self, receipt: str, *, actor: str = "", consume: bool = False) -> dict:
         completed = subprocess.run(
             [
@@ -76,12 +85,7 @@ class ReceiptDeploymentTests(unittest.TestCase):
             ],
             capture_output=True,
             text=True,
-            env={
-                "PYTHONPATH": str(REPO_ROOT / "src"),
-                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-                "INTENT_TRANSLATOR_DATA_DIR": os.environ["INTENT_TRANSLATOR_DATA_DIR"],
-                "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
-            },
+            env=self._subprocess_env(),
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         return json.loads(completed.stdout)
@@ -203,6 +207,32 @@ class ReceiptDeploymentTests(unittest.TestCase):
         finally:
             for key in ("INTENT_TRANSLATOR_PROFILE", "INTENT_TRANSLATOR_MEMORY_DB"):
                 os.environ.pop(key, None)
+
+    def test_receipts_work_in_an_environment_with_no_home_directory(self):
+        with unittest.mock.patch.object(
+            Path, "home", side_effect=RuntimeError("Could not determine home directory.")
+        ):
+            reset_receipt_state()
+            status = receipt_backend_status()
+            self.assertTrue(status["shared_across_processes"])
+            receipt = issue_confirmation_receipt(ACTION, SCOPE, grants=GRANTS)["receipt"]
+            self.assertTrue(
+                verify_confirmation_receipt(
+                    receipt, ACTION, SCOPE, required_grants=GRANTS, consume=True
+                )["verified"]
+            )
+
+            os.environ.pop("INTENT_TRANSLATOR_DATA_DIR")
+            reset_receipt_state()
+            homeless = receipt_backend_status()
+            self.assertEqual(homeless["key_source"], "process-local")
+            self.assertIn("process-local", homeless["warning"])
+            fallback = issue_confirmation_receipt(ACTION, SCOPE, grants=GRANTS)["receipt"]
+            self.assertTrue(
+                verify_confirmation_receipt(fallback, ACTION, SCOPE, required_grants=GRANTS)[
+                    "verified"
+                ]
+            )
 
     def test_the_key_file_is_not_world_readable(self):
         issue_confirmation_receipt(ACTION, SCOPE, grants=GRANTS)
