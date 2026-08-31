@@ -80,6 +80,11 @@ def _data_dir(env: Mapping[str, str]) -> Path | None:
     return root / ".intent-translator" if root is not None else None
 
 
+def shared_data_dir() -> Path | None:
+    """Location shared by every process that must agree on local state, if any."""
+    return _data_dir(dict(os.environ))
+
+
 def _decode_configured_secret(raw: str) -> bytes | None:
     candidate = raw.strip()
     if not candidate:
