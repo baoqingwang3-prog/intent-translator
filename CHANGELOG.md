@@ -11,9 +11,15 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ### Added
 
+- Host enforcement for Claude Code. `intent-translator-hook install` registers a `PreToolUse` hook that compiles the session's latest prompt, classifies the tool call the host is about to make, and denies a prohibited or blocked action before it runs. Until now every control in this project depended on the host choosing to call the preflight; a model that went straight to a shell command bypassed all of them. A `UserPromptSubmit` hook records the wording the compiler needs, since a pre-tool hook receives the tool call and not the user's request, and a `SessionEnd` hook forgets it. An allowed verdict prints nothing and exits 0, so the host's own permission flow is untouched: returning `allow` would skip the user's permission prompt, and a preflight may raise friction but never lower it. `INTENT_TRANSLATOR_HOOK_ON_ERROR` decides what an unusable preflight means, defaulting to escalating to the user rather than silently allowing, because Claude Code treats a crashed hook as non-blocking. Limits, other hosts, and remaining bypass paths are documented in [docs/host-enforcement.md](docs/host-enforcement.md).
 - `actor` on `CompileRequest` (default `INTENT_TRANSLATOR_ACTOR`) binds a receipt to the identity that approved it. Verification of a receipt carrying an actor fails with `actor mismatch` for anyone else, which keeps one person's approval from being spent by another in a shared or multi-user host. Receipts without an actor keep working unchanged for single-user local installs.
 - `INTENT_TRANSLATOR_RECEIPT_SECRET` and `INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS` for an explicit signing key and single-step key rotation, for deployments whose processes cannot share a filesystem. The auto-created `receipt-key` file is written with owner-only permissions.
 - `authorization_backend` in the compile response reports whether receipts are shared across processes and survive a restart. It is included in the compact response only when they are not, so a host can surface the warning instead of silently running in the degraded mode.
+
+### Changed
+
+- The invocation receipt no longer claims `preflight-observed-not-host-enforced` unconditionally. A compile that a host hook performed before the tool call ran now reports `preflight-enforced-by-host-hook`, and every other entrypoint keeps the original claim because it was called voluntarily.
+- The threat model and support matrix no longer describe host enforcement as unavailable. T01's residual risk is now the specific set of paths a hook cannot cover rather than "a non-cooperating host remains outside enforcement".
 
 ## [0.10.0a1] - 2026-08-12
 

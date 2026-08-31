@@ -106,6 +106,8 @@ P1 Alpha, version `0.7.1a3`. GitHub-hosted evidence applies only to the exact co
 
 Host support is intentionally narrower than the installer list. See the explicit [host support matrix](docs/support-matrix.md) for Alpha-supported, experimental, Skill-only, and MCP-unverified combinations.
 
+Installing the runtime makes the preflight *callable*; it does not make a host call it. On Claude Code, `intent-translator-hook install` registers a hook that decides before a tool call runs, so a prohibited or unconfirmed action is refused rather than merely described. See [host enforcement](docs/host-enforcement.md) for what it covers and what it does not.
+
 | Component | Supported baseline | Degradation |
 |---|---|---|
 | Operating system | Windows 10/11, current macOS, mainstream Linux | Other systems receive an untested warning |
@@ -411,7 +413,7 @@ Ambiguous integration requests use a project-scoped interpretation gate. A confi
 - A selected or installed Skill is not proof that the host exposed or successfully activated it.
 
 See [docs/launch-readiness.md](docs/launch-readiness.md) for the prioritized release risks.
-See [docs/contribution-boundary.md](docs/contribution-boundary.md), [docs/threat-model.md](docs/threat-model.md), [SECURITY.md](SECURITY.md), [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), [docs/value-p0.md](docs/value-p0.md), [docs/design-sources.md](docs/design-sources.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the contribution boundary, threat model, reporting policy, release evidence, trial protocol, and prior-art comparison.
+See [docs/contribution-boundary.md](docs/contribution-boundary.md), [docs/threat-model.md](docs/threat-model.md), [docs/host-enforcement.md](docs/host-enforcement.md), [SECURITY.md](SECURITY.md), [docs/release-gate.md](docs/release-gate.md), [docs/alpha-trial.md](docs/alpha-trial.md), [docs/support-matrix.md](docs/support-matrix.md), [docs/value-p0.md](docs/value-p0.md), [docs/design-sources.md](docs/design-sources.md), and [docs/github-benchmark.md](docs/github-benchmark.md) for the contribution boundary, threat model, reporting policy, release evidence, trial protocol, and prior-art comparison.
 
 ## Repository Layout
 
