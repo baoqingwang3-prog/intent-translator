@@ -106,7 +106,7 @@ P1 Alpha, version `0.7.1a3`. GitHub-hosted evidence applies only to the exact co
 
 Host support is intentionally narrower than the installer list. See the explicit [host support matrix](docs/support-matrix.md) for Alpha-supported, experimental, Skill-only, and MCP-unverified combinations.
 
-Installing the runtime makes the preflight *callable*; it does not make a host call it. On Claude Code, `intent-translator-hook install` registers a hook that decides before a tool call runs, so a prohibited or unconfirmed action is refused rather than merely described. See [host enforcement](docs/host-enforcement.md) for what it covers and what it does not.
+Installing the runtime makes the preflight *callable*; it does not make a host call it. On Claude Code and Cursor, `intent-translator-hook install [--host cursor]` registers a hook that decides before an action runs, so a prohibited or unconfirmed action is refused rather than merely described. See [host enforcement](docs/host-enforcement.md) for what it covers and what it does not.
 
 | Component | Supported baseline | Degradation |
 |---|---|---|

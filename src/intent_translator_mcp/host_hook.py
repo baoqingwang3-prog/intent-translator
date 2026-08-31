@@ -1,21 +1,27 @@
 """Enforce the preflight inside a host that can veto a tool call before it runs.
 
 A host hook is the only place where this project stops being advisory. Claude Code
-runs `PreToolUse` before every tool call and honors a hook's `deny` ahead of its own
-permission rules, so a compile result can prevent an action instead of merely
-describing it.
+and Cursor both run a hook before an action executes and honor its refusal, so a
+compile result can prevent the action instead of merely describing it.
 
-Two events are needed, because a `PreToolUse` hook receives the tool call and not the
-user's wording, while the compiler requires the exact wording:
+Two events are needed on each host, because a pre-action hook receives the action and
+not the user's wording, while the compiler requires the exact wording:
 
-1. `UserPromptSubmit` records the latest prompt for the session.
-2. `PreToolUse` compiles that prompt, classifies the tool call the host is about to
-   make, and returns a decision.
+| Purpose | Claude Code | Cursor |
+|---|---|---|
+| Record the latest prompt | `UserPromptSubmit` | `beforeSubmitPrompt` |
+| Decide before the action | `PreToolUse` | `beforeShellExecution`, `beforeMCPExecution` |
+| Forget the prompt | `SessionEnd` | `sessionEnd` |
 
-The hook only ever raises friction. An allowed verdict prints nothing and exits 0,
-which Claude Code treats as "no decision" and leaves the host's own permission flow
-untouched. Returning `allow` would *skip* the host's permission prompt, so this
-module never does that: a preflight may not widen what a host would have permitted.
+One decision core serves both. The event names are disjoint, so a single entrypoint
+recognizes which host is calling and renders the verdict in that host's shape. That
+also means Cursor can load this hook through its Claude Code compatibility path.
+
+The hook only ever raises friction. On Claude Code an allowed verdict prints nothing,
+which that host documents as "no decision: the normal permission flow applies";
+returning `allow` there would *skip* the user's permission prompt. Cursor's schema has
+no way to abstain, so an allowed verdict returns `allow` and Cursor's own allowlist
+and review remain the layer behind it.
 """
 
 from __future__ import annotations
@@ -38,8 +44,17 @@ PROMPT_EVENT = "UserPromptSubmit"
 PRE_TOOL_EVENT = "PreToolUse"
 SESSION_END_EVENT = "SessionEnd"
 
-SERVER_TOOL_PREFIX = "mcp__intent-translator__"
+CURSOR_PROMPT_EVENT = "beforeSubmitPrompt"
+CURSOR_SHELL_EVENT = "beforeShellExecution"
+CURSOR_MCP_EVENT = "beforeMCPExecution"
+CURSOR_TOOL_EVENT = "preToolUse"
+CURSOR_SESSION_END_EVENT = "sessionEnd"
+
+MODULE_ENTRYPOINT = "intent_translator_mcp.host_hook"
+SERVER_NAME = "intent-translator"
+SERVER_TOOL_PREFIX = f"mcp__{SERVER_NAME}__"
 DEFAULT_TOOL_MATCHER = "Bash|PowerShell|Write|Edit|NotebookEdit|WebFetch|mcp__.*"
+CURSOR_FILE_TOOL_MATCHER = "Write|Delete"
 DEFAULT_TIMEOUT_SECONDS = 20
 DEFAULT_SESSION_TTL_SECONDS = 12 * 60 * 60
 BLOCKING_EXIT_CODE = 2
@@ -316,32 +331,25 @@ def _clip(text: str) -> str:
     return collapsed if len(collapsed) <= MAX_REASON_CHARS else collapsed[: MAX_REASON_CHARS - 1] + "…"
 
 
-def _pre_tool_payload(decision: str, reason: str) -> dict[str, Any]:
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": PRE_TOOL_EVENT,
-            "permissionDecision": decision,
-            "permissionDecisionReason": _clip(reason),
-        }
-    }
+@dataclass(frozen=True)
+class Verdict:
+    """One host-independent decision about one action."""
+
+    decision: str
+    reason: str = ""
+    detail: dict[str, Any] = field(default_factory=dict)
 
 
-def _no_decision(decision: str = "no-decision", **detail: Any) -> HookOutcome:
-    return HookOutcome(decision=decision, detail=detail)
+def _allow(**detail: Any) -> Verdict:
+    return Verdict("allow", detail=detail)
 
 
-def _deny(reason: str, **detail: Any) -> HookOutcome:
-    return HookOutcome(
-        payload=_pre_tool_payload("deny", reason),
-        exit_code=BLOCKING_EXIT_CODE,
-        stderr=_clip(reason),
-        decision="deny",
-        detail=detail,
-    )
+def _deny(reason: str, **detail: Any) -> Verdict:
+    return Verdict("deny", _clip(reason), detail)
 
 
-def _ask(reason: str, **detail: Any) -> HookOutcome:
-    return HookOutcome(payload=_pre_tool_payload("ask", reason), decision="ask", detail=detail)
+def _ask(reason: str, **detail: Any) -> Verdict:
+    return Verdict("ask", _clip(reason), detail)
 
 
 def _on_error_decision() -> str:
@@ -349,26 +357,28 @@ def _on_error_decision() -> str:
     return configured if configured in {"ask", "deny", "allow"} else "ask"
 
 
-def _failure(reason: str, **detail: Any) -> HookOutcome:
-    """Decide what an unusable preflight means. Claude Code cannot fail closed for us.
+def _failure(reason: str, **detail: Any) -> Verdict:
+    """Decide what an unusable preflight means. No host fails closed for us by default.
 
-    A crashed or unparseable hook is a non-blocking error in Claude Code, so the tool
-    call would proceed. This module therefore takes its own position: by default it
-    escalates to the user rather than silently allowing or hard blocking.
+    A crashed or unparseable hook is a non-blocking error in Claude Code, and fail-open
+    in Cursor unless `failClosed` is set. This module therefore takes its own position:
+    by default it escalates to the user rather than silently allowing or hard blocking.
     """
     decision = _on_error_decision()
     if decision == "deny":
         return _deny(reason, **detail)
     if decision == "allow":
-        return _no_decision("allow-on-error", **detail)
+        return Verdict("allow", detail={**detail, "on_error": True})
     return _ask(reason, **detail)
 
 
-def _compile_envelope(utterance: str, *, pending_action: str, scope: str, actor: str) -> dict[str, Any]:
+def _compile_envelope(
+    utterance: str, *, pending_action: str, scope: str, actor: str, host: str = "host"
+) -> dict[str, Any]:
     from .core import IntentCompiler
     from .models import CompileRequest
 
-    compiler = IntentCompiler(entrypoint="claude-code-hook", semantic_adapter=None)
+    compiler = IntentCompiler(entrypoint=f"{host}-hook", semantic_adapter=None)
     return compiler.compile(
         CompileRequest(
             utterance=utterance,
@@ -386,19 +396,24 @@ def _scope_for(cwd: str) -> str:
     return cleaned or "global"
 
 
-def handle_pre_tool_use(event: Mapping[str, Any], store: SessionStore) -> HookOutcome:
-    tool_name = str(event.get("tool_name", ""))
-    tool_input = event.get("tool_input")
-    tool_input = tool_input if isinstance(tool_input, Mapping) else {}
+def evaluate_action(
+    *,
+    tool_name: str,
+    tool_input: Mapping[str, Any],
+    prompt: str,
+    cwd: str = "",
+    actor: str = "",
+    host: str = "host",
+) -> Verdict:
+    """Decide one action. Host-independent: every host renders this same verdict."""
     classified = classify_tool_call(tool_name, tool_input)
     action = classified["summary"]
     if classified["effect"] == "none":
-        return _no_decision("allow", tool_effect="none", action=action)
+        return _allow(tool_effect="none", action=action)
 
-    prompt = store.recall(str(event.get("session_id", "")))
     if not prompt:
         if classified["effect"] not in CONSEQUENTIAL_EFFECTS:
-            return _no_decision("allow", tool_effect=classified["effect"], action=action)
+            return _allow(tool_effect=classified["effect"], action=action)
         return _failure(
             "Intent Translator could not see the request behind this action, so it cannot "
             f"confirm the action was asked for. The action is: {action}",
@@ -411,8 +426,9 @@ def handle_pre_tool_use(event: Mapping[str, Any], store: SessionStore) -> HookOu
         envelope = _compile_envelope(
             prompt,
             pending_action=action,
-            scope=_scope_for(event.get("cwd", "")),
-            actor=str(event.get("actor", "")),
+            scope=_scope_for(cwd),
+            actor=actor,
+            host=host,
         )
     except Exception as exc:  # noqa: BLE001 - a broken preflight must not fail open silently
         return _failure(
@@ -452,9 +468,7 @@ def handle_pre_tool_use(event: Mapping[str, Any], store: SessionStore) -> HookOu
     if classified["effect"] not in CONSEQUENTIAL_EFFECTS:
         # An unresolved request means the consequential step needs confirmation, not that
         # the agent may not read a file or write a local draft while preparing it.
-        return _no_decision(
-            "allow", tool_effect=classified["effect"], action=action, gateway=decision
-        )
+        return _allow(tool_effect=classified["effect"], action=action, gateway=decision)
 
     if decision == "human_review":
         return _ask(
@@ -480,9 +494,7 @@ def handle_pre_tool_use(event: Mapping[str, Any], store: SessionStore) -> HookOu
             cause="effect-mismatch",
             compiled_effect=compiled_effect,
         )
-    return _no_decision(
-        "allow", tool_effect=classified["effect"], action=action, gateway=decision
-    )
+    return _allow(tool_effect=classified["effect"], action=action, gateway=decision)
 
 
 PROHIBITED_ACTION_EFFECTS = {
@@ -493,6 +505,8 @@ PROHIBITED_ACTION_EFFECTS = {
     "install": {"system_change"},
     "overwrite": {"destructive", "write_local"},
 }
+
+
 def _prohibited_action(envelope: Mapping[str, Any], tool_effect: str) -> str:
     """Return a prohibited action that this tool call would carry out, if any.
 
@@ -512,19 +526,139 @@ def _prohibited_action(envelope: Mapping[str, Any], tool_effect: str) -> str:
     return ""
 
 
+def _session_key(event: Mapping[str, Any]) -> str:
+    """Identify the conversation this event belongs to, across both hosts."""
+    for key in ("conversation_id", "session_id"):
+        value = str(event.get(key, "")).strip()
+        if value:
+            return value
+    return ""
+
+
+def _noted(decision: str, **detail: Any) -> HookOutcome:
+    return HookOutcome(decision=decision, detail=detail)
+
+
+def _claude_outcome(verdict: Verdict) -> HookOutcome:
+    """Render a verdict for Claude Code, staying silent when there is nothing to add.
+
+    Silence is what leaves the host's permission flow intact. Returning `allow` would
+    skip the prompt the user configured, so an allowed verdict prints nothing at all.
+    """
+    if verdict.decision == "allow":
+        return HookOutcome(decision="allow", detail=verdict.detail)
+    payload = {
+        "hookSpecificOutput": {
+            "hookEventName": PRE_TOOL_EVENT,
+            "permissionDecision": verdict.decision,
+            "permissionDecisionReason": verdict.reason,
+        }
+    }
+    if verdict.decision == "deny":
+        return HookOutcome(
+            payload=payload,
+            exit_code=BLOCKING_EXIT_CODE,
+            stderr=verdict.reason,
+            decision="deny",
+            detail=verdict.detail,
+        )
+    return HookOutcome(payload=payload, decision="ask", detail=verdict.detail)
+
+
+def _cursor_outcome(verdict: Verdict, *, ask_supported: bool = True) -> HookOutcome:
+    """Render a verdict for Cursor, which has no way to abstain.
+
+    Cursor's schema offers only allow, deny, and ask, so an allowed verdict must say
+    `allow`; its own allowlist and review remain the layer behind that. On the generic
+    `preToolUse` event Cursor accepts `ask` without enforcing it, so a confirmation
+    there would silently become an approval; those events ask for `deny` instead.
+    """
+    decision = verdict.decision
+    downgraded = decision == "ask" and not ask_supported
+    if downgraded:
+        decision = "deny"
+    payload: dict[str, Any] = {"permission": decision}
+    if verdict.reason:
+        payload["user_message"] = verdict.reason
+        payload["agent_message"] = verdict.reason
+    detail = {**verdict.detail}
+    if downgraded:
+        detail["ask_downgraded_to_deny"] = True
+    return HookOutcome(payload=payload, decision=decision, detail=detail)
+
+
+def _tool_from_cursor_event(event: Mapping[str, Any]) -> tuple[str, Mapping[str, Any]]:
+    """Normalize a Cursor event into the tool name and input the classifier expects."""
+    name = str(event.get("hook_event_name", "")).strip()
+    if name == CURSOR_SHELL_EVENT:
+        return "Shell", {"command": str(event.get("command", ""))}
+    if name == CURSOR_MCP_EVENT:
+        server = str(event.get("mcp_server_name", "")).strip()
+        tool = str(event.get("tool_name", "")).strip()
+        raw_input = event.get("tool_input")
+        if isinstance(raw_input, str):
+            try:
+                parsed = json.loads(raw_input)
+            except (json.JSONDecodeError, ValueError):
+                parsed = {"tool_input": raw_input}
+            raw_input = parsed if isinstance(parsed, Mapping) else {"tool_input": raw_input}
+        # An unnamed server cannot be recognized, so it must not inherit this project's
+        # own exemption. Cursor's documentation makes the same point.
+        return f"mcp__{server or 'unknown'}__{tool}", raw_input if isinstance(raw_input, Mapping) else {}
+    tool_input = event.get("tool_input")
+    return str(event.get("tool_name", "")), tool_input if isinstance(tool_input, Mapping) else {}
+
+
 def handle(event: Mapping[str, Any], store: SessionStore | None = None) -> HookOutcome:
-    """Turn one hook event into a decision without ever widening host permissions."""
+    """Turn one hook event into a decision without ever widening host permissions.
+
+    The two hosts use disjoint event names, so the caller does not have to say which
+    host is running. That matters because Cursor can also load this hook through its
+    Claude Code compatibility path, where the Claude Code event names arrive instead.
+    """
     store = store or SessionStore()
     name = str(event.get("hook_event_name", "")).strip()
-    if name == PROMPT_EVENT:
-        store.remember(str(event.get("session_id", "")), str(event.get("prompt", "")))
-        return _no_decision("recorded")
-    if name == SESSION_END_EVENT:
-        store.forget(str(event.get("session_id", "")))
-        return _no_decision("forgotten")
+    session = _session_key(event)
+
+    if name in {PROMPT_EVENT, CURSOR_PROMPT_EVENT}:
+        store.remember(session, str(event.get("prompt", "")))
+        if name == CURSOR_PROMPT_EVENT:
+            # Cursor treats missing or unparseable output as a hook failure, which a
+            # fail-closed configuration would turn into a blocked prompt.
+            return HookOutcome(payload={"continue": True}, decision="recorded")
+        return _noted("recorded")
+    if name in {SESSION_END_EVENT, CURSOR_SESSION_END_EVENT}:
+        store.forget(session)
+        return _noted("forgotten")
+
     if name == PRE_TOOL_EVENT:
-        return handle_pre_tool_use(event, store)
-    return _no_decision("unsupported-event", event=name)
+        tool_input = event.get("tool_input")
+        return _claude_outcome(
+            evaluate_action(
+                tool_name=str(event.get("tool_name", "")),
+                tool_input=tool_input if isinstance(tool_input, Mapping) else {},
+                prompt=store.recall(session),
+                cwd=str(event.get("cwd", "")),
+                actor=str(event.get("actor", "")),
+                host="claude-code",
+            )
+        )
+
+    if name in {CURSOR_SHELL_EVENT, CURSOR_MCP_EVENT, CURSOR_TOOL_EVENT}:
+        tool_name, tool_input = _tool_from_cursor_event(event)
+        return _cursor_outcome(
+            evaluate_action(
+                tool_name=tool_name,
+                tool_input=tool_input,
+                prompt=store.recall(session),
+                cwd=str(event.get("cwd", "")),
+                actor=str(event.get("user_email", "")),
+                host="cursor",
+            ),
+            ask_supported=name != CURSOR_TOOL_EVENT,
+        )
+
+    return _noted("unsupported-event", event=name)
 
 
 def settings_block(
@@ -537,7 +671,7 @@ def settings_block(
     handler = {
         "type": "command",
         "command": python or sys.executable,
-        "args": ["-m", "intent_translator_mcp.host_hook", "run"],
+        "args": ["-m", MODULE_ENTRYPOINT, "run", "--host", "claude-code"],
         "timeout": timeout,
         "statusMessage": "Intent Translator preflight",
     }
@@ -549,71 +683,153 @@ def settings_block(
 
 
 def _is_ours(handler: Any) -> bool:
-    return (
-        isinstance(handler, Mapping)
-        and list(handler.get("args") or [])[:2] == ["-m", "intent_translator_mcp.host_hook"]
-    )
+    if not isinstance(handler, Mapping):
+        return False
+    if list(handler.get("args") or [])[:2] == ["-m", MODULE_ENTRYPOINT]:
+        return True
+    return MODULE_ENTRYPOINT in str(handler.get("command", ""))
 
 
-def _settings_path(scope: str, *, home: Path | None = None, project: Path | None = None) -> Path:
-    if scope == "project":
-        return (project or Path.cwd()) / ".claude" / "settings.json"
-    return (home or Path.home()) / ".claude" / "settings.json"
+def _hook_command(python: str | None, host: str) -> str:
+    """Build a single command string, which is all Cursor's schema accepts."""
+    executable = python or sys.executable
+    quoted = f'"{executable}"' if " " in executable else executable
+    return f"{quoted} -m {MODULE_ENTRYPOINT} run --host {host}"
+
+
+def cursor_hooks_block(
+    *,
+    python: str | None = None,
+    timeout: int = DEFAULT_TIMEOUT_SECONDS,
+    fail_closed: bool = True,
+    gate_file_tools: bool = False,
+) -> dict[str, Any]:
+    """Build the Cursor `hooks` block that installs this enforcement.
+
+    `failClosed` is applied to the gating events only. Cursor counts a crash, a timeout
+    or unparseable output as a failure, and on `beforeSubmitPrompt` that would block the
+    user's own prompt rather than an action, which is not a safety gain.
+    """
+    command = _hook_command(python, "cursor")
+    gate = {"command": command, "timeout": timeout, "failClosed": fail_closed}
+    block: dict[str, Any] = {
+        CURSOR_PROMPT_EVENT: [{"command": command, "timeout": timeout}],
+        CURSOR_SHELL_EVENT: [dict(gate)],
+        CURSOR_MCP_EVENT: [dict(gate)],
+        CURSOR_SESSION_END_EVENT: [{"command": command, "timeout": timeout}],
+    }
+    if gate_file_tools:
+        block[CURSOR_TOOL_EVENT] = [{**gate, "matcher": CURSOR_FILE_TOOL_MATCHER}]
+    return block
+
+
+def _settings_path(
+    host: str, scope: str, *, home: Path | None = None, project: Path | None = None
+) -> Path:
+    root = (project or Path.cwd()) if scope == "project" else (home or Path.home())
+    if host == "cursor":
+        return root / ".cursor" / "hooks.json"
+    return root / ".claude" / "settings.json"
+
+
+def _merge_claude_hooks(
+    hooks: dict[str, Any], desired: dict[str, Any], *, remove: bool
+) -> bool:
+    changed = False
+    for event, groups in desired.items():
+        kept: list[dict[str, Any]] = []
+        for group in [item for item in (hooks.get(event) or []) if isinstance(item, Mapping)]:
+            handlers = [item for item in (group.get("hooks") or []) if not _is_ours(item)]
+            if len(handlers) != len(list(group.get("hooks") or [])):
+                changed = True
+            if handlers:
+                kept.append({**group, "hooks": handlers})
+            elif not group.get("hooks"):
+                kept.append(dict(group))
+        if not remove:
+            kept.extend(groups)
+            changed = True
+        hooks[event] = kept
+        if not hooks[event]:
+            hooks.pop(event)
+    return changed
+
+
+def _merge_cursor_hooks(
+    hooks: dict[str, Any], desired: dict[str, Any], *, remove: bool
+) -> bool:
+    changed = False
+    for event, handlers in desired.items():
+        existing = [
+            item
+            for item in (hooks.get(event) or [])
+            if isinstance(item, Mapping) and not _is_ours(item)
+        ]
+        if len(existing) != len(list(hooks.get(event) or [])):
+            changed = True
+        if not remove:
+            existing.extend(handlers)
+            changed = True
+        hooks[event] = existing
+        if not hooks[event]:
+            hooks.pop(event)
+    return changed
 
 
 def install_hook(
     *,
+    host: str = "claude-code",
     scope: str = "user",
     home: Path | None = None,
     project: Path | None = None,
     python: str | None = None,
     matcher: str = DEFAULT_TOOL_MATCHER,
+    fail_closed: bool = True,
+    gate_file_tools: bool = False,
     remove: bool = False,
 ) -> dict[str, Any]:
-    """Merge the hook into a Claude Code settings file without disturbing other hooks."""
+    """Merge the hook into a host config file without disturbing anything else in it."""
     from .atomic_io import locked_json_document
 
-    path = _settings_path(scope, home=home, project=project)
-    desired = settings_block(python=python, matcher=matcher)
-    changed = False
+    path = _settings_path(host, scope, home=home, project=project)
+    cursor = host == "cursor"
+    desired = (
+        cursor_hooks_block(
+            python=python, fail_closed=fail_closed, gate_file_tools=gate_file_tools
+        )
+        if cursor
+        else settings_block(python=python, matcher=matcher)
+    )
     with locked_json_document(path, dict) as document:
         hooks = document.get("hooks")
-        if not isinstance(hooks, dict):
-            hooks = {}
-        for event, groups in desired.items():
-            existing = [item for item in (hooks.get(event) or []) if isinstance(item, Mapping)]
-            kept: list[dict[str, Any]] = []
-            for group in existing:
-                handlers = [item for item in (group.get("hooks") or []) if not _is_ours(item)]
-                if len(handlers) != len(list(group.get("hooks") or [])):
-                    changed = True
-                if handlers:
-                    kept.append({**group, "hooks": handlers})
-                elif not group.get("hooks"):
-                    kept.append(dict(group))
-            if not remove:
-                kept.extend(groups)
-                changed = True
-            hooks[event] = kept
-            if not hooks[event]:
-                hooks.pop(event)
+        hooks = hooks if isinstance(hooks, dict) else {}
+        merge = _merge_cursor_hooks if cursor else _merge_claude_hooks
+        changed = merge(hooks, desired, remove=remove)
         if hooks:
             document["hooks"] = hooks
         else:
             document.pop("hooks", None)
-    return {
-        "host": "claude-code",
+        if cursor and hooks:
+            document.setdefault("version", 1)
+    label = "Cursor" if cursor else "Claude Code"
+    result = {
+        "host": host,
         "settings_path": str(path),
         "installed": not remove,
         "changed": changed,
         "events": sorted(desired),
-        "matcher": matcher,
         "message": (
-            "Hook removed; restart Claude Code to drop it"
+            f"Hook removed; restart {label} to drop it"
             if remove
-            else "Hook installed; restart Claude Code to load it"
+            else f"Hook installed; restart {label} to load it"
         ),
     }
+    if cursor:
+        result["fail_closed"] = fail_closed
+        result["file_tools_gated"] = gate_file_tools
+    else:
+        result["matcher"] = matcher
+    return result
 
 
 def _read_event(stream) -> Mapping[str, Any]:
@@ -623,12 +839,22 @@ def _read_event(stream) -> Mapping[str, Any]:
     return payload if isinstance(payload, Mapping) else {}
 
 
+def _render(verdict: Verdict, host: str) -> HookOutcome:
+    return _cursor_outcome(verdict) if host == "cursor" else _claude_outcome(verdict)
+
+
 def _run(argv: argparse.Namespace) -> int:
     try:
         event = _read_event(sys.stdin)
     except (json.JSONDecodeError, UnicodeError, OSError) as exc:
-        outcome = _failure(f"Intent Translator could not read the hook input ({type(exc).__name__}).")
-        return outcome.emit()
+        # The event could not be read, so the host cannot be recognized from it. The
+        # `--host` the installer wrote into the command decides the reply shape.
+        return _render(
+            _failure(
+                f"Intent Translator could not read the hook input ({type(exc).__name__})."
+            ),
+            argv.host,
+        ).emit()
     outcome = handle(event)
     if argv.explain:
         _write(sys.stderr, json.dumps({"decision": outcome.decision, **outcome.detail}, ensure_ascii=False))
@@ -643,11 +869,24 @@ def main(argv: list[str] | None = None) -> int:
         default="run",
         choices=("run", "install", "uninstall", "print-settings"),
     )
-    parser.add_argument("--host", choices=("claude-code",), default="claude-code")
+    parser.add_argument("--host", choices=("claude-code", "cursor"), default="claude-code")
     parser.add_argument("--scope", choices=("user", "project"), default="user")
     parser.add_argument("--home", type=Path)
     parser.add_argument("--project", type=Path)
     parser.add_argument("--matcher", default=DEFAULT_TOOL_MATCHER)
+    parser.add_argument(
+        "--fail-open",
+        action="store_true",
+        help="Cursor only: let a crashed or timed-out hook allow the action through.",
+    )
+    parser.add_argument(
+        "--gate-file-tools",
+        action="store_true",
+        help=(
+            "Cursor only: also gate its Write and Delete tools. Cursor cannot ask for "
+            "confirmation on that event, so a confirmation becomes a refusal there."
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--explain", action="store_true", help="Write the decision to stderr.")
     args = parser.parse_args(argv)
@@ -655,20 +894,33 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "run":
         return _run(args)
     if args.action == "print-settings":
-        block = json.dumps({"hooks": settings_block(matcher=args.matcher)}, ensure_ascii=False, indent=2)
-        _write(sys.stdout, block + "\n")
+        block = (
+            cursor_hooks_block(
+                fail_closed=not args.fail_open, gate_file_tools=args.gate_file_tools
+            )
+            if args.host == "cursor"
+            else settings_block(matcher=args.matcher)
+        )
+        payload: dict[str, Any] = {"hooks": block}
+        if args.host == "cursor":
+            payload = {"version": 1, "hooks": block}
+        _write(sys.stdout, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         return 0
     result = install_hook(
+        host=args.host,
         scope=args.scope,
         home=args.home,
         project=args.project,
         matcher=args.matcher,
+        fail_closed=not args.fail_open,
+        gate_file_tools=args.gate_file_tools,
         remove=args.action == "uninstall",
     )
+    label = "Cursor" if args.host == "cursor" else "Claude Code"
     report = (
         json.dumps(result, ensure_ascii=False, indent=2)
         if args.json
-        else f"intent-translator Claude Code hook: {result['settings_path']}\n{result['message']}"
+        else f"intent-translator {label} hook: {result['settings_path']}\n{result['message']}"
     )
     _write(sys.stdout, report + "\n")
     return 0

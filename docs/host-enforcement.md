@@ -2,19 +2,21 @@
 
 Everything else in this project is advisory. The compiler produces a decision, but a host reaches it only by choosing to call `intent_compile` first, and a model that skips the call and goes straight to a shell command bypasses every control. This document covers the one mechanism that closes that gap: a host hook that runs before a tool call and can refuse it.
 
-Claude Code is the first supported host. Cursor and Codex expose comparable hooks with different limits, recorded at the end.
+Claude Code and Cursor are supported. Codex exposes a comparable hook with a limit that makes it a product decision rather than an implementation one; that is recorded at the end.
 
 ## What The Hook Does
 
-Two events are needed, because a `PreToolUse` hook receives the tool call and not the user's wording, while the compiler requires the exact wording.
+Two events are needed on each host, because a pre-action hook receives the action and not the user's wording, while the compiler requires the exact wording.
 
-| Event | Purpose |
-|---|---|
-| `UserPromptSubmit` | Record the latest prompt for the session so the next tool call can be compiled against real wording. |
-| `PreToolUse` | Compile that prompt, classify the tool call the host is about to make, and return a decision. |
-| `SessionEnd` | Forget the recorded prompt. |
+| Purpose | Claude Code | Cursor |
+|---|---|---|
+| Record the latest prompt so the next action can be compiled against real wording | `UserPromptSubmit` | `beforeSubmitPrompt` |
+| Compile that prompt, classify the action, and return a decision | `PreToolUse` | `beforeShellExecution`, `beforeMCPExecution` |
+| Forget the recorded prompt | `SessionEnd` | `sessionEnd` |
 
-On each `PreToolUse` call the hook does four things in order:
+One decision core serves both hosts, so a verdict does not depend on which host asked. The event names are disjoint, so the hook recognizes the caller from the event itself and needs no separate binary per host — which also means Cursor can load this hook through its Claude Code compatibility path and still get the same answers.
+
+On each pre-action call the hook does four things in order:
 
 1. **Classify the tool call.** The effect of the *action* is named with the compiler's own vocabulary (`destructive`, `write_external`, `system_change`, `write_local`, `read_public`, `read_local`) so it can be compared against the compiled request directly.
 2. **Deny anything the request denied.** A blocked request blocks every tool call, including a harmless-looking one.
@@ -25,26 +27,44 @@ Everything else prints nothing.
 
 ## The Hook Never Widens Permissions
 
-An allowed verdict exits 0 with no output, which Claude Code documents as "no decision: the normal permission flow applies."
+On Claude Code an allowed verdict exits 0 with no output, which that host documents as "no decision: the normal permission flow applies."
 
 This is deliberate. Returning `permissionDecision: "allow"` would *skip* Claude Code's own permission prompt, so a preflight that answered "allow" would be quietly removing a control the user had configured. The hook may raise friction and never lower it, which is the same rule the compiler applies to its semantic layer.
 
-Preparation is not gated either. An unconfirmed transfer means the *transfer* needs confirmation, not that the agent may not read a file or write a local draft while preparing it. Only a tool call that is itself consequential is measured against the request.
+Cursor's schema has no way to abstain — `permission` accepts only `allow`, `deny`, and `ask`, and omitting the field is a hook failure rather than silence — so an allowed verdict there says `allow`, and Cursor's own allowlist and review are the layer behind that answer. This is the one place where the two hosts differ in kind rather than in wording, and it is a property of Cursor's contract, not a choice made here.
+
+Preparation is not gated on either host. An unconfirmed transfer means the *transfer* needs confirmation, not that the agent may not read a file or write a local draft while preparing it. Only an action that is itself consequential is measured against the request.
 
 ## Install
 
 ```bash
-intent-translator-hook install                 # ~/.claude/settings.json
-intent-translator-hook install --scope project # <project>/.claude/settings.json
-intent-translator-hook print-settings          # emit the block without writing it
-intent-translator-hook uninstall
+intent-translator-hook install                          # ~/.claude/settings.json
+intent-translator-hook install --host cursor            # ~/.cursor/hooks.json
+intent-translator-hook install --scope project          # write into the project instead
+intent-translator-hook print-settings --host cursor     # emit the block without writing it
+intent-translator-hook uninstall --host cursor
 ```
 
-The installer merges into the `hooks` block and leaves every other hook and setting alone; installing twice does not duplicate the handler, and uninstalling removes only this project's handler. Restart Claude Code afterwards.
+The installer merges into the `hooks` block and leaves every other hook and setting alone; installing twice does not duplicate the handler, and uninstalling removes only this project's handler. Restart the host afterwards.
 
-The generated handler runs the current interpreter with `-m intent_translator_mcp.host_hook run`, so the hook uses the same runtime as the installer rather than whatever `PATH` resolves to inside the host.
+The generated handler runs the current interpreter with `-m intent_translator_mcp.host_hook run`, so the hook uses the same runtime as the installer rather than whatever `PATH` resolves to inside the host. It also passes `--host`, which is used for one purpose: if the event cannot be parsed at all, the host cannot be recognized from it, and the reply still has to be in a shape that host understands.
+
+### Claude Code specifics
 
 The default `PreToolUse` matcher is `Bash|PowerShell|Write|Edit|NotebookEdit|WebFetch|mcp__.*`. Scope the hook with `matcher`, which Claude Code evaluates against the tool name, rather than with a handler's `if` field: the Claude Code documentation calls `if` best-effort and advises against relying on it for a hard allow or deny. This project's own MCP tools are always allowed, so the hook cannot gate itself.
+
+### Cursor specifics
+
+`failClosed: true` is set on the gating events, so a crash, a timeout, or unparseable output blocks the action instead of letting it through. Cursor is the only supported host that offers this; pass `--fail-open` to turn it off.
+
+It is deliberately *not* set on `beforeSubmitPrompt`. That event only records wording, and failing closed there would block the user's own prompt rather than an action, which is friction without a safety gain.
+
+Two Cursor limits shape what gets registered:
+
+- **The generic `preToolUse` event is not registered by default.** Cursor accepts `ask` there without enforcing it, so a request for confirmation would silently become an approval. Cursor exposes no pre-edit event with a three-way decision either (`afterFileEdit` fires once the edit already happened), so writes and deletions made by Cursor's *own* tools are not gated, while the same operations run through a shell command are. `--gate-file-tools` registers `preToolUse` for `Write` and `Delete`, where a verdict of "needs confirmation" becomes a refusal because that event cannot ask. That is a real cost, which is why it is opt-in.
+- **`beforeMCPExecution` does not run in Cursor cloud agents.** Shell gating still does. This is Cursor's documented deferral, not something this hook can work around.
+
+Cursor identifies MCP calls by `mcp_server_name`, and this project's exemption is keyed to that name. A call arriving with no server name cannot be recognized, so it does not inherit the exemption and is judged like any other tool.
 
 ## Configuration
 
@@ -60,9 +80,9 @@ The recorded prompt is the user's own text. It is kept as one row per session ra
 
 ## Failure Behavior
 
-Claude Code cannot fail closed on this project's behalf: a crashed, timed-out, or unparseable hook is a non-blocking error, and the tool call proceeds. The hook therefore takes its own position whenever it cannot produce a verdict — an unreadable event, a compiler that raises, or a consequential tool call in a session whose prompt was never recorded. By default it escalates to the user rather than silently allowing or hard blocking. `INTENT_TRANSLATOR_HOOK_ON_ERROR=deny` converts those cases into a block.
+Claude Code cannot fail closed on this project's behalf: a crashed, timed-out, or unparseable hook is a non-blocking error, and the tool call proceeds. Cursor behaves the same way unless `failClosed` is set, which this installer sets on the gating events. The hook therefore takes its own position whenever it cannot produce a verdict — an unreadable event, a compiler that raises, or a consequential action in a session whose prompt was never recorded. By default it escalates to the user rather than silently allowing or hard blocking. `INTENT_TRANSLATOR_HOOK_ON_ERROR=deny` converts those cases into a block.
 
-A timeout is the one case the hook cannot cover, because a hook that never answers cannot answer with `ask`. Keep the configured `timeout` well above the preflight's normal cost, which is a few milliseconds.
+A timeout is the one case the hook cannot cover itself, because a hook that never answers cannot answer with `ask`. On Cursor `failClosed` covers it; on Claude Code, keep the configured `timeout` well above the preflight's normal cost, which is a few milliseconds.
 
 ## Known Limits
 
@@ -70,16 +90,16 @@ A timeout is the one case the hook cannot cover, because a hook that never answe
 - **A prohibition blocks its whole action class.** The contract records `不要删除 data 目录` as a prohibition on `delete` without the object, so the hook refuses deletion generally. Narrowing that is compiler work, not hook work.
 - **A third-party MCP tool is judged by the shape of its name.** A name containing `write`, `send`, `delete`, `publish` and similar is treated as leaving the machine; anything else is treated as a public read.
 - **The utterance can be missing.** A session resumed from before the hook was installed, or one whose prompt has expired, has no recorded wording. Consequential calls then escalate.
-- **The host's own prompt is the human gate in this path.** The hook has no channel to return an action-bound confirmation receipt to the user and read the answer back, so `ask` hands the decision to Claude Code's permission prompt, which does display the exact action. Receipts remain the mechanism for the MCP path described in [integration-contract.md](integration-contract.md).
-- **Enforcement can be turned off.** `claude --settings '{"disableAllHooks": true}'`, `claude --bare`, or an edit to `settings.json` removes the hook. Only Claude Code's managed policy settings resist that, and hook entries there merge rather than being replaced.
-- **Some paths never produce a tool call.** A file inlined with `@` in a prompt, or a directly invoked `/skill`, does not fire `PreToolUse`.
-- **One approved shell call is one tool call.** The hook sees the command string, not what the spawned process goes on to do.
+- **The host's own prompt is the human gate in this path.** The hook has no channel to return an action-bound confirmation receipt to the user and read the answer back, so `ask` hands the decision to the host's permission prompt, which does display the exact action. Receipts remain the mechanism for the MCP path described in [integration-contract.md](integration-contract.md).
+- **Enforcement can be turned off.** `claude --settings '{"disableAllHooks": true}'`, `claude --bare`, or an edit to the settings file removes the hook; on Cursor, editing or deleting `hooks.json` does the same. Only Claude Code's managed policy settings resist that, and hook entries there merge rather than being replaced.
+- **Some paths never produce a gated action.** A file inlined with `@` in a prompt, or a directly invoked `/skill`, fires no pre-action hook. On Cursor, edits and deletions made by its own file tools are outside the default configuration, as described above.
+- **One approved shell call is one action.** The hook sees the command string, not what the spawned process goes on to do.
 
 ## Other Hosts
 
 | Host | Mechanism | Status here | The limit that matters |
 |---|---|---|---|
-| Claude Code | `PreToolUse` hook | **Implemented** | A deny is evaluated before permission rules and beats an allow rule. |
-| Cursor | `beforeShellExecution`, `beforeMCPExecution` in `.cursor/hooks.json` | Not implemented | The only host with a `failClosed` option, so a crashed checker can be made to deny. Cursor also loads Claude Code hooks, so this hook may work there unchanged. Cloud agents do not run `beforeMCPExecution` at all. |
-| Codex | `PreToolUse` hook | Not implemented | `permissionDecision: "ask"` is parsed but **not supported**: Codex marks the hook failed and *continues the tool call*. Every `human_review` would have to become a hard deny. Codex also records trust against the hook's hash, so a runtime upgrade silently disables enforcement until a human re-trusts it. |
+| Claude Code | `PreToolUse` hook | **Implemented** | A deny is evaluated before permission rules and beats an allow rule. Cannot fail closed. |
+| Cursor | `beforeShellExecution`, `beforeMCPExecution` in `.cursor/hooks.json` | **Implemented** | The only host that can fail closed, which this installer enables. No pre-edit event carries a three-way decision, and cloud agents do not run `beforeMCPExecution` at all. |
+| Codex | `PreToolUse` hook | Deliberately not implemented | `permissionDecision: "ask"` is parsed but **not supported**: Codex marks the hook failed and *continues the tool call*. This project's central state is "ask", so on Codex every confirmation would have to become a hard refusal. Codex also records trust against the hook's hash, so a runtime upgrade silently disables enforcement until a human re-trusts it. Turning that on is a product decision about how much friction is acceptable, not a missing implementation. |
 | MCP protocol | none | Not possible | Nothing in the 2026-07-28 spec lets one server gate another's tool call, and no MCP mechanism reaches a host's own shell and edit tools. The proposal that would provide it, SEP-2624 interceptors, is open and unmerged. |

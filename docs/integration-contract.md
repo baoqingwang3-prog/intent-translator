@@ -26,7 +26,7 @@ It does not guarantee correct interpretation, provide domain expertise, execute 
 
 A host SHOULD call `intent_compile` before acting when a request is terse, context-dependent, corrective, consequential, or likely to require Skill selection. A host MUST call it before relying on an Intent Translator confirmation receipt.
 
-A host that can run a program before a tool call SHOULD install the enforcement hook instead of relying on this rule being followed. The hook decides before the tool call executes, which turns the `SHOULD` above into a property of the installation rather than a request to the model. See [host-enforcement.md](host-enforcement.md). An enforced compile is reported as `enforcement_claim: preflight-enforced-by-host-hook` in the invocation receipt; every other entrypoint reports `preflight-observed-not-host-enforced`, because it was called voluntarily.
+A host that can run a program before a tool call SHOULD install the enforcement hook instead of relying on this rule being followed. The hook decides before the tool call executes, which turns the `SHOULD` above into a property of the installation rather than a request to the model. Claude Code and Cursor are both supported; see [host-enforcement.md](host-enforcement.md). An enforced compile is reported as `enforcement_claim: preflight-enforced-by-host-hook` in the invocation receipt; every other entrypoint reports `preflight-observed-not-host-enforced`, because it was called voluntarily.
 
 A hook MUST NOT return a decision that widens what the host would otherwise have permitted. A preflight may raise friction and may not lower it, which is the same rule this contract applies to semantic adapters.
 

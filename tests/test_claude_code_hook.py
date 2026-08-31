@@ -147,7 +147,8 @@ class HookDecisionTests(unittest.TestCase):
     def test_the_error_policy_can_be_loosened_to_allow(self):
         os.environ["INTENT_TRANSLATOR_HOOK_ON_ERROR"] = "allow"
         outcome = self.decide(tool_event("unknown", "Bash", command="rm -rf /work/project"))
-        self.assertEqual(outcome.decision, "allow-on-error")
+        self.assertEqual(outcome.decision, "allow")
+        self.assertTrue(outcome.detail["on_error"])
         self.assertIsNone(outcome.payload)
 
     def test_a_broken_compile_escalates_instead_of_failing_open(self):
@@ -214,16 +215,28 @@ class HookDecisionTests(unittest.TestCase):
         self.assertIn("千万不要发布", specific["permissionDecisionReason"])
         self.assertIn("千万不要发布", completed.stderr.decode("utf-8"))
 
-    def test_unreadable_hook_input_escalates_instead_of_being_ignored(self):
-        completed = subprocess.run(
-            [sys.executable, "-m", "intent_translator_mcp.host_hook", "run"],
-            input=b"this is not json",
-            capture_output=True,
-            env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
-        )
-        self.assertEqual(completed.returncode, 0)
-        payload = json.loads(completed.stdout.decode("utf-8"))
-        self.assertEqual(payload["hookSpecificOutput"]["permissionDecision"], "ask")
+    def test_unreadable_hook_input_escalates_in_the_shape_the_host_expects(self):
+        """The event named the host; without it, the installed `--host` has to."""
+        for host, expected in (
+            ("claude-code", lambda body: body["hookSpecificOutput"]["permissionDecision"]),
+            ("cursor", lambda body: body["permission"]),
+        ):
+            with self.subTest(host=host):
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "intent_translator_mcp.host_hook",
+                        "run",
+                        "--host",
+                        host,
+                    ],
+                    input=b"this is not json",
+                    capture_output=True,
+                    env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(expected(json.loads(completed.stdout.decode("utf-8"))), "ask")
 
     def test_preparing_for_a_pending_action_is_not_interrupted(self):
         """An unconfirmed transfer must not turn every read and draft into a prompt."""
