@@ -178,6 +178,32 @@ INSTALL_ACTION_PATTERNS = (
     re.compile(r"\b(?:install|set up)\b", re.I),
     re.compile(r"\badd\s+(?:the\s+)?selected\s+skill\s+to\b", re.I),
 )
+NON_LOCAL_DESTINATION_PATTERNS = (
+    re.compile(
+        r"线上|云端|云上|云盘|网盘|远端|远程|服务器|外网|公网"
+        r"|生产环境|正式环境|预发环境|全世界|所有人|对外",
+        re.I,
+    ),
+    re.compile(r"(?:公司|团队|共享|协作|企业|组织|内部)(?:的)?(?:知识库|仓库|盘)", re.I),
+    re.compile(
+        r"\b(?:the\s+)?(?:cloud|remote|upstream|production|staging|public\s+internet|everyone)\b",
+        re.I,
+    ),
+)
+PLACEMENT_PARTICLE_PATTERN = re.compile(
+    r"(?:到|至|往|去|上|进|\bto|\bonto|\binto|\bon)\s*(?:the\s+)?$", re.I
+)
+IMPERATIVE_MARKER_PATTERN = re.compile(r"(?:把|将|让|使|帮我|给我|替我|请)")
+IMPERATIVE_OBJECT_PATTERNS = (
+    re.compile(r"(?:把|将)\s*[^，。；？！\s]{1,24}"),
+    re.compile(r"(?:帮我|给我|替我)\s*[^，。；？！\s]{1,24}"),
+)
+ANSWER_SHAPE_TERMS = (
+    "讲", "说说", "说一下", "说明", "解释", "概括", "总结", "分析", "介绍",
+    "评价", "看法", "怎么看", "是什么", "为什么", "区别", "对比",
+    "explain", "describe", "summarize", "summarise", "analyze", "analyse",
+    "what is", "difference between",
+)
 PROTECTED_DATA_PATTERNS = (
     re.compile(
         r"(?P<text>(?P<action>(?:原始文件|源文件|配置|记忆数据|记忆|备份)"
@@ -273,6 +299,20 @@ NEGATED_ACTION_PATTERNS = (
         r"(?P<text>(?:不要|别|先不要)\s*(?P<action>publish|upload|push))",
         re.I,
     ),
+    # Retain a prohibition whose action cannot be normalized. Dropping the clause would
+    # silently delete a limit the user stated out loud.
+    re.compile(
+        r"(?P<text>(?:千万|暂时|现在|先|以后)?\s*(?:不要|不许|不准|别|禁止)\s*"
+        r"(?!忘|担心|着急|客气|误会|在意|管)"
+        r"(?P<action>[^，。；！？\n]{1,24}))",
+        re.I,
+    ),
+    re.compile(
+        r"(?P<text>(?:do\s+not|don't|never)\s+"
+        r"(?!forget|worry|hesitate|be\s+afraid|mind\b)"
+        r"(?P<action>[^,.;!?\n]{1,32}))",
+        re.I,
+    ),
 )
 FUTURE_COMPATIBILITY_PATTERNS = (
     re.compile(
@@ -339,6 +379,8 @@ ACTION_NAMES = {
     "install": "install",
     "创建": "create",
     "新建": "create",
+    "自己造": "create",
+    "自己写": "create",
     "create": "create",
     "改写": "rewrite",
     "重写": "rewrite",
@@ -480,6 +522,20 @@ def _action_text_for_classification(text: str) -> str:
 
 def _installation_requested(text: str) -> bool:
     return any(pattern.search(text) for pattern in INSTALL_ACTION_PATTERNS)
+
+
+def _unverified_destination(text: str) -> str:
+    """Name a non-local destination that the action classifier did not recognize.
+
+    Destination wording varies far less than action wording, so a request can be
+    routed to review on the destination alone when no known operation matched.
+    """
+    for pattern in NON_LOCAL_DESTINATION_PATTERNS:
+        for match in pattern.finditer(text):
+            preceding = text[max(0, match.start() - 8) : match.start()]
+            if PLACEMENT_PARTICLE_PATTERN.search(preceding) or IMPERATIVE_MARKER_PATTERN.search(text):
+                return match.group(0).strip()
+    return ""
 
 
 def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
@@ -877,12 +933,33 @@ def _risk(
         or system_change
         or _contains(security_text, SAFE_LOCAL_TERMS)
     )
-    unknown_executable = mode in {"build", "change"} and not known_action
+    answer_shaped = _contains(security_text, ANSWER_SHAPE_TERMS)
+    unverified_destination = (
+        ""
+        if answer_shaped or effect in {"write_external", "destructive", "system_change"}
+        else _unverified_destination(security_text)
+    )
+    # `mode` comes from the same wording rules that may have missed the action, so it
+    # cannot be the only trigger for the fail-closed path.
+    imperative_unclassified = bool(
+        effect == "none"
+        and operation == "answer"
+        and not answer_shaped
+        and any(pattern.search(security_text) for pattern in IMPERATIVE_OBJECT_PATTERNS)
+    )
+    unknown_executable = (
+        mode in {"build", "change"} and not known_action
+    ) or imperative_unclassified
     impact = (
         "high"
         if high_stakes or irreversible or (external and sensitive)
         else "medium"
-        if external or sensitive or ambiguous_action or unknown_executable or system_change
+        if external
+        or sensitive
+        or ambiguous_action
+        or unknown_executable
+        or system_change
+        or unverified_destination
         else "low"
     )
     reasons: list[str] = []
@@ -899,6 +976,11 @@ def _risk(
             reasons.append("executable action has an ambiguous object or destination")
         if unknown_executable:
             reasons.append("unknown executable action fails closed")
+        if unverified_destination:
+            reasons.append(
+                "request names the non-local destination "
+                f"{unverified_destination!r} but no known operation was recognized"
+            )
         if system_change:
             reasons.append("local dependency installation requires an action-bound confirmation receipt")
         if authorization == "granted" and (external or irreversible or ambiguous_action or system_change):
@@ -914,6 +996,7 @@ def _risk(
         "system_change": system_change,
         "ambiguous_action": ambiguous_action,
         "unknown_executable": unknown_executable,
+        "unverified_destination": unverified_destination,
         "operation": operation,
         "effect": effect,
         "data_egress": data_egress,
