@@ -19,6 +19,7 @@ Merges the `beta/p0-a1-rc4` line into the published `0.11.0a1` line. The two hal
 
 ### Fixed
 
+- The control plane imported `enum.StrEnum`, which exists only from Python 3.11, so on Python 3.10 — a version this package declares support for — importing the package raised `ImportError` and nothing ran at all. The name now falls back to an equivalent that renders identically, because a control state travels into stored records and returned envelopes and must not read differently on different interpreters. The fallback is exercised on every interpreter by loading a copy of the module with the 3.11 name removed.
 - The receipt is prepared once and spent once, and the two steps disagreed after the merge: the spend introduced by RC4 did not carry the actor that the preparation had bound, so an approval was rejected for the very person who granted it and the request failed closed with `actor mismatch` and no usable explanation. Both steps now weigh the same identity, and a regression test covers the whole prepare-and-spend path rather than either half alone.
 
 ## [0.11.0a1] - 2026-09-01

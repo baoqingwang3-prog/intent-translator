@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import threading
@@ -339,6 +340,44 @@ class B1ControlPlaneTests(unittest.TestCase):
         self.assertEqual(stale.state, ControlState.FENCE_MISMATCH)
         self.assertEqual(stale.reason_code, "STALE_INVALIDATION")
         self.assertEqual(stale.envelope.generation, current.envelope.generation)
+
+
+class OlderInterpreterTests(unittest.TestCase):
+    """The package supports Python 3.10, which has no `enum.StrEnum`.
+
+    The fallback cannot be exercised by running the suite on a newer interpreter, so
+    the name is removed here to force the same import path a 3.10 host would take.
+    A state that rendered differently there would change what a host reads back.
+    """
+
+    def test_control_states_read_the_same_without_the_3_11_enum(self):
+        import enum
+        import importlib.util
+
+        # A separate module object, so the classes the rest of the process already
+        # holds keep their identity. Reloading the real module in place would leave
+        # every other importer comparing against a class that no longer exists.
+        source = REPO_ROOT / "src" / "intent_translator_mcp" / "control_plane.py"
+        spec = importlib.util.spec_from_file_location("control_plane_on_python310", source)
+        module = importlib.util.module_from_spec(spec)
+
+        original = enum.StrEnum
+        del enum.StrEnum
+        # A dataclass resolves its annotations through the importing module, so the
+        # copy has to be registered while it executes. The name is its own.
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            enum.StrEnum = original
+            sys.modules.pop(spec.name, None)
+
+        self.assertEqual(module.StrEnum.__module__, module.__name__)
+        self.assertTrue(issubclass(module.ControlState, str))
+        self.assertEqual(str(module.ControlState.RUNNING), "RUNNING")
+        self.assertEqual(f"{module.ClaimLevel.EXECUTION_AUTHORIZED}", "EXECUTION_AUTHORIZED")
+        self.assertEqual(module.ControlState.RUNNING, "RUNNING")
+        self.assertEqual(json.dumps({"state": module.ControlState.RUNNING}), '{"state": "RUNNING"}')
 
 
 if __name__ == "__main__":

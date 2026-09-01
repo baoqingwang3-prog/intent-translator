@@ -12,11 +12,26 @@ import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+try:  # Python 3.11+
+    from enum import StrEnum
+except ImportError:  # Python 3.10, which this package still supports
+
+    class StrEnum(str, Enum):
+        """The 3.11 member of the same name, including how it renders as text.
+
+        A control state travels into stored records and returned envelopes, so a
+        member that printed as `ControlState.RUNNING` on one interpreter and
+        `RUNNING` on another would change what a host reads.
+        """
+
+        __str__ = str.__str__
+        __format__ = str.__format__
 
 
 class ClaimLevel(StrEnum):
