@@ -21,6 +21,9 @@ All notable changes are recorded here. The project follows semantic versioning a
 - `actor` on `CompileRequest` (default `INTENT_TRANSLATOR_ACTOR`) binds a receipt to the identity that approved it. Verification of a receipt carrying an actor fails with `actor mismatch` for anyone else, which keeps one person's approval from being spent by another in a shared or multi-user host. Receipts without an actor keep working unchanged for single-user local installs.
 - `INTENT_TRANSLATOR_RECEIPT_SECRET` and `INTENT_TRANSLATOR_RECEIPT_SECRET_PREVIOUS` for an explicit signing key and single-step key rotation, for deployments whose processes cannot share a filesystem. The auto-created `receipt-key` file is written with owner-only permissions.
 - `authorization_backend` in the compile response reports whether receipts are shared across processes and survive a restart. It is included in the compact response only when they are not, so a host can surface the warning instead of silently running in the degraded mode.
+- Local decision records. The deterministic rules can only be tuned against evidence about what they actually decided, and nothing was recorded beyond a single response, so no install could answer how often it asked for confirmation, which rules fired, or which requests it let through. Each compile now appends one record to `decisions.jsonl` in the data directory, carrying the decision, typed classification, rule reasons, required slots, timing, and lengths.
+- `intent_decision_metrics` aggregates those records into the decision mix, review rate, most frequent risk reasons and missing slots, operation mix, and latency percentiles.
+- Process counters for decisions, risk reasons, and required slots, available through `observability.counters()`.
 
 ### Changed
 
@@ -28,6 +31,7 @@ All notable changes are recorded here. The project follows semantic versioning a
 - The invocation receipt no longer claims `preflight-observed-not-host-enforced` unconditionally. A compile that a host hook performed before the tool call ran now reports `preflight-enforced-by-host-hook`, and every other entrypoint keeps the original claim because it was called voluntarily.
 - The threat model and support matrix no longer describe host enforcement as unavailable. T01's residual risk is now the specific set of paths a hook cannot cover rather than "a non-cooperating host remains outside enforcement".
 - Codex host enforcement is now recorded as a deliberate omission rather than pending work. Codex parses `permissionDecision: "ask"` but does not honor it and continues the tool call, so this project's central state would have to become a hard refusal there; that is a decision about acceptable friction, not a missing implementation.
+- Decision records contain no request text. Repeated wording is counted through a digest salted with a local owner-only `digest-salt` file, so identical wording produces different digests on different installs and digests cannot be correlated across them. Recording is local only, never networked, adds roughly 0.1 ms per compile, is disabled by `INTENT_TRANSLATOR_TELEMETRY=off`, and swallows its own failures so it cannot change a safety decision or fail a request.
 
 ## [0.10.0a1] - 2026-08-12
 

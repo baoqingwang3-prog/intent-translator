@@ -25,6 +25,7 @@ from .models import (
     CompileRequest,
     CorrectionRequest,
     CorrectionSuggestionRequest,
+    DecisionMetricsRequest,
     ExecutionVerificationRequest,
     LanguageRuleConfirmRequest,
     LanguageRuleObservationRequest,
@@ -41,6 +42,7 @@ from .models import (
 )
 from .presentation import compact_envelope
 from .invocation import build_invocation_receipt
+from .observability import counters, summarize
 from .onboarding import (
     apply_onboarding,
     confirm_language_rule,
@@ -396,6 +398,16 @@ def intent_shadow_review(request: ShadowReviewRequest) -> dict[str, Any]:
         return review_shadow(connection, days=request.days)
     finally:
         connection.close()
+
+
+@mcp.tool(
+    title="Review preflight decision metrics",
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def intent_decision_metrics(request: DecisionMetricsRequest) -> dict[str, Any]:
+    """Aggregate locally recorded preflight decisions so the rules can be tuned against real usage."""
+    return {**summarize(limit=request.limit), "process_counters": counters()}
 
 
 @mcp.tool(

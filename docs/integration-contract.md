@@ -149,6 +149,16 @@ When neither an explicit secret nor a writable data directory is available, the 
  "warning": "receipts are process-local; a restart or a second worker invalidates them"}
 ```
 
+## Decision Records
+
+The deterministic rules can only be tuned against evidence about what they actually decided, so each compile appends one local record to `decisions.jsonl` in the data directory. Recording adds roughly 0.1 ms to a compile and never reaches a network.
+
+A record contains the decision, the typed classification, the rule reasons, the required slots, timing, and lengths. It contains **no request text**. Repeated wording is counted through a digest salted with a local `digest-salt` file, so the same sentence produces different digests on different installs and the digests cannot be correlated across them.
+
+`intent_decision_metrics` aggregates the records into the numbers needed to tune rules: the decision mix, the review rate, the most frequent risk reasons and missing slots, the operation mix, and latency percentiles. A host MAY read it during maintenance; it is not a per-turn call.
+
+Set `INTENT_TRANSLATOR_TELEMETRY=off` to disable recording. A failure to write is swallowed: recording MUST NOT change a safety decision or fail a request.
+
 ## Constraint Meanings
 
 | Type | Meaning now | Future meaning |
