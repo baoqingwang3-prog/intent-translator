@@ -8,7 +8,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from intent_translator_mcp import IntentCompiler, IntentTranslatorSDK  # noqa: E402
+from intent_translator_mcp import (  # noqa: E402
+    ClaimLevel,
+    IntentCompiler,
+    IntentTranslatorSDK,
+)
 
 
 class SDKTests(unittest.TestCase):
@@ -113,6 +117,31 @@ class SDKTests(unittest.TestCase):
         self.assertTrue(result["confirmation_required"])
         self.assertFalse(result["blocked"])
         self.assertNotIn(str(root), serialized)
+
+    def test_compile_result_creates_one_control_plane_envelope(self):
+        with tempfile.TemporaryDirectory() as temp:
+            result = self._sdk(Path(temp)).compile(
+                "在本地项目中运行单元测试",
+                semantic_mode="off",
+            )
+        envelope = result.execution_envelope(
+            goal_id="goal-sdk-b1",
+            task_id="task-sdk-b1",
+            dedupe_key="sdk-b1",
+            frame_id="frame-sdk-b1",
+            destination="D:/test/project",
+            data_class="internal",
+            authorization_id="auth-sdk-b1",
+            owner_thread="writer-sdk-b1",
+            generation=1,
+            provenance=["intent_compile"],
+        )
+
+        self.assertEqual(envelope.object, result.contract.object.value)
+        self.assertEqual(envelope.operation, result.contract.operation)
+        self.assertEqual(envelope.effect, result.contract.effect)
+        self.assertEqual(envelope.claim_level, ClaimLevel.READ_ONLY_FORM)
+        self.assertEqual(envelope.reason_code, "COMPILED")
 
 
 if __name__ == "__main__":

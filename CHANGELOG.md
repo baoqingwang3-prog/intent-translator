@@ -2,6 +2,25 @@
 
 All notable changes are recorded here. The project follows semantic versioning after `1.0.0`; alpha releases may still refine interfaces with migration notes.
 
+## [1.0.0a5] - 2026-09-01
+
+Merges the `beta/p0-a1-rc4` line into the published `0.11.0a1` line. The two halves address different failure modes: RC4 decides more precisely and keeps a running action under control, while 0.11 stops the whole preflight from being skipped and makes its approvals deployable.
+
+### Added
+
+- RC4 semantic projection, which separates an internal ruling, a hand-off to someone else, and a public release before the legacy fields are built, so three requests that read alike in Chinese no longer collapse into one operation.
+- `CURRENT_GOAL_LOCK` with P0/P1 scheduling, so a stated current goal is not abandoned by a later unrelated request.
+- Multi-action frames, so one sentence carrying several actions is judged per action rather than as a single blended intent.
+- Quotation, history, and evidence isolation, so instructions embedded in material the user is only referring to cannot become instructions to follow.
+- Receipt binding to the object, goal, and scope, so an approval stops applying once any of them drifts.
+- An execution control plane (`control_plane.py`) with owner leases, generation fencing, dedupe keys, and a fail-closed admission state machine, so one authorized action cannot be run twice, run by a stale owner, or resumed after its authorization ended.
+- Skill routing with explicit-invocation precedence and control-plane preemption.
+- `intent_control_record` and `intent_control_resume` MCP tools for that state machine.
+
+### Fixed
+
+- The receipt is prepared once and spent once, and the two steps disagreed after the merge: the spend introduced by RC4 did not carry the actor that the preparation had bound, so an approval was rejected for the very person who granted it and the request failed closed with `actor mismatch` and no usable explanation. Both steps now weigh the same identity, and a regression test covers the whole prepare-and-spend path rather than either half alone.
+
 ## [0.11.0a1] - 2026-09-01
 
 This release makes the preflight enforceable rather than advisory on hosts that can run a program before an action, and closes three ways a decision could be reached, stored, or bypassed incorrectly.

@@ -204,6 +204,13 @@ class ReceiptDeploymentTests(unittest.TestCase):
             approved = confirm("alice@corp")
             self.assertEqual(approved["tool_gateway"]["decision"], "allow")
             self.assertTrue(approved["completion_contract"]["execute"])
+            # The approval is prepared once and spent once. Both steps must weigh the
+            # same identity: a spend that forgot the actor would reject the very person
+            # who approved, and the request would fail closed for no stated reason.
+            status = approved["risk"]["receipt_status"]
+            self.assertTrue(status["consumed"])
+            self.assertTrue(status["actor_bound"])
+            self.assertEqual(status["actor"], "alice@corp")
         finally:
             for key in ("INTENT_TRANSLATOR_PROFILE", "INTENT_TRANSLATOR_MEMORY_DB"):
                 os.environ.pop(key, None)

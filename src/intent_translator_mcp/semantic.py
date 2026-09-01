@@ -185,7 +185,28 @@ def semantic_payload(
     pending_action: str,
     deterministic: dict[str, Any],
     skills: list[dict[str, Any]],
+    relevant_skills: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    required_names = {
+        "agent-reach", "skill-lookup", "skill-installer", "skill-creator",
+        "diagnosing-bugs", "browser", "obsidian-cli", "pdf", "docx", "xlsx", "pptx",
+    }
+    eligible = [
+        item
+        for item in skills
+        if item.get("model_invoked") is not False
+    ]
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in [*(relevant_skills or []), *eligible]:
+        name = str(item.get("name", ""))
+        if not name or name in seen:
+            continue
+        if relevant_skills or name in required_names:
+            selected.append(item)
+            seen.add(name)
+        if len(selected) >= 40:
+            break
     return {
         "schema_version": 1,
         "instruction": (
@@ -200,7 +221,7 @@ def semantic_payload(
         "allowed_risk_hints": list(RISK_HINTS),
         "installed_skills": [
             {"name": item.get("name"), "description": str(item.get("description", ""))[:500]}
-            for item in skills[:80]
+            for item in selected
         ],
         "response_schema": SemanticProposal.model_json_schema(),
     }
