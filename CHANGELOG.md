@@ -2,7 +2,9 @@
 
 All notable changes are recorded here. The project follows semantic versioning after `1.0.0`; alpha releases may still refine interfaces with migration notes.
 
-## [Unreleased]
+## [0.11.0a1] - 2026-09-01
+
+This release makes the preflight enforceable rather than advisory on hosts that can run a program before an action, and closes three ways a decision could be reached, stored, or bypassed incorrectly.
 
 ### Fixed
 
