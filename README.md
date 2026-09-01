@@ -2,19 +2,29 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-**Before an Agent acts, turn conversational wording into a visible task contract: resume the pending action, preserve prohibitions, choose a Skill, and show the local compiler state and this preflight result.**
+**Turn conversational wording into a visible, typed execution contract before an Agent acts.**
 
-A local-first Agent Skill that turns terse, implicit, or context-dependent language into a compact execution contract. It recovers recent context, preserves personal voice, challenges consequential assumptions, uses local memory with consent, discovers installed Skills, and routes the task to the smallest capable tool set.
+Intent Translator is a local-first Agent Skill and optional MCP runtime. It turns messages such as `Continue`, `Okay, but do not publish`, and `send the same file as before` into bounded actions with explicit objects, destinations, prohibitions, authorization state, and evidence gaps.
 
-It provides bounded interpretations, routing recommendations, and authorization preflight results. It becomes a mandatory gate only when the Agent host actually integrates and calls the MCP tools.
+It is designed for people who use several Agent Skills, resume work with short messages, and want to see what an Agent believes it may do before a consequential action runs. It does not read minds, provide domain expertise by itself, or make every host call the preflight automatically.
 
-Claude, Codex, and Grok already provide native prompting, memory, Skills/plugins, permissions, hooks, and context management. Intent Translator keeps the local workflows that users find useful, but treats those host features as integrations rather than unique inventions. Its independent value is the portable evidence layer: a typed source-mapped contract, an honest per-turn activity receipt, correction-recurrence tracking, same-model A/B evaluation, and planned-versus-actual invocation traces. See the [official host capability audit](docs/value-p0.md#official-host-capability-audit).
+It provides bounded interpretations, routing recommendations, and authorization preflight results. It becomes a mandatory gate only when the Agent host actually integrates and calls the relevant preflight or hook.
 
-A value receipt reports what this preflight visibly did, such as recovered non-obvious fields, preserved constraints, correction hits, selected routing, and added review. It deliberately leaves "clarifications avoided" and "unsafe actions prevented" unset until a no-Skill counterfactual proves them.
+## What It Does Today
 
-The project does not claim to read minds or understand every profession by itself. It provides a general intent and routing layer; domain Skills, trusted sources, and high-stakes policies provide specialized judgment.
+| Capability | Current behavior |
+|---|---|
+| Contextual continuation | Restores a pending action and keeps its scope and prohibitions attached |
+| Typed action frames | Separates multiple actions, quoted/history text, objects, destinations, effects, and required artifacts |
+| Authorization control | Uses scope-bound, one-time receipts; changed actions or replayed receipts are rejected |
+| Goal and recovery control | Carries owner, generation, dedupe key, state, reason, next action, and `CANNOT_PROVE` instead of silently treating a pause as success |
+| Skill routing | Discovers installed Skills and recommends a bounded owner without granting that Skill extra authority |
+| Local evidence | Records planned-versus-actual decisions, corrections, runtime version, and execution evidence without storing the request text |
+| Host integration | Offers explicit Skill/MCP preflight everywhere it is installed, plus pre-action hooks for Claude Code and Cursor |
 
-The first Alpha is for people who frequently use Codex, Claude Code, or similar agents, keep several Skills installed, continue work with short natural-language messages, and want visible preflight signals intended to reduce misunderstanding, wrong routing, or over-broad authorization.
+Claude, Codex, and other Agent hosts already provide prompting, memory, plugins, permissions, and context management. This project does not claim those inventions. Its independent value is the portable contract and evidence layer: source-mapped intent, conservative authorization, action-bound receipts, correction recurrence, and planned-versus-actual traces. See the [host capability audit](docs/value-p0.md#official-host-capability-audit).
+
+A value receipt reports only what the preflight visibly did. Claims such as "unsafe action prevented" remain unproven unless a valid comparison or host trace demonstrates them.
 
 | You are... | Start here | What you get |
 |---|---|---|
@@ -30,6 +40,8 @@ The first Alpha is for people who frequently use Codex, Claude Code, or similar 
 | A natural-language correction | Replays the corrected meaning in an isolated local profile |
 
 ## Start Here
+
+**Five-minute path:** install the Skill, add the local MCP runtime only if you need deterministic tools, then enable a host hook only where the host can enforce it.
 
 Choose the smallest setup that matches your goal:
 
@@ -100,19 +112,26 @@ Open `http://127.0.0.1:8765`. The Studio requires no API key and shows the curre
 
 ## Status
 
-P1 Alpha, version `0.7.1a3`. GitHub-hosted evidence applies only to the exact commit that passed Windows, macOS, Linux, package, browser, and CodeQL jobs; it is never inherited from an older release. The documented 3-5 person stranger-user trial remains incomplete. The Skill utilities are dependency-free Python. An optional local MCP server uses the official Python MCP SDK and exposes the compiler as explicit host tools. Agent behavior still depends on the host model, installed Skills, and the quality of evaluation cases.
+Current development line: **Alpha `1.0.0a5`**. The latest published line with GitHub-hosted Windows, macOS, Linux, package, browser, and CodeQL evidence is **`v0.11.0a1`**; that evidence does not automatically validate later commits. The documented 3-5 person stranger-user trial remains incomplete, so this project does not claim Beta or stable status.
 
 ## Compatibility
 
 Host support is intentionally narrower than the installer list. See the explicit [host support matrix](docs/support-matrix.md) for Alpha-supported, experimental, Skill-only, and MCP-unverified combinations.
 
-Installing the runtime makes the preflight *callable*; it does not make a host call it. On Claude Code and Cursor, `intent-translator-hook install [--host cursor]` registers a hook that decides before an action runs, so a prohibited or unconfirmed action is refused rather than merely described. See [host enforcement](docs/host-enforcement.md) for what it covers and what it does not.
+Installing the runtime makes the preflight *callable*; it does not make a host call it. After installing the optional MCP runtime, enable a supported pre-action hook with:
+
+```bash
+intent-translator-hook install                 # Claude Code
+intent-translator-hook install --host cursor   # Cursor
+```
+
+Claude Code can deny or escalate recognized tool calls, but a hook crash or timeout cannot fail closed there. Cursor fails closed for the registered shell and MCP events, but its own file-edit tools are outside the default hook configuration. Codex supports explicit Skill/MCP preflight on the Alpha-supported Windows path, but this project deliberately does not claim a reliable mandatory pre-action hook for Codex. See [host enforcement](docs/host-enforcement.md) for the exact bypass and failure boundaries.
 
 | Component | Supported baseline | Degradation |
 |---|---|---|
 | Operating system | Windows 10/11, current macOS, mainstream Linux | Other systems receive an untested warning |
 | Python | 3.10+ | Deterministic scripts stop with a diagnostic |
-| Agent host | Codex, Claude Code, Cursor, Gemini CLI, Copilot/VS Code, OpenCode | Shared or manual Skill folder installation |
+| Agent host | Codex on Windows for the Alpha-supported Skill/MCP path; Claude Code and Cursor hooks are experimental | Other listed hosts are experimental or Skill-only; see the support matrix |
 | Memory | Local SQLite by default | Session-only when persistence is unavailable |
 | Obsidian | Optional | SQLite remains available |
 | Domain expertise | Installed domain Skills and trusted sources | Base-agent response with explicit limitations |
@@ -215,7 +234,7 @@ Codex registration uses the native `codex mcp add` command with an explicit `COD
 
 For an optional Codex student setup that installs the Skill and MCP, applies the university base pack and exam-prep extension, and adds a replaceable managed rule block, run `setup-codex.ps1`. It backs up an existing global `AGENTS.md`; university details, study goals, and Obsidian locations are supplied locally and are never bundled in the repository.
 
-The server exposes fourteen tools, including onboarding status/application, memory defense, and student state. Onboarding choices stay local and are all skippable. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only recall uses an existing database without writes; `memory.adapter=none` creates and recalls no memory database.
+The server exposes 21 tools, including compilation, action admission, execution verification, onboarding, memory defense, decision metrics, study pointers, and local student state. Onboarding choices stay local and are all skippable. Defense status never exposes quarantined text; student state keeps sensitive items out of default context and Obsidian mirrors. Shadow evaluation is opt-in and stores no utterance preview by default. Study pointers can explicitly sync a generated index to a configured Obsidian vault without scanning the vault. Read-only recall uses an existing database without writes; `memory.adapter=none` creates and recalls no memory database.
 
 When the same Skill exists in multiple roots, discovery uses the first configured root. Explicit `INTENT_TRANSLATOR_SKILL_ROOTS` entries win, followed by host-specific roots such as Codex, then shared roots such as `~/.agents/skills`. `discover_skills.py` reports alternates so duplicate installations are visible instead of silently merged.
 
@@ -399,7 +418,9 @@ Ambiguous integration requests use a project-scoped interpretation gate. A confi
 - Secrets, authentication codes, payment data, and unnecessary sensitive details must not be stored.
 - Medical, legal, financial, and similarly high-stakes requests raise evidence and confirmation requirements.
 - Users retain the ability to inspect, correct, export, and delete memory.
-- No telemetry is collected by this repository. Diagnostic output hides exact home paths unless `--show-paths` is supplied.
+- Each compile writes local decision metadata to `~/.intent-translator/decisions.jsonl` by default. It contains no request text and uses an install-local salted digest that cannot be correlated across installations.
+- Decision records are never sent over the network by this project. Set `INTENT_TRANSLATOR_TELEMETRY=off` to disable them entirely.
+- Diagnostic output hides exact home paths unless `--show-paths` is supplied.
 
 ## Public Alpha Limits
 

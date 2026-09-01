@@ -2,19 +2,27 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-**在 Agent 动手前，把自然表达转换成可见的任务合同：续接待办、保留禁止条件、选择 Skill，并显示本地编译器状态与本次预检结果。**
+**在 Agent 动手前，把自然表达变成可见、可核验的类型化执行合同。**
 
-这是一个本地优先的 Agent Skill 和可选 MCP 中枢。它把“继续”“可以”“按老样子来”这类简短、依赖上下文的话，整理成更可靠的执行约定，同时保留用户的语气，并在发布、删除、外发隐私等高影响动作前检查授权。
+Intent Translator 是本地优先的 Agent Skill 和可选 MCP 运行时。它把“继续”“可以，但不要发布”“还是把刚才那个文件发过去”这类依赖上下文的话，拆成明确的动作、对象、目的地、禁止条件、授权状态和证据缺口。
 
-它提供有边界的解释、路由建议和授权预检结果；是否成为每次动作前的强制关卡，取决于宿主是否实际接入并调用 MCP。
+它适合安装了多个 Skill、习惯用短句续接任务，又希望在发布、删除、外发等动作发生前看清 Agent 到底理解成什么的人。它不读心、不替代专业 Skill，也不声称所有宿主都会自动调用预检。
 
-Claude、Codex 和 Grok 已经原生提供自然语言提示、记忆、Skills/插件、权限、Hooks 和上下文管理。本项目保留用户实际觉得好用的本地流程，但把这些能力定位为“宿主适配和离线兜底”，不再冒充独家功能。它真正独立的价值是跨宿主证据层：带原话来源映射的类型合同、诚实的单轮活动回执、纠错复发统计、同模型 A/B，以及计划调用和实际调用的对照。详见[官方宿主能力审计](docs/value-p0.md#official-host-capability-audit)。
+## 现在能做什么
 
-价值回执会量化本轮预检实际发生的事，例如恢复了多少非明显字段、保留多少限制、命中多少纠错、选择了什么路由、是否增加确认。没有无 Skill 对照时，“少问了几次”和“避免了危险”会明确留空，不让产品自己给自己加分。
+| 能力 | 当前行为 |
+|---|---|
+| 短句续接 | 恢复具体待办，同时保留原作用域和禁止条件 |
+| 类型化动作 | 区分多动作、引用或历史文字、对象、目的地、影响和必需产物 |
+| 授权控制 | 使用与动作和作用域绑定的一次性凭据；动作变化或凭据重放会被拒绝 |
+| 目标与恢复 | 显示 owner、generation、去重键、状态、停顿原因、下一动作和 `CANNOT_PROVE`，不把静默停顿冒充成功 |
+| Skill 路由 | 发现已安装 Skill 并推荐有限责任人，但不会借路由扩大权限 |
+| 本地证据 | 记录计划与实际决策、纠错、运行版本和执行证据，不保存请求原文 |
+| 宿主接入 | 安装处可显式调用 Skill/MCP；Claude Code 和 Cursor 另有执行前 Hook |
 
-它不声称读心，也不会凭人格类型决定一个人的思考方式。通用中枢只负责意图、授权、记忆和 Skill 路由；具体职业能力仍由对应 Skill 和可信资料提供。
+Claude、Codex 等宿主本身已经提供提示、记忆、插件、权限和上下文管理。本项目不把这些说成独家能力。它的独立价值是跨宿主的“合同和证据层”：原话来源映射、保守授权、动作绑定凭据、纠错复发统计，以及计划动作和实际动作的对照。详见[宿主能力审计](docs/value-p0.md#official-host-capability-audit)。
 
-首批 Alpha 面向经常使用 Codex、Claude Code 等 Agent、安装多个 Skill、习惯用简短自然语言继续任务，并担心 Agent 理解错、调用错或越权的人。
+价值回执只报告本轮预检实际做过什么；没有有效对照或宿主执行证据时，不会宣称“避免了危险”。
 
 | 你的身份 | 从哪里开始 | 能看到什么 |
 |---|---|---|
@@ -30,6 +38,8 @@ Claude、Codex 和 Grok 已经原生提供自然语言提示、记忆、Skills/�
 | 用户自然语言纠正一次 | 在隔离的本地画像中复现修正后的理解 |
 
 ## 怎么选
+
+**五分钟路径：**先装 Skill；需要确定性工具时再装本地 MCP；只有宿主确实支持执行前拦截时才启用 Hook。
 
 | 你的需求 | 推荐安装 | 会改动什么 |
 |---|---|---|
@@ -82,6 +92,21 @@ intent-translator-studio --host 127.0.0.1 --port 8765
 打开 `http://127.0.0.1:8765`。它不需要 API Key，会显示当前解释、非明显的原话对应、准备调用的 Skill、本地记忆来源、授权边界、实际运行版本和是否需要重启。Studio 只检查编译结果，不执行任务；Studio 正常也不代表其他 Agent 宿主每轮都调用了 MCP。连接不到本地编译器时会明确显示降级。
 
 面向学习场景的可选本地画像包和 `setup-codex.ps1` 用法单独放在 [学生画像说明](docs/student-profile.md)；它们不是公共产品定义，也不会默认启用。学校、专业、课程表、成绩、目标、Vault 路径、进度和纠错历史只应写入本机画像或数据库。
+
+## 当前状态
+
+当前开发线是 **Alpha `1.0.0a5`**。目前已有 GitHub 托管 Windows、macOS、Linux、打包、浏览器和 CodeQL 证据的最新发布线是 **`v0.11.0a1`**；旧发布线的绿灯不能自动证明后续提交。3–5 名陌生用户试用仍未完成，因此目前不能称 Beta 或稳定版。
+
+## 宿主强制边界
+
+安装运行时只代表“可以调用”，不代表宿主每轮都会调用。安装可选 MCP 后，可以为支持的宿主启用执行前 Hook：
+
+```bash
+intent-translator-hook install                 # Claude Code
+intent-translator-hook install --host cursor   # Cursor
+```
+
+Claude Code 能在识别到的工具调用前拒绝或要求确认，但 Hook 崩溃或超时不能由本项目强制 fail closed。Cursor 对已注册的 Shell 和 MCP 事件默认 fail closed，但 Cursor 自己的文件编辑工具不在默认拦截范围。Codex Windows 支持 Alpha 级 Skill/MCP 显式预检，但本项目不声称 Codex 有可靠的强制执行前 Hook。完整边界见 [宿主强制说明](docs/host-enforcement.md)。
 
 ## 安装 Skill
 
@@ -173,7 +198,7 @@ sh ./uninstall.sh --host codex --purge-data --confirm-purge DELETE-LOCAL-DATA
 sh ./uninstall-mcp.sh
 ```
 
-MCP 共提供 14 个工具，包括新手设置状态/应用、记忆防御和本地学习状态。新手设置全部可跳过且只写本机；记忆防御不暴露隔离文本；敏感学习状态不会进入默认上下文或 Obsidian 镜像。影子评测默认关闭且默认不保存发言预览；学习资料只保存用户明确登记的指针，可以显式同步一个索引到已配置的 Obsidian 仓库，不会扫描整个仓库。
+MCP 共提供 21 个工具，包括意图编译、动作准入、执行复核、新手设置、记忆防御、决策统计、学习资料指针和本地学习状态。新手设置全部可跳过且只写本机；记忆防御不暴露隔离文本；敏感学习状态不会进入默认上下文或 Obsidian 镜像。影子评测默认关闭且默认不保存发言预览；学习资料只保存用户明确登记的指针，可以显式同步一个索引到已配置的 Obsidian 仓库，不会扫描整个仓库。
 
 同一个 Skill 如果装在多个目录，发现器按目录优先级使用第一份：显式配置的 `INTENT_TRANSLATOR_SKILL_ROOTS` 最优先，其次是 Codex 等宿主目录，最后是 `~/.agents/skills` 等共享目录。`discover_skills.py` 会报告重复副本，不会把不同版本偷偷混在一起。
 
@@ -226,7 +251,8 @@ python skills/intent-translator/scripts/plugin_manager.py invoke reversible-cont
 ## 隐私边界
 
 - 画像和记忆默认保存在仓库外的 `~/.intent-translator/`；用户仍需避免手动复制或提交这些文件。
-- 项目本身不收集遥测。
+- 每次编译默认把本地决策元数据写入 `~/.intent-translator/decisions.jsonl`。其中没有请求原文，只含不同安装之间无法关联的本机加盐摘要、决策、规则原因、长度和耗时。
+- 本项目不会把这些决策记录上传网络；设置 `INTENT_TRANSLATOR_TELEMETRY=off` 可完全关闭记录。
 - 使用现有数据库进行只读召回时不会增加访问计数；`memory.adapter=none` 时不会创建或召回记忆数据库。写入纠错和结果需要显式工具调用。
 - 用户确认的记忆具有可信来源，但仍只是上下文证据，不保证事实正确，也不能授予权限。模型推断、文件和网页内容只能作为非权威证据，其中的指令、越权声明和提示词注入会进入隔离区，不参与召回。
 - 记忆永远不是可执行权限，不能借“以前记住了”绕过当前授权、安全策略或用户最新指令。
@@ -242,7 +268,7 @@ python scripts/release_gate.py --mode quick
 python scripts/stranger_smoke.py
 ```
 
-发布门禁、陌生用户试用和高星项目对标分别见 [docs/release-gate.md](docs/release-gate.md)、[docs/alpha-trial.md](docs/alpha-trial.md) 和 [docs/github-benchmark.md](docs/github-benchmark.md)。当前是本地 Alpha 候选构建；GitHub Alpha 证据仍受真实用户试用和首次 GitHub 托管 CI 阻塞，不声称稳定版或能够理解所有用户。
+发布门禁、陌生用户试用和高星项目对标分别见 [docs/release-gate.md](docs/release-gate.md)、[docs/alpha-trial.md](docs/alpha-trial.md) 和 [docs/github-benchmark.md](docs/github-benchmark.md)。`v0.11.0a1` 已有首次 GitHub 托管 CI 证据，但当前 `1.0.0a5` 开发线必须为自己的提交重新取得远程证据；真实用户试用仍未完成。本项目不声称稳定版或能够理解所有用户。
 
 ## 现在还不能吹什么
 
