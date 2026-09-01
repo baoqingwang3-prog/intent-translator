@@ -361,15 +361,19 @@ class OlderInterpreterTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("control_plane_on_python310", source)
         module = importlib.util.module_from_spec(spec)
 
-        original = enum.StrEnum
-        del enum.StrEnum
+        # On 3.11 and later the name has to be taken away to reach the fallback. On
+        # 3.10 it was never there, which is the situation being reproduced.
+        original = getattr(enum, "StrEnum", None)
+        if original is not None:
+            del enum.StrEnum
         # A dataclass resolves its annotations through the importing module, so the
         # copy has to be registered while it executes. The name is its own.
         sys.modules[spec.name] = module
         try:
             spec.loader.exec_module(module)
         finally:
-            enum.StrEnum = original
+            if original is not None:
+                enum.StrEnum = original
             sys.modules.pop(spec.name, None)
 
         self.assertEqual(module.StrEnum.__module__, module.__name__)
