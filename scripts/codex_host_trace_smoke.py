@@ -59,6 +59,16 @@ def run_smoke(python: str) -> dict[str, object]:
             text=True,
             encoding="utf-8",
             errors="replace",
+            # This trace isolates the profile by overriding HOME, which also hides a
+            # `pip install --user` runtime from the child. The child is given the same
+            # source path this script imports from, so the trace measures the
+            # preflight-to-tool chain rather than how the package happened to be installed.
+            env={
+                **os.environ,
+                "PYTHONPATH": os.pathsep.join(
+                    [str(REPO_ROOT / "src"), *filter(None, [os.environ.get("PYTHONPATH", "")])]
+                ),
+            },
         )
         verification = intent_verify_execution(
             ExecutionVerificationRequest(
