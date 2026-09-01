@@ -35,7 +35,7 @@ npx playwright install chromium
 python scripts/studio_browser_smoke.py --node-modules node_modules --output work/studio-browser-smoke-report.json --screenshot-dir work/studio-browser-smoke
 ```
 
-The latest redacted local evidence is [studio-browser-smoke-0.7.0a3.json](evidence/studio-browser-smoke-0.7.0a3.json). The public repository has completed the independent GitHub-hosted browser job and the Windows, macOS, and Linux matrix. Future releases must repeat those checks for their own commit rather than inheriting the previous result.
+The latest redacted local evidence is [studio-browser-smoke-0.7.0a3.json](evidence/studio-browser-smoke-0.7.0a3.json). The public repository has completed the independent GitHub-hosted browser job and the Windows, macOS, and Linux matrix, most recently for tag `v0.11.0a1`. Future releases must repeat those checks for their own commit rather than inheriting the previous result.
 
 Source and package success do not prove that a long-running host has reloaded the new MCP. The installer must refuse Codex registration changes while Codex is open, use the native Codex CLI after exit, and pass the registration overwrite regressions. After a local upgrade, verify the compile receipt reports the expected actual runtime version and `active` state. A `stale` result requires restarting or reloading the host before host-level acceptance is complete.
 

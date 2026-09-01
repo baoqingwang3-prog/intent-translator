@@ -4,12 +4,12 @@ This document separates local engineering evidence, remote repository evidence, 
 
 ## Current GitHub Alpha P0 Board
 
-The initial GitHub remote reproducibility blocker is closed for the published Alpha line. Real-user usability evidence remains incomplete. Product philosophy, private creator preferences, future enterprise controls, and additional audience packs are not Alpha P0 work.
+The initial GitHub remote reproducibility blocker is closed for the published Alpha line, currently `v0.11.0a1`. Real-user usability evidence remains incomplete. Product philosophy, private creator preferences, future enterprise controls, and additional audience packs are not Alpha P0 work.
 
 | P0 | State | Exit condition | Evidence owner |
 |---|---|---|---|
 | P0-1 Stranger-user usability proof | Protocol ready; synthetic rehearsal passed; real-user evidence incomplete | 3-5 consenting first-audience users complete README-only install, onboarding, five request classes, one correction, one decision-receipt check, and uninstall; dangerous confirmation misses = 0, cross-profile contamination = 0, creator-default leakage = 0 | Human trial record with redacted metrics |
-| P0-2 GitHub remote reproducibility proof | Complete for the published `0.7.0a3` line; later commits require their own run | GitHub-hosted Windows/macOS/Linux CI, independent Playwright job, Package, and CodeQL pass for the release line | Public GitHub Actions runs and immutable tag |
+| P0-2 GitHub remote reproducibility proof | Complete for the published `0.11.0a1` line (tag `v0.11.0a1`, commit `4a5515f`); later commits require their own run | GitHub-hosted Windows/macOS/Linux CI, independent Playwright job, Package, and CodeQL pass for the release line | Public GitHub Actions runs and immutable tag |
 
 Until P0-1 is completed, say **"protocol prepared and synthetic rehearsal passed"**, not "real users passed." Remote evidence must always name the exact commit or release line; a previous green run does not validate an unpushed tree.
 
