@@ -5,7 +5,7 @@
   "case_count": 100,
   "parent_benchmark": "intentbench-v1",
   "parent_case_count": 32,
-  "cases_sha256": "b51fa49f1bec2d72d7e9585605a9b5c46725e73fc6d4ba690606122d09b7b3ea",
+  "cases_sha256": "0b9de78c524cf6931707453083e30fb51e637928e4a1331aaa6f9a5c602490d7",
   "languages": {
     "en": 56,
     "zh-CN": 25,

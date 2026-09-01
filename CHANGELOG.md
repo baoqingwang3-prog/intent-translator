@@ -4,6 +4,16 @@ All notable changes are recorded here. The project follows semantic versioning a
 
 ## [Unreleased]
 
+### Fixed
+
+- An action whose wording matched no known operation could degrade to `answer`/`none` and reach the tool gateway as `allow`. The fail-closed path no longer depends on `mode`, which is produced by the same wording rules that may have missed the action, so an unrecognized imperative request now requires review instead of passing as conversation.
+- A request naming a non-local destination (`线上`, `云上`, `远端服务器`, `公司知识库`, `对外`, `remote`, `production`, and similar) is now routed to review through the new `risk.unverified_destination` signal and a required `destination` slot whenever no known operation was recognized. Destination wording varies far less than action wording, so it remains a usable signal after action classification fails. Requests shaped as questions or explanations are excluded so routine work does not become an interview.
+- A prohibition whose action could not be normalized was dropped entirely, silently deleting a limit the user had stated. Unnormalizable prohibitions are now retained with their original wording, while reminder idioms (`不要忘了`, `别担心`, `do not forget`) are still excluded from being read as prohibitions.
+
+### Changed
+
+- `IntentBench v2` case `v2_existing_specialist_skill_2` previously expected `prohibitions: []` for `先找现成的 Skill 处理电子表格，不要自己造`, which encoded the dropped-prohibition behavior. It now expects `["create"]`, and `cases_sha256` in `benchmark.json` was recomputed accordingly. No other expected field changed for that case.
+
 ## [0.10.0a1] - 2026-08-12
 
 ### Added

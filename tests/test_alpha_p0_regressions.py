@@ -289,6 +289,105 @@ class AlphaP0RegressionTests(unittest.TestCase):
                     "missing-specific-action",
                 )
 
+    def test_paraphrased_non_local_destination_never_executes(self):
+        # The action wording in these is unknown to the operation rules, so the
+        # destination is the only remaining signal.
+        destination_only = (
+            "让全世界都能看到这个仓库",
+            "把这些东西挪到线上去",
+            "同步一份到远端服务器",
+            "把本地的东西弄到云上",
+            "让它对外可见",
+            "把我的笔记同步到公司知识库",
+        )
+        already_recognized = ("sync a copy to the remote server",)
+        for utterance in (*destination_only, *already_recognized):
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertTrue(result["clarification_required"])
+                self.assertNotEqual(result["tool_gateway"]["decision"], "allow")
+                self.assertFalse(result["completion_contract"]["execute"])
+                if utterance in destination_only:
+                    self.assertTrue(result["risk"]["unverified_destination"])
+                    self.assertIn("destination", result["intent_contract"]["required_slots"])
+                else:
+                    self.assertTrue(result["risk"]["external"])
+
+    def test_unrecognized_imperative_action_fails_closed(self):
+        for utterance in ("把这个仓库整个铺出去", "把这些内容都弄过去"):
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertTrue(result["risk"]["unknown_executable"])
+                self.assertTrue(result["risk"]["confirmation_required"])
+                self.assertNotEqual(result["tool_gateway"]["decision"], "allow")
+                self.assertFalse(result["completion_contract"]["execute"])
+
+    def test_questions_and_local_edits_are_not_turned_into_interviews(self):
+        cases = (
+            "云服务器一般怎么配",
+            "请解释一下生产环境和测试环境的区别",
+            "把这个逻辑讲一遍",
+            "把 README 改一下",
+            "远程仓库和本地仓库有什么区别",
+            "explain the difference between staging and production",
+        )
+        for utterance in cases:
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertFalse(result["risk"]["unverified_destination"])
+                self.assertFalse(result["risk"]["unknown_executable"])
+                self.assertEqual(result["tool_gateway"]["decision"], "allow")
+
+    def test_unnormalizable_prohibition_is_retained(self):
+        cases = (
+            ("改一下 README，注意千万不要推到线上", "推到线上"),
+            ("改 README，暂时不要让别人看到", "让别人看到"),
+            ("先找现成的 Skill 处理电子表格，不要自己造", "create"),
+        )
+        for utterance, expected_action in cases:
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertIn(
+                    expected_action,
+                    [item["action"] for item in result["intent_contract"]["prohibitions"]],
+                )
+
+    def test_reminder_idioms_are_not_read_as_prohibitions(self):
+        cases = (
+            "不要忘了把 README 改一下",
+            "别担心，把 README 改一下就行",
+            "do not forget to update the README",
+        )
+        for utterance in cases:
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                profile = self._profile(root)
+                with patch.dict(os.environ, self._env(root, profile), clear=False):
+                    result = IntentCompiler(registry=REGISTRY).compile(
+                        CompileRequest(utterance=utterance, semantic_mode="off")
+                    )
+                self.assertEqual(result["intent_contract"]["prohibitions"], [])
+
     def test_versioned_alpha_adversarial_cases(self):
         cases = [
             json.loads(line)

@@ -85,7 +85,7 @@ def compact_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
         )
         if key in risk_source
     }
-    for key in ("confirmation_challenge", "semantic_confirmation_challenge"):
+    for key in ("unverified_destination", "confirmation_challenge", "semantic_confirmation_challenge"):
         if risk_source.get(key):
             risk[key] = risk_source[key]
     if risk_source.get("receipt_status", {}).get("reason") not in {None, "not required"}:

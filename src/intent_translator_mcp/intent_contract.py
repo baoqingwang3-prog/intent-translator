@@ -83,6 +83,7 @@ class IntentRisk(BaseModel):
     high_stakes: bool
     system_change: bool = False
     ambiguous_action: bool = False
+    unverified_destination: str = ""
     blocked: bool
     confirmation_required: bool
 
@@ -236,6 +237,8 @@ def _communication_contract(text: str) -> CommunicationContract:
 
 def _destination(text: str, risk: dict[str, Any]) -> IntentDestination:
     folded = text.casefold()
+    if risk.get("unverified_destination"):
+        return IntentDestination(kind="unknown", value=str(risk["unverified_destination"]))
     if not risk.get("external") and risk.get("effect") != "read_public":
         return IntentDestination(kind="local", value="local environment")
     email = _EMAIL.search(text)
@@ -295,6 +298,8 @@ def build_typed_contract(
     if risk.get("ambiguous_action"):
         required_slots.append("object")
     if risk.get("external") and destination.kind == "unknown":
+        required_slots.append("destination")
+    if risk.get("unverified_destination"):
         required_slots.append("destination")
     if short_confirmation_missing:
         required_slots.append("pending_action")
