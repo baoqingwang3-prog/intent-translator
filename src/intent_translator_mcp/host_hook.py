@@ -832,11 +832,72 @@ def install_hook(
     return result
 
 
+def _decode_hook_bytes(raw: bytes) -> str:
+    """Decode hook stdin. Cursor on Windows often delivers UTF-16, not UTF-8.
+
+    UTF-16 of ASCII JSON is still valid UTF-8 (NUL bytes between characters), so a
+    naive UTF-8 decode succeeds and `json.loads` then fails with JSONDecodeError.
+    """
+    if not raw:
+        return ""
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return raw.decode("utf-16")
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw.decode("utf-8-sig")
+    if len(raw) >= 4 and raw[1] == 0 and raw[0] != 0:
+        return raw.decode("utf-16-le")
+    if len(raw) >= 4 and raw[0] == 0 and raw[1] != 0:
+        return raw.decode("utf-16-be")
+    return raw.decode("utf-8")
+
+
+def _parse_hook_payload(text: str) -> Mapping[str, Any]:
+    stripped = text.strip().lstrip("\ufeff")
+    if not stripped:
+        return {}
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        payload, _offset = json.JSONDecoder().raw_decode(stripped)
+    return payload if isinstance(payload, Mapping) else {}
+
+
+def _note_unreadable_hook_input(raw: bytes) -> None:
+    directory = shared_data_dir()
+    if directory is None:
+        return
+    path = directory / "diagnostics" / "hook-stdin-last.json"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "n_bytes": len(raw),
+                    "hex_head": raw[:16].hex(),
+                    "has_nul": b"\x00" in raw[:64],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        return
+
+
 def _read_event(stream) -> Mapping[str, Any]:
     buffer = getattr(stream, "buffer", None)
-    raw = buffer.read().decode("utf-8", errors="replace") if buffer is not None else stream.read()
-    payload = json.loads(raw) if raw.strip() else {}
-    return payload if isinstance(payload, Mapping) else {}
+    if buffer is not None:
+        raw = buffer.read()
+    else:
+        chunk = stream.read()
+        raw = chunk if isinstance(chunk, bytes) else chunk.encode("utf-8", errors="surrogateescape")
+    try:
+        return _parse_hook_payload(_decode_hook_bytes(raw))
+    except json.JSONDecodeError:
+        _note_unreadable_hook_input(raw)
+        raise
 
 
 def _render(verdict: Verdict, host: str) -> HookOutcome:

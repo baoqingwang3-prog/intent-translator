@@ -187,18 +187,35 @@ class CursorDecisionTests(unittest.TestCase):
         outcome = self.decide(shell_event("git push origin main", conversation="b"))
         self.assertEqual(outcome.detail["cause"], "no-recorded-prompt")
 
-    def test_the_hook_runs_as_a_separate_process_and_replies_as_cursor_expects(self):
-        self.decide(prompt_event("帮我整理一下 README，千万不要发布"))
-        completed = subprocess.run(
+    def _hook_process(self, event: dict, *, encoding: str = "utf-8") -> subprocess.CompletedProcess:
+        payload = json.dumps(event, ensure_ascii=False)
+        return subprocess.run(
             [sys.executable, "-m", "intent_translator_mcp.host_hook", "run", "--host", "cursor"],
-            input=json.dumps(shell_event("git push origin main"), ensure_ascii=False).encode("utf-8"),
+            input=payload.encode(encoding),
             capture_output=True,
             env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
         )
+
+    def test_the_hook_runs_as_a_separate_process_and_replies_as_cursor_expects(self):
+        self.decide(prompt_event("帮我整理一下 README，千万不要发布"))
+        completed = self._hook_process(shell_event("git push origin main"))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         payload = json.loads(completed.stdout.decode("utf-8"))
         self.assertEqual(payload["permission"], "deny")
         self.assertIn("千万不要发布", payload["user_message"])
+
+    def test_utf16_stdin_from_windows_hosts_still_decides(self):
+        """Cursor on Windows often pipes hook JSON as UTF-16, including a BOM."""
+        self.decide(prompt_event("帮我整理一下 README，千万不要发布"))
+        for encoding in ("utf-16", "utf-16-le"):
+            with self.subTest(encoding=encoding):
+                completed = self._hook_process(
+                    shell_event("git push origin main"), encoding=encoding
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                payload = json.loads(completed.stdout.decode("utf-8"))
+                self.assertEqual(payload["permission"], "deny")
+                self.assertIn("千万不要发布", payload["user_message"])
 
 
 class CursorInstallationTests(unittest.TestCase):
