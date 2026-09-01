@@ -10,6 +10,8 @@ When a host calls the preflight with the exact current request and honors its re
 
 Installation alone does not provide this property. A host that bypasses the preflight can bypass every protection in this project.
 
+Where a host supports a pre-action hook, that bypass can be closed: the hook decides before the action runs, so calling the preflight stops being the host's choice. This is implemented for Claude Code and Cursor. [host-enforcement.md](host-enforcement.md) describes the mechanism, the failure behavior, and what remains bypassable.
+
 ## Assets
 
 - The user's current action and explicit constraints.
@@ -32,7 +34,7 @@ Installation alone does not provide this property. A host that bypasses the pref
 
 | ID | Threat | Boundary | Required control | Current evidence | Residual risk |
 |---|---|---|---|---|---|
-| T01 | Host bypasses preflight while UI implies protection | Host to compiler | Hosts must call preflight and display active/stale/degraded state | Host registration, doctor, runtime receipt tests | A non-cooperating host remains outside enforcement |
+| T01 | Host bypasses preflight while UI implies protection | Host to compiler | Hosts must call preflight and display active/stale/degraded state; a host that supports pre-action hooks should install the enforcement hook | Host registration, doctor, runtime receipt tests, Claude Code and Cursor hook decision tests | A host without pre-action hooks remains advisory. Even with the hook, enforcement can be disabled by the user, does not cover paths that produce no gated action, and reads shell text by pattern rather than by parsing. On Cursor, its own file tools are not gated by default. See [host-enforcement.md](host-enforcement.md) |
 | T02 | Short confirmation expands into broad or future authority | User to host | Bind approval to exact action, arguments, destination, scope, and expiry | Authorization and continuation regressions | A host can still submit the wrong pending action |
 | T03 | Old task or profile overrides the latest request | Local state | Latest wording and pending action outrank project context and relevant profile | Personalization firewall and state-priority tests | Semantic relevance remains imperfect for unseen language |
 | T04 | Object nouns steal action ownership | Compiler to Skill | Route by operation before Skill, file, GitHub, or prompt nouns | IntentBench routing cases and role matrix | New verbs and third-party capability descriptions need evaluation |

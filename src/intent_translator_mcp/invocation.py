@@ -28,6 +28,7 @@ def build_invocation_receipt(
         ).encode("utf-8")
     ).hexdigest()
     runtime = envelope.get("runtime_status", {})
+    entrypoint = str(runtime.get("entrypoint", ""))
     return {
         "schema_version": 1,
         "receipt_id": "preflight-" + uuid.uuid4().hex[:20],
@@ -38,5 +39,11 @@ def build_invocation_receipt(
         "decision": envelope.get("tool_gateway", {}).get("decision", "unknown"),
         "runtime_version": runtime.get("versions", {}).get("actual_runtime"),
         "observed_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "enforcement_claim": "preflight-observed-not-host-enforced",
+        "enforcement_claim": (
+            # A host hook decides before the tool call runs, so the preflight was not
+            # merely observed. Any other entrypoint was called voluntarily.
+            "preflight-enforced-by-host-hook"
+            if entrypoint.endswith("-hook")
+            else "preflight-observed-not-host-enforced"
+        ),
     }

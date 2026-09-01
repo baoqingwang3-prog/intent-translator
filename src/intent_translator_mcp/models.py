@@ -28,6 +28,14 @@ class CompileRequest(BaseModel):
         default="",
         description="Short-lived receipt returned by a prior review of the exact pending action.",
     )
+    actor: str = Field(
+        default="",
+        max_length=200,
+        description=(
+            "Identity the approval belongs to. When set, a receipt is bound to it and "
+            "cannot be replayed by a different actor. Defaults to INTENT_TRANSLATOR_ACTOR."
+        ),
+    )
     available_files: list[str] = Field(default_factory=list)
     include_prompt: bool = True
     semantic_mode: Literal["off", "auto", "required"] = "auto"
