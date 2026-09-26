@@ -1,0 +1,4 @@
+D:\测试\intent-translator-repo\scripts\ilang_distill_router.py:74: UserWarning: The model intfloat/multilingual-e5-large now uses mean pooling instead of CLS embedding. In order to preserve the previous behaviour, consider either pinning fastembed version to 0.5.1 or using `add_custom_model` functionality.
+  model = TextEmbedding(model_name=model_name, **options)
+E5 cascade held-out: 141/204 = 69.1%
+fails by constraint: {"plain": 50, "revoked-deletion": 1, "no-egress": 1, "no-share": 1, "read-only": 2, "quoted-ilang": 1, "plain-bracket": 4, "invalid": 1, "continuation": 2}

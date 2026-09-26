@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 MODES = ("answer", "diagnose", "change", "build", "search", "learn", "remember", "recall", "compress", "route")
 RISK_HINTS = ("external", "sensitive", "irreversible", "high_stakes")
+CONTROL_STATUSES = ("normal", "clarify", "revoke")
 
 
 class SemanticProposal(BaseModel):
@@ -29,11 +30,14 @@ class SemanticProposal(BaseModel):
     primary_skill: str | None = Field(default=None, max_length=120)
     risk_hints: list[str] = Field(default_factory=list, max_length=4)
     clarification_recommended: bool = False
+    control_status: str = "normal"
     language: str = Field(default="", max_length=40)
 
     def model_post_init(self, __context: Any) -> None:
         if self.mode is not None and self.mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
+        if self.control_status not in CONTROL_STATUSES:
+            raise ValueError(f"control_status must be one of {CONTROL_STATUSES}")
         invalid_risks = sorted(set(self.risk_hints) - set(RISK_HINTS))
         if invalid_risks:
             raise ValueError(f"unknown risk hints: {invalid_risks}")
@@ -185,7 +189,28 @@ def semantic_payload(
     pending_action: str,
     deterministic: dict[str, Any],
     skills: list[dict[str, Any]],
+    relevant_skills: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    required_names = {
+        "agent-reach", "skill-lookup", "skill-installer", "skill-creator",
+        "diagnosing-bugs", "browser", "obsidian-cli", "pdf", "docx", "xlsx", "pptx",
+    }
+    eligible = [
+        item
+        for item in skills
+        if item.get("model_invoked") is not False
+    ]
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in [*(relevant_skills or []), *eligible]:
+        name = str(item.get("name", ""))
+        if not name or name in seen:
+            continue
+        if relevant_skills or name in required_names:
+            selected.append(item)
+            seen.add(name)
+        if len(selected) >= 40:
+            break
     return {
         "schema_version": 1,
         "instruction": (
@@ -200,7 +225,7 @@ def semantic_payload(
         "allowed_risk_hints": list(RISK_HINTS),
         "installed_skills": [
             {"name": item.get("name"), "description": str(item.get("description", ""))[:500]}
-            for item in skills[:80]
+            for item in selected
         ],
         "response_schema": SemanticProposal.model_json_schema(),
     }

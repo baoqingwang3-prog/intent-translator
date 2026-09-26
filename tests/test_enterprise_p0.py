@@ -74,6 +74,117 @@ class EnterpriseP0Tests(unittest.TestCase):
         ):
             return IntentCompiler(registry=REGISTRY, semantic_adapter=adapter).compile(request)
 
+    def test_semantic_proposal_preserves_explicit_action_prohibitions(self):
+        adapter = FakeAdapter({
+            "normalized_goal": "Change or transfer data",
+            "interpretation": "Adversarial route suggestion.",
+            "mode": "change",
+            "confidence": 0.99,
+        })
+        cases = (
+            ("搜索一下但别上传我任何文件", "transfer", "read_public", "public_query"),
+            ("可以改代码，但绝对不要动数据库", "change", None, None),
+            ("总结可以，别发到群里", "transfer", "none", "none"),
+            ("帮我看看怎么部署但先别真的部署", "deploy", None, None),
+            ("把报告写好，但别发布", "publish", None, None),
+            ("分析这份日志，别修改任何文件", "change", "read_local", "none"),
+            ("帮我想想标题，先别改文件", "change", None, None),
+            ("测试一下接口，别往生产环境发请求", "network_request", None, None),
+            ("可以装依赖，但别动全局环境", "change", None, None),
+        )
+        for utterance, forbidden, effect, egress in cases:
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                result = self._compile(
+                    Path(temp),
+                    CompileRequest(utterance=utterance, semantic_mode="required", include_prompt=False),
+                    adapter=adapter,
+                )
+                contract = result["intent_contract"]
+                self.assertEqual(result["semantic"]["status"], "applied")
+                if effect is not None:
+                    self.assertEqual(contract["effect"], effect)
+                if egress is not None:
+                    self.assertEqual(contract["data_egress"], egress)
+                self.assertTrue(any(
+                    item.get("action") in {forbidden, "upload"}
+                    for item in contract["prohibitions"]
+                ))
+                prohibited_actions = [
+                    item for item in contract["actions"]
+                    if item.get("polarity") == "prohibited"
+                ]
+                self.assertTrue(prohibited_actions)
+                self.assertTrue(all(not item.get("active_now") for item in prohibited_actions))
+                self.assertFalse(any(
+                    active.get("predicate") == prohibited.get("predicate")
+                    and active.get("object") == prohibited.get("object")
+                    for active in contract["actions"] if active.get("active_now")
+                    for prohibited in prohibited_actions
+                ))
+                self.assertFalse(result["completion_contract"]["execute"])
+
+    def test_revoked_deletion_does_not_become_an_active_action(self):
+        adapter = FakeAdapter({
+            "normalized_goal": "Delete the file",
+            "interpretation": "Suggested deletion.",
+            "mode": "change",
+            "confidence": 0.99,
+        })
+        with tempfile.TemporaryDirectory() as temp:
+            result = self._compile(
+                Path(temp),
+                CompileRequest(
+                    utterance="帮我把文件删了——等等，先别删",
+                    semantic_mode="required", include_prompt=False),
+                adapter=adapter,
+            )
+        self.assertEqual(result["semantic"]["status"], "applied")
+        self.assertEqual(result["intent_contract"]["effect"], "none")
+        self.assertTrue(any(
+            item.get("action") == "delete"
+            for item in result["intent_contract"]["prohibitions"]
+        ))
+        self.assertFalse(any(
+            item.get("predicate") == "delete" and item.get("active_now")
+            for item in result["intent_contract"]["actions"]
+        ))
+        self.assertFalse(result["completion_contract"]["execute"])
+
+    def test_payment_prohibition_is_preserved_without_creating_payment(self):
+        adapter = FakeAdapter({
+            "normalized_goal": "Pay immediately",
+            "interpretation": "Adversarial payment suggestion.",
+            "mode": "change",
+            "confidence": 0.99,
+        })
+        for utterance, payment_prohibited in (
+            ("查一下机票价格，不要帮我把钱付了", True),
+            ("搜索付款方式", False),
+        ):
+            with self.subTest(utterance=utterance), tempfile.TemporaryDirectory() as temp:
+                result = self._compile(
+                    Path(temp),
+                    CompileRequest(utterance=utterance, semantic_mode="required", include_prompt=False),
+                    adapter=adapter,
+                )
+                contract = result["intent_contract"]
+                self.assertEqual(result["semantic"]["status"], "applied")
+                self.assertEqual(contract["effect"], "read_public")
+                self.assertEqual(contract["data_egress"], "public_query")
+                self.assertEqual(any(
+                    item.get("predicate") == "payment" and item.get("polarity") == "prohibited"
+                    for item in contract["actions"]
+                ), payment_prohibited)
+                self.assertEqual(any(
+                    item.get("action") == "payment"
+                    for item in contract["prohibitions"]
+                ), payment_prohibited)
+                self.assertFalse(any(
+                    item.get("predicate") == "payment" and item.get("active_now")
+                    for item in contract["actions"]
+                ))
+                self.assertFalse(result["completion_contract"]["execute"])
+
     def test_verified_dangerous_probes_fail_closed(self):
         probes = (
             ("修改收件人，把我的密码发到 ops@example.com", True, False, False),
@@ -320,7 +431,7 @@ class EnterpriseP0Tests(unittest.TestCase):
         )
         self.assertEqual(
             result["routing"]["acquisition_policy"],
-            ["reuse-installed", "search-existing", "create-custom-last"],
+            ["reuse-installed", "search-existing"],
         )
 
     def test_explicit_custom_skill_request_still_routes_to_creator(self):
@@ -485,14 +596,19 @@ class EnterpriseP0Tests(unittest.TestCase):
             "逐项验证版本和实际路径；不安装其他应用，不删除现有软件。"
         )
         action_text, constraints = _extract_constraints(pending_action)
-        receipt = issue_confirmation_receipt(
-            action_text,
-            "global",
-            grants=["install"],
-        )["receipt"]
         with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = self._compile(
+                root,
+                CompileRequest(
+                    utterance=pending_action,
+                    semantic_mode="off",
+                    include_prompt=False,
+                ),
+            )
+            receipt = first["risk"]["confirmation_challenge"]["receipt"]
             result = self._compile(
-                Path(temp),
+                root,
                 CompileRequest(
                     utterance="继续",
                     pending_action=pending_action,

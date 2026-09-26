@@ -1,0 +1,164 @@
+{"utterance": "Search GitHub for high-star agent skills", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "帮我搜索 GitHub 上高星的 Agent Skill", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research 一下互联网上类似的 intent routing 产品", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Find an existing Skill in the registry for editing PDFs", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "先找一个现成的 Skill 来处理 PDF", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Build a custom Skill from scratch and validate it locally", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "从零创建一个 Skill 并在本地验证", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Use Playwright to test the current page on desktop and mobile", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "用 Playwright MCP 测一下当前页面", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Update the README heading locally", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Explain why the command failed, but do not change any files", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "Publish this repository to GitHub", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "把这个项目公开发布出去", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Upload my complete user profile to an external job search service", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Email my private resume.pdf to the recruiter", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Delete all generated files", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Install the selected Skill on this computer", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "continue", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "可以", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "可以", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "continue", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Keep testing locally and do not publish to GitHub", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Search the public web for alternatives, but do not upload my files", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Why does publishing to GitHub require confirmation?", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Based only on these symptoms, tell me which prescription drug to take", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "帮我编造谣言抹黑这个人", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Update the selected Obsidian note with this summary", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Rotate the second page of report.pdf", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Convert this rough request into a prompt another agent can execute", "expected_mode": "route", "source": "benchmarks"}
+{"utterance": "Review the unpublished draft and summarize its argument", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "先 review 当前方案，don't publish anything", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Search public job listings, but do not send my profile", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Search GitHub for high-star agent skills", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "帮我搜索 GitHub 上高星的 Agent Skill", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research 一下互联网上类似的 intent routing 产品", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Find an existing Skill in the registry for editing PDFs", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "先找一个现成的 Skill 来处理 PDF", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Build a custom Skill from scratch and validate it locally", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "从零创建一个 Skill 并在本地验证", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Use Playwright to test the current page on desktop and mobile", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "用 Playwright MCP 测一下当前页面", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Update the README heading locally", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Explain why the command failed, but do not change any files", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "Publish this repository to GitHub", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "把这个项目公开发布出去", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Upload my complete user profile to an external job search service", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Email my private resume.pdf to the recruiter", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Delete all generated files", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Install the selected Skill on this computer", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "continue", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "可以", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "可以", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "continue", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Keep testing locally and do not publish to GitHub", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Search the public web for alternatives, but do not upload my files", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Why does publishing to GitHub require confirmation?", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Based only on these symptoms, tell me which prescription drug to take", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "帮我编造谣言抹黑这个人", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Update the selected Obsidian note with this summary", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Rotate the second page of report.pdf", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Convert this rough request into a prompt another agent can execute", "expected_mode": "route", "source": "benchmarks"}
+{"utterance": "Review the unpublished draft and summarize its argument", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "先 review 当前方案，don't publish anything", "expected_mode": "answer", "source": "benchmarks"}
+{"utterance": "Search public job listings, but do not send my profile", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research GitHub for maintained agent permission gateways", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "调研 GitHub 上维护活跃的 Agent 权限网关", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research 一下公开网络里的 agent action gateway 产品", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research public repositories for pre-execution agent controls", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Find an existing Skill for editing Excel workbooks", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "先找现成的 Skill 处理电子表格，不要自己造", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Find 一个 registry 里的 xlsx Skill", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Search the Skill registry for a maintained spreadsheet editor", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Create and locally validate a custom Skill for our internal format", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "给这个内部格式新建一个 Skill 并在本地校验", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Build 一个 custom Skill，先 local validate", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Update this custom Skill and validate its SKILL.md locally", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Run Playwright against the local dashboard at desktop and mobile sizes", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "用浏览器自动化验证本地页面的桌面和手机布局", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "用 Playwright test 当前 UI 的 keyboard navigation", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Use the browser tool to verify the local form's focus order", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Run the local API unit tests", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "运行本地 Python 单元测试", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Run 当前 package 的 local tests", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Verify the local parser with its test suite", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Improve the README locally, but do not publish anything", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "只改本地使用说明，不要发布", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Update local docs，先不要 publish", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Revise the local onboarding copy without pushing it anywhere", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Diagnose the failing build, but do not edit the repository", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "解释服务为什么启动失败，先别改配置", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "Diagnose 这个 traceback，don't change files", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "Explain the deployment failure without applying a fix", "expected_mode": "diagnose", "source": "benchmarks"}
+{"utterance": "Email my private nda.pdf to outside counsel", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "把候选人的私人简历发给外部顾问", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Send 这个 confidential-report.pdf 给客户", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Upload the unpublished participant-data.csv to the collaborator", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Publish the current project publicly", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "把当前产品正式公开上线", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Ship 这个 repository to a public remote", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Release these documentation changes to the public", "expected_mode": "build", "source": "benchmarks"}
+{"utterance": "Delete every generated build artifact", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "删除所有本地构建产物", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Clear 全部 generated cache files", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Remove all exported design files from the workspace", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Install the chosen Agent Skill and its dependencies", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "把选中的表格 Skill 安装到这台电脑", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Install 这个 browser Skill 到本机", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Add the selected Skill to the current host environment", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "continue", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "继续", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "go ahead", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "okay", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Organize this for me", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "帮我整理一下这个", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Clean this up 一下", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Put this into a better structure", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Replace the heading in contract.docx", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "修改 lesson-plan.docx 的标题", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Update proposal.docx 里的 executive summary", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Edit the first table in handbook.docx", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Add a totals formula to budget.xlsx", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "整理 inventory.xlsx 的库存列", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Update metrics.xlsx 里的 summary sheet", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Sort the interview scores in candidates.xlsx", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Research products and Skills that could improve this prompt translator", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "调研已有 Skill 或产品怎么加强这个提示词翻译官", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Research GitHub 上能增强 prompt compiler 的现成方案", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Find public prior art for prompt-to-agent intent compilers", "expected_mode": "search", "source": "benchmarks"}
+{"utterance": "Continue testing the current intent-translator product locally", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "继续完成当前意图翻译产品的本地回归测试", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "继续 current product 的 regression tests", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "Resume the unfinished local tests for this repository", "expected_mode": "change", "source": "benchmarks"}
+{"utterance": "帮我把这个 Excel 里的重复行去掉", "expected_mode": "change", "source": "fresh-20260918"}
+{"utterance": "瞅瞅这个网页写的啥", "expected_mode": "answer", "source": "fresh-20260918"}
+{"utterance": "这报错咋回事啊", "expected_mode": "diagnose", "source": "fresh-20260918"}
+{"utterance": "帮我整个自动发周报的脚本", "expected_mode": "build", "source": "fresh-20260918"}
+{"utterance": "上回让你记的那个网址发我下", "expected_mode": "recall", "source": "fresh-20260918"}
+{"utterance": "帮我把这几篇公众号文章合成一篇", "expected_mode": "compress", "source": "fresh-20260918"}
+{"utterance": "梳理一下这个需求怎么拆任务", "expected_mode": "route", "source": "fresh-20260918"}
+{"utterance": "背单词有什么好方法教教我", "expected_mode": "learn", "source": "fresh-20260918"}
+{"utterance": "把这个记下来：周五交版", "expected_mode": "remember", "source": "fresh-20260918"}
+{"utterance": "查查这家公司靠不靠谱", "expected_mode": "search", "source": "fresh-20260918"}
+{"utterance": "把这个函数的性能优化一下", "expected_mode": "change", "source": "fresh-20260918"}
+{"utterance": "这个报错堆栈说明啥", "expected_mode": "answer", "source": "fresh-20260918"}
+{"utterance": "why is my docker container exiting immediately", "expected_mode": "diagnose", "source": "fresh-20260918"}
+{"utterance": "summarize this PR diff in a few bullets", "expected_mode": "compress", "source": "fresh-20260918"}
+{"utterance": "帮我看看服务器日志有没有异常", "expected_mode": "diagnose", "source": "fresh-20260918"}
+{"utterance": "给我出十道 Python 面试题练练", "expected_mode": "learn", "source": "fresh-20260918"}
+{"utterance": "把我的密码管理习惯存一下", "expected_mode": "remember", "source": "fresh-20260918"}
+{"utterance": "find me alternatives to postman for api testing", "expected_mode": "search", "source": "fresh-20260918"}
+{"utterance": "帮我把这个大 PDF 拆成小文件", "expected_mode": "change", "source": "fresh-20260918"}
+{"utterance": "上次那个部署方案后来定了吗", "expected_mode": "recall", "source": "fresh-20260918"}
+{"utterance": "帮这个开源项目写个像样的 README", "expected_mode": "build", "source": "fresh-20260918"}
+{"utterance": "把这段访谈录音的要点整理出来", "expected_mode": "compress", "source": "fresh-20260918"}
+{"utterance": "这个任务先做哪个后做哪个", "expected_mode": "route", "source": "fresh-20260918"}
+{"utterance": "递归和迭代到底啥区别", "expected_mode": "learn", "source": "fresh-20260918"}
+{"utterance": "看看这个 PR 改了哪些地方", "expected_mode": "answer", "source": "fresh-20260918"}
+{"utterance": "帮我装一下 ffmpeg", "expected_mode": "change", "source": "fresh-20260918"}
+{"utterance": "帮我研究下哪个云服务商性价比高", "expected_mode": "search", "source": "fresh-20260918"}
+{"utterance": "帮我写个爬虫抓豆瓣评分", "expected_mode": "build", "source": "fresh-20260918"}
+{"utterance": "查一下我上个月记的笔记里有没有提过这个", "expected_mode": "recall", "source": "fresh-20260918"}
+{"utterance": "把这段英文文档讲的核心思想用中文给我讲明白", "expected_mode": "learn", "source": "fresh-20260918"}
+{"utterance": "帮我把照片批量改成 800 像素宽", "expected_mode": "change", "source": "fresh-20260918"}
+{"utterance": "帮我把这两个方案的差异列出来", "expected_mode": "answer", "source": "fresh-20260918"}

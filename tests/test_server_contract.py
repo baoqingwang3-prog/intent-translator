@@ -119,6 +119,26 @@ class ServerContractTests(unittest.TestCase):
             timings.sort()
             self.assertLessEqual(timings[18], 75.0)
 
+    def test_compiler_cache_refreshes_when_a_skill_is_retired(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            skills = root / "skills"
+            demo = skills / "temporary-router"
+            demo.mkdir(parents=True)
+            (demo / "SKILL.md").write_text(
+                "---\nname: temporary-router\ndescription: Route temporary reports.\n---\n",
+                encoding="utf-8",
+            )
+            env = self._env(root)
+            env["INTENT_TRANSLATOR_SKILL_ROOTS"] = str(skills)
+            with patch.dict(os.environ, env, clear=False):
+                first = compiler()
+                self.assertIn("temporary-router", {item["name"] for item in first.registry["skills"]})
+                (demo / "SKILL.md").unlink()
+                second = compiler()
+                self.assertIsNot(first, second)
+                self.assertNotIn("temporary-router", {item["name"] for item in second.registry["skills"]})
+
     def test_packaged_hash_manifest_rejects_tampered_runtime_skill_code(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

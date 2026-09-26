@@ -93,6 +93,48 @@ def _path_signature(path: Path) -> tuple[str, int, int]:
         return str(path), 0, 0
 
 
+def _skill_roots_signature() -> tuple[tuple[str, int, int], ...]:
+    roots = tuple(Path(root) for root in _load_skill_script("discover_skills").default_roots())
+    root_entries: list[tuple[int, Path, list[os.DirEntry[str]]]] = []
+    for priority, root in enumerate(roots):
+        if not root.exists():
+            root_entries.append((priority, root, []))
+            continue
+        try:
+            entries = sorted(os.scandir(root), key=lambda item: item.name.casefold())
+        except OSError:
+            root_entries.append((priority, root, []))
+            continue
+        directories: list[os.DirEntry[str]] = []
+        for entry in entries:
+            try:
+                if not entry.is_dir():
+                    continue
+            except OSError:
+                continue
+            directories.append(entry)
+        root_entries.append((priority, root, directories))
+
+    signatures: list[tuple[str, int, int]] = []
+    seen: set[str] = set()
+    for priority, root, entries in root_entries:
+        if not entries:
+            signatures.append((f"{priority}:{root}", 0, 0))
+            continue
+        for entry in entries:
+            skill_path = os.path.join(entry.path, "SKILL.md")
+            canonical = os.path.normcase(os.path.abspath(skill_path))
+            if canonical in seen:
+                continue
+            try:
+                stat = os.stat(skill_path)
+            except OSError:
+                continue
+            seen.add(canonical)
+            signatures.append((f"{priority}:{canonical}", stat.st_mtime_ns, stat.st_size))
+    return tuple(signatures)
+
+
 def _compiler_cache_key() -> tuple[Any, ...]:
     semantic_env = tuple(
         os.environ.get(name, "")
@@ -107,6 +149,7 @@ def _compiler_cache_key() -> tuple[Any, ...]:
     return (
         _path_signature(_profile_path()),
         tuple(_path_signature(path) for path in _candidate_skill_dirs()),
+        _skill_roots_signature(),
         semantic_env,
     )
 
