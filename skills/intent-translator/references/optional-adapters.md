@@ -11,7 +11,7 @@ python scripts/plugin_manager.py enable reversible-context
 python scripts/plugin_manager.py disable memory-breathing
 ```
 
-Enabling a plugin changes only its Boolean key under `optional_adapters`. It does not register host hooks or send data anywhere.
+Enabling one of the local plugins changes only its Boolean key under `optional_adapters`. It does not register host hooks or send data anywhere. The separate `optional_adapters.jev` setting is an external semantic-provider preference, not a local plugin: it allows bounded non-sensitive task text to be sent to TokenDance for routine classification. See `semantic-model-layer.md` and `external-egress.md` before enabling it.
 
 ## Memory Breathing
 

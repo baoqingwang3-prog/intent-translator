@@ -29,7 +29,7 @@ Profile packs are optional starting points, not inferred identities. Applying on
 - `autonomy`: Defaults for reversible and high-impact actions.
 - `adaptation`: Confirmed expertise, plain-language, accessibility, and domain preferences.
 - `risk_policy`: Evidence and consent defaults for high-stakes work and sensitive memory.
-- `optional_adapters`: Explicit switches for host hooks and reversible context storage. Defaults are off.
+- `optional_adapters`: Explicit switches for host hooks, reversible context storage, and the separately documented Jev semantic provider. Defaults are off. `jev: true` allows bounded ordinary task text to leave the device for TokenDance classification; it requires a key in Windows Credential Manager and does not authorize sensitive data transfer.
 - `phrase_mappings`: User-confirmed shorthand and scoped meanings. Matching is exact by default; substring matching requires an explicit `match_mode: contains` entry.
 - `memory`: Adapter and local storage location.
 - `cognitive_priors`: Optional, explicitly chosen interpretive hints.
