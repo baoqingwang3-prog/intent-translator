@@ -155,6 +155,7 @@ def _compiler_cache_key() -> tuple[Any, ...]:
             "INTENT_TRANSLATOR_SEMANTIC_BASE_URL",
             "INTENT_TRANSLATOR_SEMANTIC_MODEL",
             "INTENT_TRANSLATOR_SEMANTIC_EXTERNAL",
+            "INTENT_TRANSLATOR_JEV_ROUTINE_DEFAULT",
         )
     )
     return (

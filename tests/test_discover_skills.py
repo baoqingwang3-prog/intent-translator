@@ -57,6 +57,18 @@ class DiscoverSkillsTests(unittest.TestCase):
             self.assertEqual([item["name"] for item in registry["skills"]], ["good"])
             self.assertEqual(len(registry["errors"]), 1)
 
+    def test_dated_temporary_skill_copy_is_ignored(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.write_skill(root, "router", "name: router\ndescription: Current")
+            self.write_skill(
+                root, "router.temporary-a4-20260813T1800",
+                "name: router\ndescription: Old copy",
+            )
+            registry = discover_skills([root])
+            self.assertEqual([item["name"] for item in registry["skills"]], ["router"])
+            self.assertEqual(registry["duplicates"], [])
+
     def test_default_roots_support_configured_codex_claude_and_shared_locations(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)

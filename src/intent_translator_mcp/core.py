@@ -28,7 +28,7 @@ from .local_policy import assess_local_risk, autonomy_status, conditional_review
 from .observability import record_decision
 from .onboarding import interpretation_gate, language_learning_suggestions, personalization_status
 from .runtime_status import build_runtime_status, candidate_skill_dirs
-from .semantic import SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
+from .semantic import JevSemanticAdapter, SemanticAdapter, adapter_from_env, run_semantic_adapter, semantic_payload
 from .skill_integrity import verify_skill_script
 from .student_state import read_state_summary, state_db_path
 from .tool_gateway import decide_tool_access
@@ -3992,6 +3992,8 @@ class IntentCompiler:
         self.profile = copy.deepcopy(profile) if profile is not None else load_profile()
         self.profile_exists = _profile_path().exists() if profile_exists is None else profile_exists
         self.entrypoint = entrypoint
+        optional_adapters = self.profile.get("optional_adapters")
+        self.jev_default = isinstance(optional_adapters, dict) and optional_adapters.get("jev") is True
         if registry is None:
             discover = _load_skill_script("discover_skills")
             registry = discover.discover_skills(discover.default_roots())
@@ -3999,6 +4001,8 @@ class IntentCompiler:
         self.semantic_config_error: str | None = None
         try:
             self.semantic_adapter = semantic_adapter or adapter_from_env()
+            if self.semantic_adapter is None and self.jev_default:
+                self.semantic_adapter = JevSemanticAdapter()
         except ValueError as exc:
             self.semantic_adapter = None
             self.semantic_config_error = str(exc)
@@ -4668,15 +4672,78 @@ class IntentCompiler:
             ),
         }
 
+        is_jev = isinstance(self.semantic_adapter, JevSemanticAdapter)
         semantic_sensitive = bool(risk["sensitive"])
+        if is_jev:
+            semantic_sensitive = semantic_sensitive or _contains(
+                source_text,
+                ("私密", "隐私", "私人笔记", "个人笔记", "病历", "健康记录", "住址", "工资", "银行卡", "private note", "personal note"),
+            )
         if self.semantic_adapter and self.semantic_adapter.external:
             try:
                 privacy = _load_skill_script("privacy_guard").inspect_text(source_text)
                 semantic_sensitive = semantic_sensitive or bool(privacy["requires_review"])
+                if is_jev:
+                    outbound = self.semantic_adapter.outbound_state({
+                        "utterance": utterance,
+                        "context": request.context,
+                        "pending_action": request.pending_action,
+                    })
+                    outbound_privacy = _load_skill_script("privacy_guard").inspect_text(outbound)
+                    semantic_sensitive = semantic_sensitive or bool(outbound_privacy["requires_review"])
+                    semantic_sensitive = semantic_sensitive or _contains(
+                        source_text,
+                        (
+                            "未发表", "未公开", "未发布", "内部", "报价",
+                            "保密", "机密", "商业秘密", "我的资料", "我的论文", "导师给我的",
+                            "客户资料", "客户数据", "合同内容", "财务数据", "个人档案",
+                            "给你看", "别的模型", "其他模型", "聊天内容", "聊天记录",
+                            "朋友的资料", "朋友的聊天", "家人的资料", "私事",
+                            "unpublished", "confidential", "proprietary", "internal document",
+                            "private data", "client data", "customer data", "my research",
+                        ),
+                    )
             except RuntimeError:
                 semantic_sensitive = True
+        jev_local_only = bool(
+            is_jev
+            and (
+                risk["blocked"]
+                or (request.current_goal_lock is not None and request.current_goal_lock.status == "active")
+                or any(
+                    item.get("type") == "prohibited-action"
+                    and item.get("action") in {"transfer", "upload", "send", "external-transfer"}
+                    for item in constraints
+                )
+                or bool(re.search(
+                    r"(?i)(?:不要|别|禁止|不得|不可|不准|do not|don't|never)"
+                    r"[^。.!?；;\n]{0,24}(?:外部|第三方|云端|网络|联网|上传|外发|发送|传出|"
+                    r"external|third.party|cloud|network|upload|send|transfer)",
+                    source_text,
+                ))
+                or _contains(
+                    source_text,
+                    (
+                        "不要联网", "别联网", "禁止联网", "不联网", "离线", "只在本地",
+                        "仅限本地", "不得外发", "不要外发", "别外发", "不要发送",
+                        "不要上传", "no network", "offline", "local only", "do not send",
+                        "don't send", "no external", "no cloud",
+                    ),
+                )
+            )
+        )
+        jev_send_blocked = is_jev and (semantic_sensitive or bool(risk["high_stakes"]) or jev_local_only)
+        routine_jev = bool(
+            is_jev
+            and (
+                os.environ.get("INTENT_TRANSLATOR_JEV_ROUTINE_DEFAULT") == "1"
+                or self.jev_default
+            )
+            and not jev_send_blocked
+            and request.semantic_mode != "off"
+        )
         semantic_grants: list[str] = []
-        if self.semantic_adapter and self.semantic_adapter.external:
+        if self.semantic_adapter and self.semantic_adapter.external and not routine_jev and not jev_send_blocked:
             semantic_grants.append("semantic-external")
             if semantic_sensitive:
                 semantic_grants.append("semantic-sensitive")
@@ -4709,6 +4776,7 @@ class IntentCompiler:
             "required": bool(semantic_grants),
             "receipt_verified": semantic_receipt_verified,
             "receipt_status": semantic_receipt_status,
+            "standing_default": routine_jev,
         }
         if required_grants or receipt_verified:
             risk["action_digest"] = action_digest(receipt_action_text, request.scope)
@@ -4726,7 +4794,13 @@ class IntentCompiler:
                 "confirmation_required": risk["confirmation_required"],
             },
         }
-        semantic = run_semantic_adapter(
+        semantic = ({
+            "status": "blocked" if request.semantic_mode == "required" else "unavailable",
+            "provider": self.semantic_adapter.name,
+            "external": True,
+            "proposal": None,
+            "error": "Jev egress skipped; local interpretation remains available",
+        } if jev_send_blocked and request.semantic_mode != "off" else run_semantic_adapter(
             self.semantic_adapter,
             payload=semantic_payload(
                 utterance=utterance,
@@ -4742,10 +4816,10 @@ class IntentCompiler:
                 ],
             ),
             semantic_mode=request.semantic_mode,
-            allow_external=request.allow_external_semantic and semantic_receipt_verified,
+            allow_external=routine_jev or (request.allow_external_semantic and semantic_receipt_verified),
             allow_sensitive=request.allow_sensitive_semantic and semantic_receipt_verified,
             sensitive=semantic_sensitive,
-        )
+        ))
         if semantic_grants and not semantic_receipt_verified and semantic["status"] == "blocked":
             semantic = {
                 **semantic,
@@ -4879,6 +4953,7 @@ class IntentCompiler:
             risk["confirmation_required"] = bool(risk["reasons"]) and not risk["blocked"]
             semantic_clarification = (
                 bool(proposal.get("clarification_recommended"))
+                or proposal.get("control_status") == "revoke"
                 or not reliable_support
                 or bool(proposal.get("alternatives"))
                 or proposal_as_alternative

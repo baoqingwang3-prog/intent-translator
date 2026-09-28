@@ -27,7 +27,27 @@ For an adapter that sends data off-device:
 export INTENT_TRANSLATOR_SEMANTIC_EXTERNAL='1'
 ```
 
-External adapters are not called from caller allow flags alone. The first compile returns `risk.semantic_confirmation_challenge.receipt`, bound to the exact pending input and scope. After the user explicitly confirms, the host resubmits the exact action in `pending_action`, the confirmation in `utterance`, the one-time value in `confirmation_receipt`, and the corresponding allow flag. Sensitive content binds both external and sensitive semantic grants into the receipt. Any changed input, scope, expired receipt, or replay is rejected.
+External adapters are not called from caller allow flags alone. The first compile returns `risk.semantic_confirmation_challenge.receipt`, bound to the exact pending input and scope. After the user explicitly confirms, the host resubmits the exact action in `pending_action`, the confirmation in `utterance`, the one-time value in `confirmation_receipt`, and the corresponding allow flag. Sensitive content binds both external and sensitive semantic grants into the receipt. Any changed input, scope, expired receipt, or replay is rejected. The explicitly enabled routine Jev policy below is limited to non-sensitive input.
+
+## Configure TokenDance Jev for Routine Intent Classification
+
+Jev uses the System One `choice` API, not `/chat/completions`. The adapter calls only `https://tokendance.space/gateway/typesafe/v1/systemone` over HTTPS, rejects redirects, and sends a bounded latest message, recent context, and pending action. It sends no profile, memory, Skill descriptions, or full deterministic draft. Jev can classify a mode and continuity signal; it cannot invent a new goal or grant execution permission.
+
+On Windows, provision the key once in the current user's Credential Manager. The CLI accepts it from a pipe only, never as a command argument; do not paste the key into a config file or chat:
+
+```powershell
+Get-Clipboard -Raw | intent-translator-jev-credential set-stdin
+intent-translator-jev-credential status
+```
+
+After the package is installed, set `optional_adapters.jev` to `true` in the local Intent Translator profile. This is a non-secret preference and enables the routine default without editing the MCP registration. Alternatively, configure the MCP process with these **non-secret** environment variables:
+
+```text
+INTENT_TRANSLATOR_SEMANTIC_PROVIDER=jev
+INTENT_TRANSLATOR_JEV_ROUTINE_DEFAULT=1
+```
+
+The routine default is an explicit user preference. With it enabled, ordinary non-sensitive `intent_compile` requests try Jev without a per-request egress receipt. Sensitive, unpublished, internal, or high-stakes text, including detected credentials and personal identifiers, stays local even when a per-request semantic allow flag is supplied. Explicit local-only instructions and an active goal lock also keep compilation local. The scanner cannot identify every private fact from context, so callers must omit confidential details from ordinary requests. A skipped Jev call falls back to local interpretation in `auto` mode and does not itself block the requested local action. `semantic_mode=off` disables the call. In `auto` mode a missing key, timeout, or invalid response also falls back to local compilation. The Jev provider reads only Windows Credential Manager; `INTENT_TRANSLATOR_SEMANTIC_API_KEY` applies to the other providers. Other external providers retain the per-request receipt flow.
 
 ## Configure A Chat-Completions Endpoint
 

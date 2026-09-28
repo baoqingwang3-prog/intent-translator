@@ -297,8 +297,35 @@ def run_doctor(
 
     semantic_command = env.get("INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON", "").strip()
     semantic_provider = env.get("INTENT_TRANSLATOR_SEMANTIC_PROVIDER", "").strip().casefold()
+    optional_adapters = profile.get("optional_adapters") if isinstance(profile, dict) else None
+    profile_jev = isinstance(optional_adapters, dict) and optional_adapters.get("jev") is True
+    if not semantic_provider and not semantic_command and profile_jev:
+        semantic_provider = "jev"
     if not semantic_command and not semantic_provider:
         checks.append(_check("semantic_adapter", "pass", "Optional semantic adapter is disabled"))
+    elif semantic_provider in {"jev", "tokendance-jev"}:
+        from .credentials import read_jev_key
+
+        try:
+            has_key = bool(read_jev_key())
+        except (OSError, UnicodeError):
+            has_key = False
+        routine = env.get("INTENT_TRANSLATOR_JEV_ROUTINE_DEFAULT") == "1" or profile_jev
+        checks.append(
+            _check(
+                "semantic_adapter",
+                "warn" if has_key else "fail",
+                "Jev is configured for routine non-sensitive interpretation"
+                if has_key and routine
+                else "Jev is configured; each request needs an external semantic receipt"
+                if has_key
+                else "Jev credential is missing from Windows Credential Manager",
+                provider="tokendance-jev",
+                external=True,
+                routine_default=routine,
+                credential_present=has_key,
+            )
+        )
     elif semantic_provider in {"chat-completions", "openai-compatible"}:
         base_url = env.get("INTENT_TRANSLATOR_SEMANTIC_BASE_URL", "").strip()
         model = env.get("INTENT_TRANSLATOR_SEMANTIC_MODEL", "").strip()

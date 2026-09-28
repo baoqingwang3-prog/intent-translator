@@ -11,6 +11,8 @@ Apply this protocol before sending user-derived context to web search, cloud mod
 5. Generalize confidential numbers into ranges when exact values are unnecessary.
 6. Send only the redacted minimum and keep source material local.
 
+For the explicitly configured routine Jev policy, send only the bounded latest message, compact context, and pending action after the local sensitivity gate passes. A detected secret, personal identifier, private note, unpublished or internal material, high-stakes request, or explicit local-only instruction stays local. This standing preference does not authorize any other external transfer.
+
 The scanner detects common patterns; it cannot identify every name, trade secret, medical detail, or context-specific sensitivity. Agent review remains required.
 
 Do not treat permission to search as permission to upload an entire file, profile, memory database, or conversation history.
