@@ -238,6 +238,7 @@ class JevAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             save_jev_key("not-a-token")
 
+    @unittest.skipUnless(os.name == "nt", "Windows Credential Manager is only available on Windows")
     def test_credential_manager_native_buffers_are_read_and_freed(self):
         class FakeCredentialApi:
             def __init__(self):
