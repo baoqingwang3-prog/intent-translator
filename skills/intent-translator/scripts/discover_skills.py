@@ -15,7 +15,10 @@ from typing import Any, Iterable
 
 
 KEY_RE = re.compile(r"^([A-Za-z0-9_-]+):(?:\s*(.*))?$")
-IGNORED_DIRECTORY_PREFIXES = (".backup", ".backups", ".archive", ".retired")
+IGNORED_DIRECTORY_PREFIXES = (".backup", ".backups", ".archive", ".retired", ".temporary")
+# Also skip dated side copies such as `intent-translator.temporary-a4-20260813T1800`:
+# a dotted marker segment inside a directory name, since valid Skill names never contain dots.
+IGNORED_DIRECTORY_MARKERS = re.compile(r"\.(?:backups?|archive|retired|temporary|tmp)(?:$|[-_.])")
 
 
 def ignored_skill_path(skill_md: Path, root: Path) -> bool:
@@ -23,10 +26,11 @@ def ignored_skill_path(skill_md: Path, root: Path) -> bool:
         relative = skill_md.relative_to(root)
     except ValueError:
         return False
-    return any(
-        part.casefold().startswith(IGNORED_DIRECTORY_PREFIXES)
-        for part in relative.parts[:-1]
-    )
+    for part in relative.parts[:-1]:
+        folded = part.casefold()
+        if folded.startswith(IGNORED_DIRECTORY_PREFIXES) or IGNORED_DIRECTORY_MARKERS.search(folded):
+            return True
+    return False
 
 
 def file_sha256(path: Path) -> str:
