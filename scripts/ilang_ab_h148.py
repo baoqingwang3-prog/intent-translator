@@ -41,7 +41,10 @@ def run(primary: str | None, alternatives: list[str]) -> dict:
     # Consume the compiler's JSON request and emit this variant's proposal.
     # An argv value keeps the fixture local and avoids shell interpolation.
     argv = [PY, "-B", "-c",
-            "import json, sys; json.load(sys.stdin); print(sys.argv[1])",
+            "import json, sys; "
+            "sys.stdin.reconfigure(encoding='utf-8'); "
+            "sys.stdout.reconfigure(encoding='utf-8'); "
+            "json.load(sys.stdin); print(sys.argv[1])",
             json.dumps(payload, ensure_ascii=False)]
     adapter = adapter_from_env({
         "INTENT_TRANSLATOR_SEMANTIC_COMMAND_JSON": json.dumps(argv),

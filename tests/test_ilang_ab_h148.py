@@ -1,11 +1,13 @@
 """Exercise proposal variants through the actual subprocess/compiler boundary."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +31,15 @@ class IlangAbH148Tests(unittest.TestCase):
                 self.assertEqual(proposal["alternatives"], alternatives)
                 for field, expected in probe.base.items():
                     self.assertEqual(proposal[field], expected)
+
+    def test_proposal_round_trip_uses_utf8_with_legacy_stdio_defaults(self):
+        with patch.dict(os.environ, {"PYTHONIOENCODING": "cp1252"}):
+            result = probe.run("agent-reach", ["smart-search"])
+        self.assertEqual(result["semantic"]["status"], "applied")
+        proposal = result["semantic"]["proposal"]
+        self.assertEqual(proposal["normalized_goal"], probe.base["normalized_goal"])
+        self.assertEqual(proposal["primary_skill"], "agent-reach")
+        self.assertEqual(proposal["alternatives"], ["smart-search"])
 
     def test_interpretation_alternatives_change_the_execute_decision(self):
         clean = probe.run(None, [])
