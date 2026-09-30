@@ -18,9 +18,13 @@ import ilang_step3_acceptance as acceptance
 
 class IlangEvaluationTests(unittest.TestCase):
     def test_provenance_does_not_export_local_paths(self):
+        versions = {name: "fixture-version" for name in
+                    ("fastembed", "onnxruntime", "pydantic", "huggingface-hub")}
         with patch.dict(os.environ, {"ILANG_DISTILL_MODEL_PATH":
-                                  str(Path.home() / "private-model")}):
+                                  str(Path.home() / "private-model")}), \
+             patch.object(evaluation.importlib.metadata, "version", side_effect=versions.__getitem__):
             meta = evaluation.provenance()
+        self.assertEqual(meta["packages"], versions)
         self.assertNotIn("executable", meta)
         self.assertNotIn("core_import", meta)
         self.assertNotIn("model_path", meta)

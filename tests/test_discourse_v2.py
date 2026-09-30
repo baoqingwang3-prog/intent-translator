@@ -153,7 +153,13 @@ class DiscourseV2Tests(unittest.TestCase):
         result = self.compile("不要发布公告；解释一下风险。", pending_action="发布公告")
         self.assertNotIn("publish", self.active(result))
         self.assertEqual(result["mode"], "answer")
-        self.assertEqual(semantic_main.cascade_mode("不要发布公告；解释一下风险。", pending_action="发布公告")[0], "answer")
+        # This tests the control boundary with an abstaining optional router.
+        with patch.object(semantic_main, "_embed_route", return_value={
+            "mode": None, "confidence": 0.0, "raw_score": 0.0,
+        }):
+            self.assertEqual(semantic_main.cascade_mode(
+                "不要发布公告；解释一下风险。", pending_action="发布公告",
+            )[0], "answer")
 
 
 if __name__ == "__main__":
