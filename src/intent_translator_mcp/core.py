@@ -136,7 +136,7 @@ APPROVAL_TERMS = {
     "sounds good",
     "go ahead",
 }
-CONTINUE_TERMS = {"继续", "往下", "再往下", "接着来", "好了", "恢复了", "已登录", "已安装", "continue", "go on", "go ahead", "next", "done", "restored", "logged in", "installed"}
+CONTINUE_TERMS = {"继续", "往下", "再往下", "往下讲", "往下讲吧", "继续讲", "继续讲吧", "接着讲", "接着讲吧", "接着来", "好了", "恢复了", "已登录", "已安装", "continue", "go on", "go ahead", "next", "done", "restored", "logged in", "installed"}
 ROUTING_STOPWORDS = {
     "about", "after", "agent", "also", "another", "before", "from", "have", "into",
     "need", "that", "this", "tool", "user", "using", "with", "your",
@@ -557,8 +557,509 @@ def _explicit_skill_creation_requested(text: str) -> bool:
     )
 
 
+def _terse_phrase(text: str) -> str:
+    """Ignore sentence punctuation only for complete, short control turns."""
+    return re.sub(r"[。.!！?？\s]+$", "", text.strip().casefold())
+
+def _context_has_resumable_action(text: str) -> bool:
+    """A context note explicitly saying no action exists is not an action."""
+    if not text.strip():
+        return False
+    return not bool(re.search(
+        r"(?:没有|无|尚无|并无|不存在|未指定|缺少).{0,28}"
+        r"(?:未完成|待办|下一步|动作|步骤|方案|目标|工件|选项|已提出)",
+        text,
+        re.I,
+    ))
+
+def _independent_followup_start(text: str) -> int | None:
+    """Find a separate current request after a clause boundary."""
+    surface = _directive_action_surface(text)
+    match = re.search(
+        r"[，,；;。!?]\s*(?:(?:但|不过|然后|接着|现在|本轮|本次)\s*)?"
+        r"(?P<request>(?:(?:只|仅|先|再|就)\s*)?(?:(?:把|将)[^，,；;。!?]{0,40})?"
+        r"(?:(?:请|帮我|麻烦)\s*)?(?:改为|换成|改成|改|修改|修复|创建|生成|写|"
+        r"搜索|查找|分析|检查|核查|解释|说明|概括|归纳|总结|规划|计划|"
+        r"继续|执行|上传|发送|发布|安装|查看|核对|报告|汇报|教我))",
+        surface,
+        re.I,
+    )
+    return match.start("request") if match else None
+
+def _has_independent_followup_request(text: str) -> bool:
+    """A new imperative after a clause boundary is not part of a veto."""
+    return _independent_followup_start(text) is not None
+
+def _leading_readonly_request_before_veto(text: str) -> bool:
+    """A fresh inspect/report request may precede a veto of stale work."""
+    surface = _directive_action_surface(text).strip().casefold()
+    return bool(
+        (re.match(
+            r"^(?:(?:请|帮我|麻烦)\s*)?(?:只读|只查看|只分析|核验|核查|检查|"
+            r"查看|复查|排查|解释|说明|概括|归纳|总结|报告|汇报|搜索|查询)",
+            surface,
+        ) or _primary_compression_request(surface))
+        and re.search(r"[，,；;。]\s*(?:不要|别|禁止|不再|取消|撤销|撤回|停止|暂停)", surface)
+    )
+
+def _leading_local_edit_before_veto(text: str) -> bool:
+    """A new local edit can come before the veto of an older action."""
+    surface = _directive_action_surface(text).strip()
+    return bool(
+        re.match(
+            r"^(?:(?:请|帮我|麻烦)\s*)?(?:只|仅)?(?:把|将).{0,60}(?:改成|改为|修改|修正|更新)",
+            surface,
+        )
+        and re.search(
+            r"[，,；;。]\s*(?:但|不过|然后)?\s*(?:先)?(?:不要|别|禁止|不再|取消|撤销|先别)",
+            surface,
+        )
+    )
+
+def _pending_action_revoked(text: str, pending_action: str) -> bool:
+    """Detect withdrawal of the pending action, including postposed controls."""
+    if not pending_action.strip():
+        return False
+    surface = " ".join(_directive_action_surface(text).strip().split()).casefold()
+    if not surface or (
+        re.match(r"^(?:请|帮我)?(?:解释|说明|分析|问|查询|查明|为什么|为何|怎么判断)", surface)
+        and not re.search(r"[，,；;。]\s*(?:不要|别|禁止|不再|取消|撤销|撤回|停止|暂停)", surface)
+    ) or (re.search(r"[?？]", surface) and not re.search(r"(?:不要|别|不再|先别)\s*(?:上传|发送|传|发布|删除|删|修改|改|安装|部署|执行)", surface)):
+        return False
+    if re.search(r"(?:不要|别|不)(?:取消|撤销|撤回|停止|中止|暂停|终止)", surface):
+        return False
+    return bool(
+        re.search(r"取消|撤销|撤回|作废|停止|停掉|停下|停了|中止|暂停|终止|放弃|暂缓", surface)
+        or re.search(
+            r"(?:不要|先别|暂时别|别|不用|不再|先不|暂不)\s*(?:再|去)?\s*"
+            r"(?:上传|发送|传输|传给|传|推送|外发|发布|部署|安装|启动|删除|删|"
+            r"修改|改动|改|执行|运行|付款|支付|做)",
+            surface,
+        )
+    )
+
+def _pending_action_cancellation(text: str, pending_action: str) -> bool:
+    """Recognize a turn that only withdraws the named pending action."""
+    return bool(
+        _pending_action_revoked(text, pending_action)
+        and not _has_independent_followup_request(text)
+        and not _leading_readonly_request_before_veto(text)
+        and not _leading_local_edit_before_veto(text)
+    )
+
+def _cancelled_pending_action_name(text: str) -> str:
+    """Name the withdrawn action for a structured prohibition."""
+    if re.search(r"购买|买|付款|付钱|支付|付费", text, re.I):
+        return "payment"
+    if re.search(r"上传|upload", text, re.I):
+        return "upload"
+    if re.search(r"删除|删|清空|移除|delete", text, re.I):
+        return "delete"
+    if re.search(r"部署|deploy", text, re.I):
+        return "deploy"
+    if re.search(r"委派|派给|子代理", text):
+        return "route_internal_dispatch"
+    if re.search(r"请求|接口|第三方|API|api|调用", text):
+        return "network_request"
+    matches = _action_family_matches(text)
+    return matches[0][1] if matches else "change"
+
+def _missing_reference_slots(text: str, pending_action: str, context: str = "") -> list[str]:
+    """Do not turn an unbound pronoun or plan reference into an action."""
+    compact = _terse_phrase(text)
+    candidates = " ".join(part for part in (pending_action, context) if part)
+    multiple_candidates = bool(re.search(
+        r"两个|两份|两篇|两项|两种|几份|几篇|几个方案|多个(?:方案|文件|草稿)|"
+        r"(?:甲|a).{0,18}(?:或|和|与|还是).{0,25}(?:乙|b)|"
+        r"(?:或|或者|还是).{0,45}(?:其中一|任选其一|哪一个|一份|一个)|"
+        r"(?:一个|一份).{0,45}(?:另一个|另一份)|"
+        r"(?:方案|草案|文件|版本|计划|选项|预算书|草稿|目录|桶)[一二三四五\dab甲乙].{0,45}"
+        r"(?:和|或|与|还是).{0,12}(?:方案|草案|文件|版本|计划|选项|预算书|草稿|目录|桶)[一二三四五\dab甲乙]",
+        candidates.casefold(),
+    ))
+    deictic_target = bool(re.search(
+        r"它|那个|那份|那篇|这个|这份|那项|那一个|哪一个|那个方案|那套方案",
+        compact,
+    ))
+    explicitly_selected = bool(
+        re.search(r"(?:方案|草案|文件|版本|计划|选项|预算书|草稿|目录|桶)[一二三四五\dab甲乙]", compact, re.I)
+        or re.search(r"第[一二三四五\d]个|选(?:甲|乙|a|b)\b", compact, re.I)
+    )
+    if multiple_candidates and deictic_target and not explicitly_selected:
+        if re.search(r"上传|发送|传输|推送|转存", compact) and re.search(r"桶|目录|地址|目的地|位置", compact):
+            return ["destination"]
+        return ["selected_plan" if re.search(r"方案|计划|步骤|办法", compact) else "target_artifact"]
+    if (
+        re.search(r"权限|角色|访问级别|访问权|可见范围", compact)
+        and re.search(r"统一|一样|默认|标准|合适|常规|通用", compact)
+        and not re.search(r"只读|可编辑|可写|管理员|所有者|访客|禁止访问|允许访问|公开|私有|完全控制", compact)
+        and re.search(r"修改|更改|改成|改为|调成|设置|设成|调整|设为", compact)
+    ):
+        return ["permission_setting"]
+    named_files = {
+        item.casefold()
+        for item in re.findall(
+            r"[A-Za-z0-9_.-]+\.(?:md|txt|pdf|csv|py|json|toml|docx|xlsx)",
+            candidates,
+            re.I,
+        )
+    }
+    if (
+        len(named_files) >= 2
+        and re.search(r"那个文件|这个文件|那份文件|这份文件|那个文档|这个文档", compact)
+        and not any(name in compact.casefold() for name in named_files)
+    ):
+        return ["target_artifact"]
+    if (
+        re.search(r"两个|两份|多个", candidates)
+        and re.search(r"云盘|网盘|目录|报告", candidates)
+        and re.search(r"上传|发送|传到|发到", compact)
+        and not re.search(r"甲|乙|第一|第二|[A-Za-z0-9_.-]+\.(?:pdf|md|csv|txt)", compact, re.I)
+    ):
+        return ["destination"]
+    pair = re.search(
+        r"([\u4e00-\u9fffA-Za-z0-9]{1,8})\s*(?:和|与)\s*([\u4e00-\u9fffA-Za-z0-9]{1,8})",
+        candidates,
+    )
+    quantified_artifact = bool(re.search(
+        r"(?:新建|创建|生成|写)(?:一个|一份|一张)?.{0,24}(?:清单|文件|表|文档|页面|模板|脚本)",
+        compact,
+    ))
+    unbound_pattern = r"它|那个|之前说的|给他|那个数|那份|这份"
+    if not quantified_artifact:
+        unbound_pattern += r"|一份"
+    unbound = re.search(unbound_pattern, compact)
+    if (
+        pair
+        and unbound
+        and pair.group(1) not in compact
+        and pair.group(2) not in compact
+    ):
+        if re.search(r"部署|发送|发给|给他|环境", compact):
+            return ["destination"]
+        return ["target_artifact"]
+    if pending_action.strip():
+        return []
+    if re.match(r"^(?:按老样子|照旧|按上次那样|照之前那样).{0,30}(?:改|做|处理)", compact):
+        return ["target_artifact", "reference_style"]
+    if re.fullmatch(r"(?:把|将)?(?:它|这个|那个|这项|那项)(?:给我)?(?:改好|改一下|改|修好|修一下|处理|弄好)(?:吧)?", compact):
+        return ["target_artifact"]
+    if re.fullmatch(r"(?:就)?按(?:刚才|之前|上面)(?:说的|那个|这个|定的)?(?:方案|办法|方式)(?:办|执行|做|操作)?", compact):
+        return ["selected_plan"]
+    return []
+
+def _educational_pending_action(text: str) -> bool:
+    """Recognize a pending teaching step without inferring a file edit."""
+    compact = text.strip()
+    return bool(
+        re.match(r"^(?:用.{0,24}(?:例题|例子)演示|讲解|讲|教|带我|演示|解释|带着练|练习)", compact)
+        and not re.search(r"(?:并|然后|再).{0,12}(?:修改|生成|创建|编写|写入|保存|部署|发布|上传|发送|安装|执行|运行|删除)", compact)
+    )
+
+def _teaching_continuation_request(text: str, pending_action: str) -> bool:
+    return bool(
+        _educational_pending_action(pending_action)
+        and re.match(r"^(?:继续|接着|往下|再往下)讲", _terse_phrase(text))
+    )
+
+def _mask_quoted_action_words(text: str) -> str:
+    """Keep quoted objects visible to callers, but ignore verbs inside them."""
+    quote_pattern = re.compile(
+        r"```[\s\S]*?```|“[^”]*”|‘[^’]*’|\"[^\"]*\"|(?<!\w)'[^']*'(?!\w)|`[^`]*`",
+        re.S,
+    )
+    return quote_pattern.sub(lambda match: " " * len(match.group(0)), text)
+
+def _source_payload_ranges(text: str) -> list[tuple[int, int]]:
+    """Locate reported source material without consuming a following request."""
+    introductions = re.compile(
+        r"(?:项目)?(?:日志|终端输出|命令输出|记录|文档|手册|工单|教材|示例|引文|原文|"
+        r"待分析文本|消息)(?:里|中|上)?\s*(?:写着|显示|提示|包含|记录了|提到|出现|有)(?!的)\s*[:：]?"
+        r"|(?:有人|对方|文中|材料中)\s*(?:要求|写着|提到)\s*"
+        r"|预期输出\s*(?:是|为|包含|显示)\s*[:：]?",
+        re.I,
+    )
+    boundary = re.compile(
+        r"[，,；;。!?]\s*(?=(?:现在|当前|本轮|本次|这轮|接下来|只读|只要|只需|"
+        r"只分析|只检查|只核查|(?:请|帮我)?(?:分析|核查|检查|解释)(?:失败|错误|故障|异常|原因)|"
+        r"先(?:查|核查|检查|分析|排查|查明)|"
+        r"now\b|currently\b|read[- ]?only\b))",
+        re.I,
+    )
+    visible = _mask_quoted_action_words(text)
+    ranges: list[tuple[int, int]] = []
+    for match in introductions.finditer(visible):
+        remainder = visible[match.end():]
+        next_directive = boundary.search(remainder)
+        end = match.end() + next_directive.start() if next_directive else len(text)
+        if match.end() < end:
+            ranges.append((match.start(), end))
+    return ranges
+
+def _directive_action_surface(text: str) -> str:
+    """Offset-preserving view of verbs eligible to become current actions."""
+    characters = list(_mask_quoted_action_words(text))
+    for start, end in _source_payload_ranges(text):
+        for index in range(start, end):
+            if characters[index] not in "，,；;。!?":
+                characters[index] = " "
+    surface = "".join(characters)
+    # A how-to topic ("怎么创建") is not the action requested now.
+    surface = re.sub(
+        r"(怎么|如何|怎样)([ \t]{0,4})(创建|新建|做一个|生成一个|写一个|生成|编写|起草)",
+        lambda match: match.group(1) + match.group(2) + (" " * len(match.group(3))),
+        surface,
+    )
+    return surface
+
+def _split_unquoted(text: str, pattern: str, *, flags: int = 0) -> list[str]:
+    """Split on directive separators without splitting quoted source material."""
+    masked = _directive_action_surface(text)
+    parts: list[str] = []
+    start = 0
+    for match in re.finditer(pattern, masked, flags):
+        parts.append(text[start:match.start()])
+        start = match.end()
+    parts.append(text[start:])
+    return parts
+
+def _primary_artifact_creation(text: str) -> bool:
+    source = _directive_action_surface(_mask_quoted_action_words(text)).strip()
+    source = re.sub(r"^(?:从空白|从零|从头)(?:开始)?\s*", "", source)
+    direct_creation = re.match(
+        r"^(?:请|帮我|麻烦)?\s*(?:写(?:一个|个|份)|编写|起草|创建|新建|做一个|生成一个)"
+        r".{0,80}(?:脚本|程序|工具|网页|页面|状态页|看板|仪表盘|站点|测试(?:文件|用例|脚本|套件)?|报告|文档|方案|\.[a-z0-9]{1,8}\b)",
+        source, re.I,
+    )
+    fronted_creation = re.match(
+        r"^(?:请|帮我|麻烦)?\s*(?:把|将)(?![^，,；;。]{0,24}(?:现有|已有|原有))"
+        r".{0,40}(?:报告|文档|页面|网页|脚本|程序|工具).{0,12}(?:写好|写出来|做出来|建好|生成)",
+        source,
+        re.I,
+    )
+    if not (direct_creation or fronted_creation):
+        return False
+    return not re.search(
+        r"(?:然后|随后|接着|并(?:且)?|再)\s*.{0,12}(?:运行|启动|发布|上传|发送|删除|部署|安装)",
+        source, re.I,
+    )
+
+def _primary_compression_request(text: str) -> bool:
+    lead = _mask_quoted_action_words(text).split("：", 1)[0].split(":", 1)[0][:100]
+    if re.search(r"(?:技巧|方法|怎么|如何).{0,20}(?:教我|让我练|让我试做|带我练)", lead):
+        return False
+    return bool(
+        re.match(r"^(?:请|帮我|麻烦)?\s*(?:概括|总结|摘要|归纳|压缩|浓缩|精简|缩成)", lead)
+        or re.match(
+            r"^(?:请|帮我|麻烦)?\s*(?:把|将).{0,48}(?:概括|总结|摘要|归纳|压缩|浓缩|精简|缩成|改写成.{0,8}(?:句|字|要点))",
+            lead,
+        )
+        or re.search(r"\d+\s*字.{0,12}(?:摘要|总结)|(?:摘要|总结).{0,12}\d+\s*字", lead)
+        or re.search(
+            r"(?:整理成|合并为|合并成|归纳为|归纳成|简要归纳).{0,20}"
+            r"(?:不超过\s*)?(?:\d+\s*[字条]|[一两三四五六七八九十]\s*条|要点|核心诉求)",
+            lead,
+        )
+    )
+
+def _primary_memory_store(text: str) -> bool:
+    source = _mask_quoted_action_words(text).strip()
+    return bool(
+        re.match(r"^(?:请|帮我|麻烦)?\s*(?:记住|记下|记一下|记下来|存下来)", source)
+        or re.match(r"^(?:请|帮我|麻烦)?\s*(?:把|将).{0,90}(?:记下来|记录为|记(?:作|成|为))", source)
+        or (
+            re.search(r"以后.{0,48}记得", source)
+            and not re.search(r"以后再说|以后都别问|以后别问", source)
+        )
+    )
+
+def _memory_store_instruction_only(text: str) -> bool:
+    """Require one complete record instruction, without a second executable clause."""
+    surface = _directive_action_surface(text).strip().rstrip("。.!? ")
+    if re.search(
+        r"[，,；;。!?]|然后|随后|接着|并(?:且)?|但|不过|然而|且|同时|另外|还要|也要|\b(?:then|and)\b",
+        surface,
+        re.I,
+    ):
+        return False
+    return bool(re.fullmatch(
+        r"(?:(?:请|帮我|麻烦)\s*)?"
+        r"(?:把|将)\s*.+(?:这件事|这条偏好|这个偏好|这个习惯|这条规则|这个事实)"
+        r"\s*(?:给我)?\s*(?:记下来|记录下来|记下|记住|存下来|保存下来)",
+        surface,
+    ))
+
+
+def _primary_memory_recall(text: str) -> bool:
+    source = _mask_quoted_action_words(text).strip()
+    if re.match(r"^(?:按|照)(?:上次|之前|先前)", source):
+        return False
+    question = bool(re.search(r"[？?]|吗|呢", source))
+    past_question = bool(
+        question
+        and (
+            re.search(r"上次|上回|上轮|上一轮|上一条|刚才|先前|此前", source)
+            or re.match(r"^(?:我|我们)?(?:之前|先前|此前)", source)
+        )
+    )
+    remembered = bool(re.search(
+        r"(?:你记得|还记得).{0,30}(?:吗|哪|什么|多少|[？?])",
+        source,
+    ))
+    agreement = bool(
+        re.search(r"(?:以前|之前|先前|此前|曾经).{0,30}(?:是否|有没有|同不同意|同意过)", source)
+        and re.search(r"[？?]", source)
+    )
+    return past_question or remembered or agreement
+
+def _primary_teaching_request(text: str) -> bool:
+    """Teaching the user is not a search, edit, or test run."""
+    source = _directive_action_surface(text).strip()
+    if re.search(r"(?:修改|写入|删除|发布|上传|安装)(?:文件|配置|代码)", source):
+        return False
+    return bool(re.match(
+        r"^(?:请|帮我|麻烦|给我)?\s*(?:教我|教教我|讲讲|给我讲讲|带我学|我想学会)",
+        source,
+    ))
+
+def _explanatory_question(text: str) -> bool:
+    """A why-question is an explanation unless it asks to inspect local evidence."""
+    source = _directive_action_surface(text).strip()
+    if not re.search(r"为什么|为何", source):
+        return False
+    return not bool(re.search(
+        r"日志|截图|报告|配置|安装锁|安装器|磁盘|导入|探针|看一下|读一下|对照|检查|排查|定位|分析|"
+        r"失败|报错|异常|崩溃|超时|故障|启动不了",
+        source,
+    ))
+
+def _primary_local_diagnosis(text: str) -> bool:
+    """Reading local evidence to explain a failure is not a file edit."""
+    source = _directive_action_surface(text)
+    source = re.sub(
+        r"(?:不要|别|禁止|先别).{0,16}(?:修改|更改|写入|删除|删|发布|上传|安装|启动|改)",
+        " ",
+        source,
+    )
+    if re.search(r"(?:修改|更改|写入|删除|发布|上传|改成|改为)", source):
+        return False
+    return bool(
+        re.search(r"(?:看一下|看一看|读一下|对照|分析|检查|定位|查明|找出|查看|看)", source)
+        and re.search(r"日志|报告|截图|配置|安装锁|安装器|磁盘|导入|探针|输出目录", source)
+    )
+
+def _primary_public_lookup(text: str) -> bool:
+    source = _directive_action_surface(text)
+    if _primary_teaching_request(text) or _explanatory_question(text):
+        return False
+    return bool(
+        re.search(r"官方文档|官网|官方手册|标准库文档|标准库|上网|网上|互联网|全网", source)
+        and re.search(r"检索|搜索|查询|查找|查一下|搜出|查|找", source)
+    )
+
+def _primary_local_lookup(text: str) -> bool:
+    source = _directive_action_surface(text)
+    if _primary_teaching_request(text) or _primary_memory_recall(text) or _primary_public_lookup(text):
+        return False
+    return bool(
+        re.search(r"工作区|会议记录|项目目录|下载目录|本地目录|文件夹", source)
+        and re.search(r"搜出|搜索|检索|查找|查一下|找", source)
+    )
+
+def _primary_internal_delegation(text: str) -> bool:
+    source = _directive_action_surface(_mask_quoted_action_words(text)).strip()
+    return bool(
+        not re.search(r"还是|或者|[？?]", source)
+        and re.match(
+            r"^(?:请|帮我|麻烦)?\s*(?:(?:把|将).{0,70})?"
+            r"(?:交给|交由|委托给|分派给|分给|派给|让|安排|移交给).{0,36}"
+            r"(?:子代理|子智能体|内部.{0,16}(?:代理|智能体|agent|角色|小组|团队|部门|任务|工作流)|"
+            r"(?:内部\s*agent|subagent|internal\s+agent)|[\u4e00-\u9fff]{1,12}(?:组|团队|部门|队列)|代理(?!商))",
+            source, re.I,
+        )
+        and not re.search(r"(?:交给|交由|委托给|分派给|分给|派给|让|安排|移交给).{0,36}(?:外部|客户|合作方|供应商|乙方|收件人)", source)
+        and not re.search(
+            r"(?:然后|随后|接着|再|并且).{0,24}(?:发送|上传|发布|外发|推送|交给客户|交给外部|传给|send|publish|upload)",
+            source,
+            re.I,
+        )
+    )
+
+def _unconfirmed_sensitive_share(text: str) -> bool:
+    """A new online share of sensitive material is not a local create."""
+    folded = text.casefold()
+    sensitive = re.search(r"身份证|护照|银行卡|密钥|令牌|原始号码|credentials|secret", folded)
+    external = re.search(r"在线|共享|云盘|网盘|上传|外发|公网", folded)
+    return bool(sensitive and external)
+
+def _current_action_frame(predicate: str, text: str, destination_role: str) -> dict[str, Any]:
+    return {
+        "actor": "user-requested-agent",
+        "predicate": predicate,
+        "object": text,
+        "destination_role": destination_role,
+        "polarity": "asserted",
+        "temporal_role": "current",
+        "order": 0,
+        "text": text,
+        "discourse_role": "directive",
+        "evidence_ranges": [],
+        "required_grants": [],
+    }
+
+def _ensure_current_frame(
+    clauses: list[dict[str, Any]],
+    predicate: str,
+    text: str,
+    destination_role: str,
+) -> None:
+    if any(
+        item.get("predicate") == predicate and item.get("polarity") == "asserted"
+        for item in clauses
+    ):
+        return
+    clauses.insert(0, _current_action_frame(predicate, text, destination_role))
+
+def _bind_requested_frames(clauses: list[dict[str, Any]], text: str) -> None:
+    """Keep the current request's predicate after evidence verbs are stripped."""
+    surface = _directive_action_surface(text)
+    if not _primary_compression_request(text) and (
+        _primary_artifact_creation(text)
+        or re.search(r"创建|新建|做一个|生成一个|生成一张|生成一份|写一个", surface)
+    ) and not re.search(r"(?:不要|别|禁止).{0,8}(?:创建|新建|做|生成)", surface):
+        _ensure_current_frame(
+            clauses,
+            "create",
+            text,
+            "external" if _unconfirmed_sensitive_share(text) else "local",
+        )
+    if _unconfirmed_sensitive_share(text):
+        _ensure_current_frame(clauses, "upload", text, "external")
+    if _primary_internal_delegation(text):
+        _ensure_current_frame(clauses, "route_internal_dispatch", text, "local")
+    if re.search(r"(?:修正|更正).{0,16}(?:已有|现有|配置|文件)", text):
+        _ensure_current_frame(clauses, "change", text, "local")
+    if re.search(r"只看.{0,24}(?:状态|差异|日志)", text) or _primary_local_diagnosis(text):
+        _ensure_current_frame(clauses, "inspect", text, "local")
+    if re.search(r"更新.{0,24}(?:现有|已有|原有)", text):
+        _ensure_current_frame(clauses, "change", text, "local")
+    if re.search(r"删掉|删除", surface) and not re.search(
+        r"(?:不要|别|禁止|先别).{0,8}(?:删|移除)", surface
+    ):
+        _ensure_current_frame(clauses, "delete", text, "local")
+    if re.search(r"生成(?:网页|页面)", surface) and not _primary_compression_request(text):
+        _ensure_current_frame(clauses, "create", text, "local")
+    if _primary_public_lookup(text):
+        _ensure_current_frame(clauses, "search", text, "public")
+        _ensure_current_frame(clauses, "network_request", text, "public")
+    if _primary_local_lookup(text) or re.search(
+        r"(?:在|从).{0,24}(?:目录|文件夹|下载).{0,16}(?:找|查找|检索)", text
+    ):
+        _ensure_current_frame(clauses, "search", text, "local")
+
+
 def _is_short_confirmation(text: str) -> bool:
-    return text.strip().casefold() in SHORT_CONFIRMATION_TERMS
+    return _terse_phrase(text) in SHORT_CONFIRMATION_TERMS
 
 
 def _is_equivalent_action_confirmation(text: str) -> bool:
@@ -814,7 +1315,21 @@ def _rc4_semantic_projection(
     executable_folded = "；".join(
         str(clause.get("text", "")) for clause in action_clauses
     ).casefold()
-    has_route = _contains(executable_folded, route_terms) and not explicit_external_transfer
+    internal_route_target = bool(re.search(
+        r"(?:首辅|执行层|户部|兵部|内部(?:线程|会话|代理|智能体|角色|团队)|"
+        r"子代理|子智能体|thread\s*id|threadid|internal\s+(?:thread|agent|role))",
+        folded,
+        re.I,
+    ))
+    specific_route_verb = _contains(
+        executable_folded,
+        ("交执行层", "交给执行层", "交户部", "交兵部", "派工", "下发", "route", "dispatch", "handoff"),
+    )
+    has_route = bool(
+        _contains(executable_folded, route_terms)
+        and (specific_route_verb or internal_route_target)
+        and not explicit_external_transfer
+    )
     route_bound_ruling = bool(
         re.search(r"(?:请|请求|帮我)?\s*(?:裁定|判定|决定|ruling|adjudicat|decide)", folded, re.I)
         or re.search(r"(?:request|ask)\s+(?:for\s+)?(?:a\s+)?ruling", folded, re.I)
@@ -1379,7 +1894,8 @@ def _gate_id(scope: str, options: list[dict[str, Any]]) -> str:
 
 
 def _selection_index(text: str) -> int | None:
-    normalized = " ".join(text.strip().casefold().split())
+    normalized = " ".join(_terse_phrase(text).split())
+    normalized = re.sub(r"^(?:我)?(?:选|选择)\s*", "", normalized)
     mapping = {
         "1": 0, "第一个": 0, "第1个": 0, "第一个方案": 0, "first": 0, "the first": 0,
         "2": 1, "第二个": 1, "第2个": 1, "第二个方案": 1, "second": 1, "the second": 1,
@@ -1957,11 +2473,16 @@ def _propagate_bundle_sensitive_grants(clauses: list[dict[str, Any]]) -> None:
 
 
 def _action_text_for_classification(text: str) -> str:
-    return re.sub(r"(?:旧|历史|本地)?发布包", "构建产物", text, flags=re.I)
+    text = re.sub(r"(?:旧|历史|本地)?发布包", "构建产物", text, flags=re.I)
+    if re.search(r"查|找|搜索|搜|检索|look\s+up|search", text, re.I):
+        text = text.replace("发布说明", "发行说明")
+    return text
 
 
 def _installation_requested(text: str) -> bool:
     if _installed_service_start_requested(text):
+        return False
+    if re.search(r"安装", text) and not re.search(r"安装(?!锁|器|日志|说明|记录|清单)", text):
         return False
     return bool(
         any(pattern.search(text) for pattern in INSTALL_ACTION_PATTERNS)
@@ -2078,15 +2599,17 @@ BOUNDED_SENSITIVE_TRANSFER_PATTERN = re.compile(
 def _action_family_matches(text: str) -> list[tuple[int, str]]:
     folded = text.casefold()
     families = (
-        ("inspect", r"只读|检查|核验|排查|查看|监控|验收|复查|读取|\binspect\b|\bcheck\b|\bmonitor\b|\bverify\b|\bread\b"),
+        ("inspect", r"只读|检查|核查|核对|核验|排查|查看|监控|验收|复查|读取|\binspect\b|\bcheck\b|\bmonitor\b|\bverify\b|\bread\b"),
         ("report", r"报告|汇报|证据|列出|\breport\b|\bevidence\b|\blist\b"),
         ("start", r"启动|跑起来|恢复运行|开始运行|\bstart\b|\bresume\b"),
         ("install", r"安装|升级|\binstall(?:ing)?\b|\bupgrad(?:e|ing)\b"),
+        ("route_internal_dispatch", r"交给.{0,24}(?:子代理|代理|agent)|让内部.{0,20}代理|让.{0,30}代理(?!商)|委托给"),
+        ("create", r"创建|新建|做一个|生成一个|写一个"),
         ("transfer", TRANSFER_PREDICATE_PATTERN),
         ("publish", r"公开发布|发布|上架|\bpublish\b|\bmake\s+public\b"),
         ("delete", r"删除|移除|清空|\bdelete\b|\bremove\b|\bclear\b"),
-        ("change", r"修改|更改|变更|写入|修复|\bedit\b|\bmodify\b|\bchange\b|\bwrite\b|\bfix\b"),
-        ("search", r"上网搜索|联网搜索|全网搜索|搜索全网|\bsearch\b|\blook\s+up\b"),
+        ("change", r"修改|更改|变更|改为|改成|写入|修复|\bedit\b|\bmodify\b|\bchange\b|\bwrite\b|\bfix\b"),
+        ("search", r"上网搜索|联网搜索|全网搜索|搜索全网|搜索|检索|查询|查找|搜寻|\bsearch\b|\blook\s+up\b"),
     )
     matches = []
     for family, pattern in families:
@@ -2095,7 +2618,27 @@ def _action_family_matches(text: str) -> list[tuple[int, str]]:
             if family == "transfer":
                 if matched_text == "copy" and folded[: match.start()].strip():
                     continue
-                suffix = folded[match.end() : match.end() + 24].lstrip()
+                suffix = folded[match.end() : match.end() + 48].lstrip()
+                external_recipient = bool(re.search(
+                    r"(?:到|给|向|至|into|to)\s*(?:外部|公网|客户|合作方|收件人|工单|邮箱|邮件|"
+                    r"external|outside|public|customer|recipient|ticket|email)",
+                    suffix,
+                    re.I,
+                ))
+                local_artifact = bool(re.match(
+                    r"^(?:到|至|进|放到|写入|拷到|to|into|在)\s*(?:本地|当前|local\b)",
+                    suffix,
+                    re.I,
+                ))
+                if matched_text in {"显示", "输出", "show", "output"}:
+                    if local_artifact and not _explicit_sensitive_disclosure_requested(folded):
+                        matches.append((match.start(), "change"))
+                        continue
+                    if not external_recipient and not _explicit_sensitive_disclosure_requested(folded):
+                        continue
+                if matched_text in {"复制", "copy"} and local_artifact:
+                    matches.append((match.start(), "change"))
+                    continue
                 if matched_text in {"交给", "交予", "交由", "send", "hand", "give"} and re.match(
                     r"^(?:当前|本次|这个)?\s*(?:agent|智能体|助手|任务)|^the\s+current\s+agent\b",
                     suffix,
@@ -2105,6 +2648,8 @@ def _action_family_matches(text: str) -> list[tuple[int, str]]:
             if family == "start":
                 prefix = folded[max(0, match.start() - 32) : match.start()]
                 suffix = folded[match.end() : match.end() + 24]
+                if re.match(r"^(?:不了|不起来|失败|异常|报错|错误|故障|问题|原因|超时|太慢|变慢)", suffix, re.I):
+                    continue
                 if matched_text == "resume" and re.match(r"\.[a-z0-9]{1,8}\b", suffix, re.I):
                     continue
                 if matched_text == "resume" and re.search(
@@ -2122,7 +2667,7 @@ def _action_family_matches(text: str) -> list[tuple[int, str]]:
             if family == "install":
                 suffix = folded[match.end() : match.end() + 12].lstrip()
                 if re.match(
-                    r"^(?:数量|数|锁|记录|清单|状态|台账|报告|建议|候选|计划|"
+                    r"^(?:数量|数|锁|器|记录|清单|状态|台账|报告|建议|候选|计划|"
                     r"count|lock|record|inventory|status|ledger|report|recommendation|candidate|plan)",
                     suffix,
                     re.I,
@@ -2131,6 +2676,12 @@ def _action_family_matches(text: str) -> list[tuple[int, str]]:
             if family == "report":
                 if matched_text == "report" and re.match(
                     r"\.[a-z0-9]{1,8}\b", folded[match.end() :], re.I
+                ):
+                    continue
+                if matched_text in {"报告", "report"} and re.search(
+                    r"(?:把|将|这份|一份|该|本地|测试|审计|现有|已有)\s*$",
+                    folded[: match.start()],
+                    re.I,
                 ):
                     continue
                 suffix = folded[match.end() : match.end() + 24].lstrip()
@@ -2142,6 +2693,17 @@ def _action_family_matches(text: str) -> list[tuple[int, str]]:
                     continue
             if family == "publish":
                 suffix = folded[match.end() : match.end() + 12].lstrip()
+                if re.match(r"^(?:页|页面|时间|日期|记录|信息|状态|说明)", suffix, re.I) and re.search(
+                    r"(?:查|找|搜|检索|查询|look\s+up|search)",
+                    folded[: match.start()],
+                    re.I,
+                ):
+                    continue
+                if suffix.startswith("说明") and re.search(
+                    r"查|找|搜索|搜|检索|look\s+up|search",
+                    folded[: match.start()], re.I,
+                ):
+                    continue
                 if re.match(
                     r"^(?:包|版本|记录|清单|状态|台账|报告|建议|候选|计划|"
                     r"package|bundle|version|record|inventory|status|ledger|report|plan)",
@@ -2167,13 +2729,14 @@ def _segment_action_units(text: str) -> list[tuple[str, bool]]:
     units: list[tuple[str, bool]] = []
     major_segments = [
         item.strip()
-        for item in re.split(r"[；;。!?]+|\.(?=\s|$)", text)
+        for item in _split_unquoted(text, r"[；;。!?]+|\.(?=\s|$)")
         if item.strip()
     ]
     conjunction = (
-        r"[,，]\s*(?=(?:并(?:且)?|也)?\s*(?:不要|不得|禁止|别|千万别|先不要|先不|暂时不要|暂不|不执行|不进行|不做|不授权|"
+        r"[,，]\s*(?=(?:等等|等一下|等下)\s*(?:不要|别|取消|撤销|停止)|(?:并(?:且)?|也)?\s*(?:绝对不要|不要|不得|禁止|别|千万别|先别|先不要|先不|暂时不要|暂不|不执行|不进行|不做|不授权|"
         r"不(?:上传|推送|发布|外发|发送|传输|删除|移除|清空|安装|卸载|执行|调用)|如果|若|确认后|然后|随后|再|现在|当前|"
         r"do\s+not|don't|never|without|把|将|启动|安装|升级|修改|发送|上传|推送|复制|输出|发布|上网搜索|核验|检查|复查|只读|只查看|只报告))"
+        r"|(?:但是|不过|但)\s*(?=(?:绝对\s*)?(?:不要|不得|禁止|别|先别|先不要|先不|暂时不要|暂不))"
         r"|\b(?:and|but)\s+(?=(?:do\s+not|don't|never|if|then|now|after\s+confirmation|"
         r"start|install|upgrade|modify|send|copy|reveal|publish|search|inspect|check|verify|report)\b)"
         r"|\s+(?=without\s+(?:applying|making|editing|changing|fixing|publishing|uploading|pushing|sending|transferring|deleting|installing)\b)"
@@ -2189,13 +2752,13 @@ def _segment_action_units(text: str) -> list[tuple[str, bool]]:
         )
         comma_parts = [
             item.strip(" ，,、")
-            for item in re.split(conjunction, major, flags=re.I)
+            for item in _split_unquoted(major, conjunction, flags=re.I)
             if item.strip(" ，,、")
         ]
         for comma_part in comma_parts:
             temporal_parts = [
                 part.strip(" ，,、")
-                for part in sequential.split(comma_part)
+                for part in _split_unquoted(comma_part, sequential.pattern, flags=re.I)
                 if part.strip(" ，,、")
             ]
             for part in temporal_parts:
@@ -2208,6 +2771,7 @@ def _segment_action_units(text: str) -> list[tuple[str, bool]]:
 def _evidence_span_eligibility(segment: str) -> dict[str, Any]:
     """Separate non-executable evidence payloads from the surrounding directive."""
     ranges: list[tuple[int, int, str]] = []
+    ranges.extend((start, end, "source-content") for start, end in _source_payload_ranges(segment))
     quote_pattern = re.compile(
         r"“[^”]*”|‘[^’]*’|\"[^\"]*\"|'[^']*'",
         re.S,
@@ -2295,20 +2859,32 @@ def _analyze_action_clauses(text: str) -> list[dict[str, Any]]:
         directive_text = str(eligibility["eligible_text"])
         if not directive_text:
             continue
-        folded = directive_text.casefold()
+        action_identity_text = _directive_action_surface(directive_text)
+        folded = action_identity_text.casefold()
         negative_reminder = bool(
             re.match(r"^(?:不要忘记|别忘记|do\s+not\s+forget\s+to|don't\s+forget\s+to)", folded, re.I)
+        )
+        matches = _action_family_matches(action_identity_text)
+        negation = re.search(
+            r"(?:不要|不得|禁止|别|先别|不再|取消|撤销|作废|停止|暂停|暂缓)\s*"
+            r"(?:再|去|把|将)?\s*(?:安装|升级|上传|推送|发布|外发|发送|传输|删除|移除|清空|"
+            r"修改|更改|改动|执行|运行|付款|支付|install|publish|upload|delete|change|run)",
+            folded,
+            re.I,
         )
         prohibited = bool(
             not negative_reminder
             and re.match(
-                r"^(?:不要|不得|禁止|别|千万别|无需|先不要|先不|暂时不要|暂不|不执行|不进行|不做|不授权|"
+                r"^(?:绝对\s*)?(?:不要|不得|禁止|别|千万别|无需|先别|先不要|先不|暂时不要|暂不|不执行|不进行|不做|不授权|"
                 r"不(?=上传|推送|发布|外发|发送|传输|删除|移除|清空|安装|卸载|执行|调用))",
                 directive_text,
                 re.I,
             )
             or not negative_reminder
             and re.match(r"^(?:do\s+not|don't|never|without)\b", folded, re.I)
+            or not negative_reminder
+            and negation
+            and (not matches or negation.start() <= matches[0][0])
         )
         embedded_conditional_action = bool(
             re.search(
@@ -2346,12 +2922,26 @@ def _analyze_action_clauses(text: str) -> list[dict[str, Any]]:
             "public"
             if _contains(folded, ("上网", "互联网", "全网", "公开资料", "public web", "internet", "online"))
             else "external"
-            if _contains(folded, ("外部", "对方", "工单", "external", "outside", "recipient", "ticket", "support chat"))
+            if _contains(folded, ("外部", "对方", "工单", "客户邮箱", "收件邮箱", "外部邮箱", "external", "outside", "recipient", "ticket", "support chat"))
+            or re.search(r"(?:发给|发送给|交给|转交给)\s*(?:客户|合作方|收件人)", folded, re.I)
             else "local"
             if _contains(folded, ("本地", "日志", "local", "logs", "venv"))
             else "unknown"
         )
-        matches = _action_family_matches(directive_text)
+        if prohibited:
+            negative_families = (
+                ("payment", r"付款|付钱|支付(?!宝)|转账|汇款|钱.{0,8}付了"),
+                ("change", r"(?:动|碰).{0,8}(?:数据库|生产库|全局环境)"),
+                ("change", r"改(?:动)?(?:任何)?(?:文件|配置|仓库|代码|数据库|生产库|全局环境)"),
+                ("deploy", r"部署|\bdeploy\b"),
+                ("network_request", r"(?:生产环境|线上|prod|production).{0,12}(?:发请求|请求|调用|访问)"),
+                ("delete", r"删"),
+            )
+            for family, pattern in negative_families:
+                match = re.search(pattern, action_identity_text, re.I)
+                if match and not any(existing_family == family for _, existing_family in matches):
+                    matches.append((match.start(), family))
+            matches.sort()
         if install_zero_or_history:
             matches = [item for item in matches if item[1] != "install"]
         family_objects: list[tuple[str, str]] = []
@@ -2407,6 +2997,21 @@ def _analyze_action_clauses(text: str) -> list[dict[str, Any]]:
             ):
                 continue
             clauses.append(clause)
+    verb = re.compile(r"(?:安装|升级|上传|推送|发布|外发|发送|传输|删除|移除|清空|修改|更改|改动|执行|运行|付款|支付|install|publish|upload|delete|change|run)(.*)$", re.I)
+    for later_index, later in enumerate(clauses):
+        if later["polarity"] != "prohibited" or later["predicate"] == "other":
+            continue
+        later_match = verb.search(later["object"])
+        if not later_match:
+            continue
+        later_object = later_match.group(1).strip(" 了吧啊。.!！,，") if later_match else ""
+        for earlier in clauses[:later_index]:
+            if earlier["polarity"] != "asserted" or earlier["predicate"] != later["predicate"]:
+                continue
+            earlier_match = verb.search(earlier["object"])
+            earlier_object = earlier_match.group(1).strip(" 了吧啊。.!！,，") if earlier_match else ""
+            if not later_object or (earlier_object and earlier_object == later_object):
+                earlier["polarity"] = "prohibited"
     return clauses
 
 
@@ -2453,7 +3058,7 @@ def _normalized_frame_object(item: dict[str, Any]) -> str:
         "publish": r"发布|公开|上架|publish|make\s+public",
         "delete": r"删除|移除|清空|delete|remove|clear",
         "change": r"修改|更改|变更|写入|修复|edit|modify|change|write|fix",
-        "search": r"上网搜索|联网搜索|全网搜索|search|look\s+up",
+        "search": r"上网搜索|联网搜索|全网搜索|搜索|检索|查询|查找|搜寻|search|look\s+up",
     }
     pattern = predicate_patterns.get(str(item.get("predicate")), "")
     if pattern:
@@ -2582,7 +3187,8 @@ def _select_action_clause(clauses: list[dict[str, Any]]) -> dict[str, Any] | Non
         and item["predicate"] != "other"
     ]
     consequential = {
-        "start", "install", "transfer", "publish", "delete", "change", "search"
+        "start", "install", "transfer", "publish", "delete", "change", "search",
+        "create", "route_internal_dispatch",
     }
     protected = [item for item in candidates if item["predicate"] in consequential]
     return (protected or candidates or [None])[-1]
@@ -2623,9 +3229,20 @@ def _structured_action_semantics(
         (str(selected.get("text", "")), str(selected.get("object", "")))
     ).casefold()
     available_files = available_files or []
-    if predicate == "inspect" and _contains(
+    if predicate == "report" and re.match(
+        r"^(?:请|帮我|麻烦)?\s*(?:列出|说出|回答)", selected_text, re.I
+    ) and not _contains(
         selected_text,
-        ("verify", "test", "tests", "testing", "test suite", "验证", "测试", "验收"),
+        ("本地", "日志", "文件", "文档", "记录", "状态", "证据", "local", "logs", "file", "document", "record", "status", "evidence"),
+    ):
+        return "answer", "answer", "none", "none"
+    if (
+        predicate == "inspect"
+        and not _primary_local_diagnosis(selected_text)
+        and _contains(
+            selected_text,
+            ("verify", "test", "tests", "testing", "test suite", "验证", "测试", "验收"),
+        )
     ):
         return "change", "test", "read_local", "none"
     if predicate == "start" and _contains(
@@ -2659,12 +3276,27 @@ def _structured_action_semantics(
             "write_external",
             data_egress,
         )
+    if predicate == "create":
+        if _unconfirmed_sensitive_share(selected_text):
+            return "build", "create", "write_external", "private_file"
+        return "build", "create", "write_local", "none"
+    if predicate == "route_internal_dispatch":
+        return "route", "create", "write_internal", "none"
+    if predicate == "search":
+        local_lookup = destination == "local" or _contains(
+            selected_text, ("目录", "文件夹", "下载", "本地", "本机")
+        )
+        public_lookup = destination == "public" or _contains(
+            selected_text, ("官方文档", "官网", "上网", "网上", "互联网", "全网")
+        )
+        if local_lookup and not public_lookup:
+            return "search", "search", "read_local", "none"
+        return "search", "search", "read_public", "public_query"
     mapping = {
         "start": ("change", "start", "write_local", "none"),
         "install": ("change", "install", "system_change", "none"),
         "delete": ("change", "delete", "destructive", "none"),
         "change": ("change", "change", "write_local", "none"),
-        "search": ("search", "search", "read_public", "public_query"),
     }
     return mapping.get(predicate)
 
@@ -2690,6 +3322,7 @@ def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
         re.I,
     ):
         return text, []
+    surface = _directive_action_surface(text)
     spans: list[tuple[int, int]] = []
     constraints: list[dict[str, Any]] = []
     for constraint_type, patterns in (
@@ -2698,7 +3331,7 @@ def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
         ("deferred-action", DEFERRED_ACTION_PATTERNS),
     ):
         for pattern in patterns:
-            for match in pattern.finditer(text):
+            for match in pattern.finditer(surface):
                 if any(match.start() < end and start < match.end() for start, end in spans):
                     continue
                 raw_action = " ".join(match.group("action").casefold().split())
@@ -2710,7 +3343,7 @@ def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
                 constraints.append(
                     {
                         "type": constraint_type,
-                        "text": match.group("text").strip(),
+                        "text": text[match.start("text"):match.end("text")].strip(),
                         "action": normalized_action,
                         "external": constraint_type == "deferred-action",
                         "active_now": constraint_type == "protected-data",
@@ -2719,14 +3352,14 @@ def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
                 )
                 spans.append((match.start(), match.end()))
     for pattern in NEGATED_ACTION_PATTERNS:
-        for match in pattern.finditer(text):
+        for match in pattern.finditer(surface):
             if any(match.start() < end and start < match.end() for start, end in spans):
                 continue
             raw_action = " ".join(match.group("action").casefold().split())
             constraints.append(
                 {
                     "type": "prohibited-action",
-                    "text": match.group("text").strip(),
+                    "text": text[match.start("text"):match.end("text")].strip(),
                     "action": ACTION_NAMES.get(raw_action, raw_action),
                     "external": True,
                     "source": "explicit-user-wording",
@@ -2734,12 +3367,12 @@ def _extract_constraints(text: str) -> tuple[str, list[dict[str, Any]]]:
             )
             spans.append((match.start(), match.end()))
     for pattern in GENERIC_PROHIBITION_PATTERNS:
-        for match in pattern.finditer(text):
+        for match in pattern.finditer(surface):
             raw_action = " ".join(match.group("action").casefold().split())
             action_family = _action_family(raw_action)
             if action_family == "other":
                 continue
-            exact_text = match.group("text").strip()
+            exact_text = text[match.start("text"):match.end("text")].strip()
             if any(item.get("text") == exact_text for item in constraints):
                 continue
             constraints.append(
@@ -2791,9 +3424,67 @@ def _phrase_mapping(profile: dict[str, Any], utterance: str, scope: str) -> dict
 
 
 def _classify_mode(text: str, pending: str) -> str:
-    lowered = _action_text_for_classification(text).strip().casefold()
+    lowered = _directive_action_surface(_action_text_for_classification(text)).strip().casefold()
     if lowered in APPROVAL_TERMS | CONTINUE_TERMS and pending:
         return _classify_mode(pending, "")
+    if re.search(r"(?:技巧|方法|怎么|如何).{0,20}(?:教我|让我练|让我试做|带我练)", lowered):
+        return "learn"
+    if _primary_compression_request(text):
+        return "compress"
+    if _primary_artifact_creation(text):
+        return "build"
+    if _unconfirmed_sensitive_share(text) and re.search(r"创建|新建|做一个", text):
+        return "build"
+    if re.search(r"(?:新建|创建|做一个).{0,24}(?:表|模板|文件|文档|页面|脚本|程序)", lowered) and not re.search(
+        r"是否|有没有|以前|之前", lowered
+    ):
+        return "build"
+    if _primary_memory_recall(text):
+        return "recall"
+    if _primary_memory_store(text):
+        return "remember"
+    if _primary_internal_delegation(text):
+        return "route"
+    if re.search(r"(?:修正|更正).{0,16}(?:已有|现有|配置|文件)", lowered):
+        return "change"
+    if re.search(r"生成(?:一张|一份).{0,16}(?:流程图|页面|文档|脚本|图)", lowered) and not re.search(
+        r"摘要|总结|概括", lowered
+    ):
+        return "build"
+    if re.search(r"只看.{0,24}(?:状态|差异|日志)", lowered):
+        return "diagnose"
+    if _explanatory_question(text):
+        return "answer"
+    if _primary_teaching_request(text) or re.match(
+        r"^(?:请|帮我|麻烦|给我)?\s*(?:教我|教教我|讲讲|给我讲讲|带我学|带我|带着我|让我练|我想学会|用.{0,20}(?:例子|例题)教我)",
+        lowered,
+    ):
+        return "learn"
+    if _primary_local_diagnosis(text):
+        return "diagnose"
+    if _primary_public_lookup(text) or _primary_local_lookup(text):
+        return "search"
+    if re.search(r"更新.{0,24}(?:现有|已有|原有)", lowered):
+        return "change"
+    if re.search(r"(?:变慢|慢了|启动不了|启动失败|找出.{0,12}瓶颈).{0,30}(?:原因|瓶颈|先查|排查)|(?:先查|排查).{0,12}原因", lowered):
+        return "diagnose"
+    if re.search(r"(?:错误|失败|异常|故障|报错|超时|瓶颈)", lowered) and re.search(
+        r"(?:核查|查明|排查|定位|分析|找出|检查).{0,32}(?:原因|错误|故障|异常|失败|瓶颈)",
+        lowered,
+    ):
+        return "diagnose"
+    if re.search(r"(?:上次|之前|先前).{0,20}(?:记住|记录|存下).{0,30}(?:什么|多少|哪|吗|？|\?)", lowered):
+        return "recall"
+    if re.search(r"(?:在|从).{0,24}(?:目录|文件夹|下载).{0,16}(?:找|查找|检索)", lowered):
+        return "search"
+    if re.search(r"官方文档|官网", lowered) and re.search(r"检索|搜索|查询|查找", lowered):
+        return "search"
+    if re.match(r"^(?:请|帮我|麻烦)?\s*(?:继续)?\s*(?:查|搜|检索)", lowered):
+        return "search"
+    if re.match(r"^(?:请|帮我|麻烦)?\s*(?:继续)?\s*找(?:到|出)?(?:标题|文件|文档|笔记|资料|项目|仓库|页面|路径|链接)", lowered):
+        return "search"
+    if re.match(r"^(?:请|帮我|麻烦)?\s*(?:继续)?\s*找找.{0,36}(?:文档|资料|项目|仓库|页面|路径|链接)", lowered):
+        return "search"
     if _readonly_status_check_requested(lowered):
         return "diagnose"
     if _installed_service_start_requested(lowered):
@@ -2878,8 +3569,25 @@ def _classify_action_semantics(
     *,
     available_files: list[str] | None = None,
 ) -> tuple[str, str, str]:
-    folded = _action_text_for_classification(text).casefold()
+    raw_folded = _action_text_for_classification(text).casefold()
+    folded = _directive_action_surface(raw_folded).casefold()
     available_files = available_files or []
+    if mode in {"compress", "recall", "remember", "learn"}:
+        return "answer", "none", "none"
+    if mode == "route" and _primary_internal_delegation(text):
+        return "create", "write_internal", "none"
+    if mode == "build" and _primary_artifact_creation(text):
+        if _unconfirmed_sensitive_share(text):
+            return "create", "write_external", "private_file"
+        return "create", "write_local", "none"
+    if mode == "diagnose" and not _contains(folded, PUBLIC_SEARCH_TERMS) and _contains(
+        folded, ("变慢", "慢了", "启动不了", "启动失败", "瓶颈")
+    ) and re.search(r"先查|排查|找出|定位|检查", folded):
+        return "diagnose", "read_local", "none"
+    if mode == "diagnose" and re.search(r"先查|排查|找出|定位|核查|检查", folded) and re.search(
+        r"日志|终端输出|构建|服务|启动不了|启动失败", raw_folded
+    ) and not _contains(raw_folded, PUBLIC_SEARCH_TERMS):
+        return "diagnose", "read_local", "none"
     public_target = _contains(folded, PUBLIC_SEARCH_TERMS)
     ambiguous_transfer = any(
         pattern.search(folded) for pattern in AMBIGUOUS_ACTION_PATTERNS[:2]
@@ -2892,7 +3600,12 @@ def _classify_action_semantics(
     elif mode == "diagnose" and _contains(
         folded, ("只读", "read-only", "readonly")
     ):
-        operation, effect = "diagnose", "none"
+        requires_inspection = bool(re.search(
+            r"查看|读取|核查|检查|排查|查明|找出|定位|inspect|check|read|look\s+at",
+            folded,
+            re.I,
+        ))
+        operation, effect = "diagnose", "read_local" if requires_inspection else "none"
     elif _contains(
         folded,
         (
@@ -2933,12 +3646,15 @@ def _classify_action_semantics(
     ):
         operation, effect = "transfer", "write_external"
     elif mode in {"build", "route"}:
-        operation, effect = "create", "write_local"
+        if mode == "build" and _unconfirmed_sensitive_share(folded):
+            operation, effect = "create", "write_external"
+        else:
+            operation, effect = "create", "write_local"
     elif _contains(folded, ("playwright", "测试", "验证", "反测", "验收", "test", "tests", "testing", "test suite", "verify")):
         operation, effect = "test", "read_local"
     elif mode == "search":
         operation = "research" if _contains(folded, RESEARCH_TERMS) else "search"
-        effect = "read_public" if public_target or not _contains(folded, ("本地", "仓库内", "文件中", "local")) else "read_local"
+        effect = "read_public" if public_target or not _contains(folded, ("本地", "内部", "笔记", "仓库内", "文件中", "目录", "文件夹", "下载", "local")) else "read_local"
     elif mode == "change":
         operation, effect = "change", "write_local"
     else:
@@ -2947,11 +3663,11 @@ def _classify_action_semantics(
     if effect == "read_public":
         data_egress = "public_query"
     elif effect == "write_external":
-        if _contains(folded, ("用户画像", "profile", "personality profile")):
+        if _contains(raw_folded, ("用户画像", "profile", "personality profile")):
             data_egress = "profile"
-        elif _contains(folded, ("记忆", "memory", "correction ledger")):
+        elif _contains(raw_folded, ("记忆", "memory", "correction ledger")):
             data_egress = "memory"
-        elif available_files or _contains(folded, ("文件", "附件", "file", "document")):
+        elif available_files or _contains(raw_folded, ("文件", "附件", "file", "document")):
             data_egress = "private_file"
         else:
             data_egress = "user_text"
@@ -3141,6 +3857,7 @@ def _risk(
         effect == "none"
         and operation == "answer"
         and not answer_shaped
+        and not (mode == "remember" and _memory_store_instruction_only(security_text))
         and any(pattern.search(security_text) for pattern in IMPERATIVE_OBJECT_PATTERNS)
     )
     unknown_executable = (
@@ -4058,8 +4775,18 @@ class IntentCompiler:
         profile_exists = self.profile_exists
         mapping = _phrase_mapping(self.profile, utterance, request.scope)
         expanded = mapping.get("meaning", "") if mapping else ""
+        resumable_context = _context_has_resumable_action(request.context)
         confirmation_veto = _confirmation_veto(utterance)
-        cancellation_control = _cancellation_control_utterance(utterance)
+        pending_revoked = _pending_action_revoked(utterance, request.pending_action)
+        followup_start = _independent_followup_start(utterance) if pending_revoked else None
+        if pending_revoked and followup_start is None and (
+            _leading_readonly_request_before_veto(utterance)
+            or _leading_local_edit_before_veto(utterance)
+        ):
+            followup_start = 0
+        pending_cancellation = _pending_action_cancellation(utterance, request.pending_action)
+        cancellation_control = _cancellation_control_utterance(utterance) or pending_cancellation
+        reference_required_slots = _missing_reference_slots(utterance, request.pending_action, request.context)
         veto_current_readonly = _veto_current_readonly_requested(utterance)
         action_specific_veto = _action_specific_veto_control(utterance)
         current_control_report = _current_control_report_requested(utterance)
@@ -4068,11 +4795,13 @@ class IntentCompiler:
             and bool(request.pending_action)
             and not confirmation_veto
         )
+        teaching_continuation = _teaching_continuation_request(utterance, request.pending_action)
         short_confirmation = False if gate_resolution or isolated_selection else (
             not confirmation_veto
             and (
             _is_short_confirmation(utterance)
             or discourse_confirmation
+            or teaching_continuation
             or bool(request.pending_action)
             and _is_equivalent_action_confirmation(utterance)
             )
@@ -4080,11 +4809,16 @@ class IntentCompiler:
         continuation = False if gate_resolution or isolated_selection else (
             not confirmation_veto
             and (
-            utterance.casefold() in {term.casefold() for term in CONTINUE_TERMS}
+            _terse_phrase(utterance) in {term.casefold() for term in CONTINUE_TERMS}
             or discourse["kind"] == "multi-selection-continuation"
+            or teaching_continuation
             or bool(request.pending_action)
             and _is_equivalent_action_confirmation(utterance)
             )
+        )
+        educational_continuation = bool(
+            continuation and request.pending_action
+            and _educational_pending_action(request.pending_action)
         )
         if gate_resolution:
             action_source = gate_resolution["text"]
@@ -4092,15 +4826,42 @@ class IntentCompiler:
             action_source = utterance
         else:
             if short_confirmation:
-                previous_action = request.pending_action or request.context or expanded
+                previous_action = request.pending_action or (request.context if resumable_context else "") or expanded
                 if discourse["kind"] == "approval-with-addition" and previous_action:
                     action_source = "；".join((previous_action, discourse["remainder"]))
                 else:
                     action_source = previous_action or utterance
             else:
                 action_source = " ".join(part for part in (utterance, expanded) if part)
+        if pending_revoked and followup_start is not None:
+            action_source = utterance[followup_start:].strip()
         legacy_action_text, legacy_constraints = _extract_constraints(action_source)
+        if pending_revoked:
+            legacy_constraints.append({
+                "type": "prohibited-action",
+                "text": utterance,
+                "action": _cancelled_pending_action_name(request.pending_action),
+                "external": False,
+                "source": "explicit-user-wording",
+            })
         action_clauses = _analyze_action_clauses(action_source)
+        direct_internal_delegation = _primary_internal_delegation(action_source)
+        primary_object_request = any((
+            _primary_artifact_creation(action_source),
+            _primary_compression_request(action_source),
+            _primary_memory_store(action_source),
+            _primary_memory_recall(action_source),
+            _primary_teaching_request(action_source),
+            direct_internal_delegation,
+        ))
+        if primary_object_request:
+            action_clauses = [
+                item for item in action_clauses
+                if item["polarity"] == "prohibited" or item["temporal_role"] == "conditional"
+            ]
+        if pending_cancellation:
+            for action_clause in action_clauses:
+                action_clause["polarity"] = "prohibited"
         if action_specific_veto:
             for action_clause in action_clauses:
                 if action_clause["predicate"] in {
@@ -4114,10 +4875,15 @@ class IntentCompiler:
         for action_clause in action_clauses:
             action_clause["required_grants"] = _frame_required_grants(action_clause)
         _propagate_bundle_sensitive_grants(action_clauses)
-        rc4_projection = _rc4_semantic_projection(action_source, action_clauses, request.scope)
+        rc4_projection = (
+            {} if primary_object_request
+            else _rc4_semantic_projection(action_source, action_clauses, request.scope)
+        )
         projection_owned = bool(rc4_projection.get("legacy_override"))
         if projection_owned:
             action_clauses = [dict(item) for item in rc4_projection.get("action_frames", action_clauses)]
+        if not pending_cancellation:
+            _bind_requested_frames(action_clauses, action_source)
         selected_action = _select_action_clause(action_clauses)
         structured_semantics = _structured_action_semantics(
             selected_action,
@@ -4131,6 +4897,10 @@ class IntentCompiler:
                 else legacy_action_text
             ),
         )
+        if primary_object_request and not action_text:
+            action_text = legacy_action_text or action_source
+        if pending_cancellation:
+            action_text = ""
         receipt_action_text = _canonical_action_tuple(action_clauses, request.scope) or action_text
         constraints = []
         for item in [*legacy_constraints, *_structured_constraints(action_clauses)]:
@@ -4250,14 +5020,14 @@ class IntentCompiler:
             "pending"
             if short_confirmation and request.pending_action
             else "context"
-            if short_confirmation and request.context
+            if short_confirmation and resumable_context
             else
             "utterance"
             if not short_confirmation
             else "pending"
             if request.pending_action
             else "context"
-            if request.context
+            if resumable_context
             else "project"
             if active_state
             else "profile"
@@ -4270,7 +5040,7 @@ class IntentCompiler:
             else "active-local-state"
             if active_state
             else "recent-context"
-            if request.context
+            if resumable_context
             else "missing"
         )
         short_confirmation_status = {
@@ -4283,11 +5053,13 @@ class IntentCompiler:
         )
         if mode == "answer" and (short_confirmation or len(utterance) <= 4):
             mode = _classify_mode(" ".join((request.pending_action, request.context)), "")
-        if continuation and mode == "answer":
+        if continuation and mode == "answer" and not educational_continuation:
             mode = "change"
-        if short_confirmation and request.pending_action and mode == "answer":
+        if short_confirmation and request.pending_action and mode == "answer" and not educational_continuation:
             mode = "change"
-        if control_plane in {"delegation", "ledger-maintenance"}:
+        if educational_continuation:
+            mode = "learn"
+        if control_plane in {"delegation", "ledger-maintenance"} and not direct_internal_delegation:
             mode = "change"
         elif control_plane in {"local-coordination-audit", "project-governance-audit"}:
             mode = "diagnose"
@@ -4301,6 +5073,10 @@ class IntentCompiler:
                 mode,
                 available_files=request.available_files,
             )
+            if mode == "diagnose" and effect == "none" and re.search(r"先查|排查|找出|定位|核查|检查", action_text) and re.search(
+                r"日志|终端输出|构建|服务|启动不了|启动失败", utterance
+            ) and not _contains(utterance.casefold(), PUBLIC_SEARCH_TERMS):
+                operation, effect = "diagnose", "read_local"
         if control_plane in {"local-coordination-audit", "project-governance-audit"}:
             operation, effect, data_egress = "answer", "read_local", "none"
         elif cancellation_control or veto_current_readonly or action_specific_veto or current_control_report:
@@ -4310,8 +5086,13 @@ class IntentCompiler:
             effect = "read_local" if readonly_control else "none"
             data_egress = "none"
         elif readonly_status_check:
-            operation, effect, data_egress = "diagnose", "none", "none"
-        elif control_plane in {"delegation", "ledger-maintenance"}:
+            local_read = _primary_local_diagnosis(utterance)
+            operation, effect, data_egress = (
+                "diagnose",
+                "read_local" if local_read else "none",
+                "none",
+            )
+        elif control_plane in {"delegation", "ledger-maintenance"} and not direct_internal_delegation:
             operation, effect, data_egress = "change", "write_local", "none"
         selected_intent = gate_resolution.get("intent", {}) if gate_resolution else {}
         if selected_intent:
@@ -4326,6 +5107,10 @@ class IntentCompiler:
             operation = str(rc4_projection.get("legacy_operation") or operation)
             effect = str(rc4_projection.get("legacy_effect") or effect)
             data_egress = str(rc4_projection.get("data_egress") or "none")
+        if re.search(r"只看.{0,24}(?:状态|差异|日志)", utterance) and not re.search(
+            r"(?:修改|更改|写入|删除|发布|上传)", utterance
+        ):
+            mode, operation, effect, data_egress = "diagnose", "diagnose", "read_local", "none"
         if operation in {"search", "research"}:
             mode = "search"
         elif operation == "create" and mode != "route":
@@ -4334,6 +5119,10 @@ class IntentCompiler:
             mode = "build"
         elif operation in {"test", "change", "delete", "install", "start", "transfer"}:
             mode = "change"
+        if pending_cancellation:
+            mode, operation, effect, data_egress = "answer", "answer", "none", "none"
+        elif educational_continuation:
+            mode, operation, effect, data_egress = "learn", "answer", "none", "none"
         deterministic_mode = mode
         memory_action = _memory_action(source_text, mode)
         active_frame_grants = sorted(
@@ -4424,12 +5213,12 @@ class IntentCompiler:
             if not receipt_verified and reason not in risk["reasons"]:
                 risk["reasons"].append(reason)
         risk["receipt_status"] = receipt_status
-        if risk["confirmation_required"] and required_grants:
+        if risk["confirmation_required"] and required_grants and not (pending_cancellation or reference_required_slots):
             risk["confirmation_challenge"] = issue_confirmation_receipt(
                 receipt_action_text,
                 request.scope,
-                grants=required_grants,
                 actor=actor,
+                grants=required_grants,
             )
         local_risk = assess_local_risk(
             action_text,
@@ -4698,12 +5487,12 @@ class IntentCompiler:
                 "verified": False,
                 "reason": "semantic egress receipt requires explicit confirmation of the exact pending input",
             }
-        if semantic_grants and not semantic_receipt_verified:
+        if semantic_grants and not semantic_receipt_verified and not (pending_cancellation or reference_required_slots):
             risk["semantic_confirmation_challenge"] = issue_confirmation_receipt(
                 action_text,
                 request.scope,
-                grants=semantic_grants,
                 actor=actor,
+                grants=semantic_grants,
             )
         risk["semantic_authorization"] = {
             "required": bool(semantic_grants),
@@ -4789,7 +5578,11 @@ class IntentCompiler:
             has_semantic_rationale = bool(str(proposal.get("interpretation", "")).strip())
             reliable_support = bool(
                 has_semantic_rationale
-                and (similarity >= 0.55 or proposed_goal.casefold() == utterance.casefold())
+                and (
+                    similarity >= 0.55
+                    or proposed_goal.casefold() == utterance.casefold()
+                    or proposed_goal.casefold() == str(semantic_baseline["normalized"]).casefold()
+                )
             )
             proposed_mode = str(proposal.get("mode") or mode)
             proposal_rejected = bool(
@@ -4813,8 +5606,15 @@ class IntentCompiler:
             )
             if reliable_support and not proposal_as_alternative:
                 normalized = proposed_goal or normalized
-                if mode == "answer" and proposal.get("mode"):
+                if (mode == "answer" and proposal.get("mode")
+                        and short_confirmation_status["state"] != "missing-specific-action"
+                        and not pending_cancellation):
                     mode = str(proposal["mode"])
+                    operation, effect, data_egress = _classify_action_semantics(
+                        utterance,
+                        mode,
+                        available_files=request.available_files,
+                    )
             installed_names = {item["name"] for item in self.registry.get("skills", [])}
             suggested_skill = proposal.get("primary_skill")
             if primary_skill is None and suggested_skill in installed_names:
@@ -4877,8 +5677,14 @@ class IntentCompiler:
                     if reason not in risk["reasons"]:
                         risk["reasons"].append(reason)
             risk["confirmation_required"] = bool(risk["reasons"]) and not risk["blocked"]
+            agreed_local_action = (
+                proposed_mode == deterministic_mode
+                and deterministic_mode not in {"answer"}
+                and not reference_required_slots
+                and effect in {"read_local", "read_public", "none", "write_local", "write_internal"}
+            )
             semantic_clarification = (
-                bool(proposal.get("clarification_recommended"))
+                (bool(proposal.get("clarification_recommended")) and not agreed_local_action)
                 or not reliable_support
                 or bool(proposal.get("alternatives"))
                 or proposal_as_alternative
@@ -5069,6 +5875,72 @@ class IntentCompiler:
                 }
             )
         source_map = sparse_source_map(transformations)
+        if re.search(r"只读|只查看|只看|read-only|readonly", utterance, re.I) and not re.search(
+            r"(?:修改|更改|写入|删除|发布|上传)", utterance
+        ):
+            if not any(
+                item.get("type") == "prohibited-action" and item.get("action") == "change"
+                for item in constraints
+            ):
+                constraints.append({
+                    "type": "prohibited-action",
+                    "text": utterance,
+                    "action": "change",
+                    "external": False,
+                    "source": "explicit-user-wording",
+                })
+        # The semantic adapter may only veto an action. Local revocation and
+        # unresolved references remain authoritative even when it says normal.
+        semantic_control = str((proposal or {}).get("control_status") or "normal")
+        hard_revoke = bool(
+            pending_cancellation
+            or (cancellation_control and followup_start is None)
+            or (semantic_control == "revoke" and followup_start is None)
+        )
+        hard_clarify = bool(
+            reference_required_slots
+            or semantic_control == "clarify"
+        ) and not hard_revoke
+        if hard_revoke or hard_clarify:
+            if hard_revoke:
+                withdrawn_action = (
+                    _cancelled_pending_action_name(request.pending_action)
+                    if request.pending_action.strip()
+                    else next((name for _position, name in _action_family_matches(utterance)), "other")
+                )
+                if withdrawn_action != "other" and not any(
+                    item.get("type") == "prohibited-action"
+                    and item.get("action") in {withdrawn_action, "upload" if withdrawn_action == "transfer" else withdrawn_action}
+                    for item in constraints
+                ):
+                    constraints.append({
+                        "type": "prohibited-action",
+                        "text": utterance,
+                        "action": withdrawn_action,
+                        "external": False,
+                        "source": "explicit-user-wording" if pending_revoked or cancellation_control else "semantic-veto",
+                    })
+            for action_clause in action_clauses:
+                if hard_revoke:
+                    action_clause["polarity"] = "prohibited"
+                elif action_clause["polarity"] == "asserted":
+                    action_clause["temporal_role"] = "conditional"
+            mode, operation, effect, data_egress = "answer", "answer", "none", "none"
+            action_text = ""
+            receipt_action_text = ""
+            normalized = utterance
+            memory_action = "none"
+            primary_skill = None
+            skill_candidates = []
+            projection_owned = False
+            clarification = hard_clarify
+            path = "review" if hard_clarify else "fast"
+            risk["confirmation_required"] = hard_clarify
+            risk["receipt_verified"] = False
+            risk.pop("confirmation_challenge", None)
+            risk.pop("semantic_confirmation_challenge", None)
+            if hard_revoke:
+                risk["blocked"] = False
         typed_contract = build_typed_contract(
             utterance=utterance,
             goal=normalized,
@@ -5097,6 +5969,7 @@ class IntentCompiler:
             source_map=source_map,
             additional_required_slots=(
                 (["interpretation_context"] if isolated_selection else [])
+                + reference_required_slots
                 + list(rc4_projection.get("required_slots", []))
             ),
             action_owner_name=(
@@ -5428,8 +6301,14 @@ class IntentCompiler:
             "single_active_owner_per_dedupe_key": True,
             "takeover_requires": ["command", "session", "pid", "artifact"],
         }
+        informative_only = bool(
+            mode in {"answer", "compress", "recall", "learn"}
+            and operation == "answer"
+            and effect == "none"
+        )
         completion_execute = bool(
             mode not in {"answer", "diagnose"}
+            and not informative_only
             and tool_gateway["decision"] == "allow"
             and not queue_p1
             and not clarification
