@@ -1,0 +1,22 @@
+
+held-out acceptance: 124/204 passed, 80 failures
+  FAIL want=answer got=diagnose []: curl 这个命令是干嘛使的
+  FAIL want=answer got=search []: 帮我捋一遍这个类的方法列表
+  FAIL want=answer got=diagnose []: read the changelog and tell 
+  FAIL want=answer got=search []: 这条 SQL 是查什么的
+  FAIL want=answer got=remember []: describe the folder layout o
+  FAIL want=answer got=change []: 这个开关打开之后影响什么
+  FAIL want=search got=answer []: 帮我搜搜这个词的权威释义
+  FAIL want=search got=recall []: 这个库的作者还写过什么项目
+  FAIL want=search got=change []: 搜搜这款显示器的评测
+  FAIL want=search got=compress []: 查查这个缩写全称是什么
+  FAIL want=search got=answer []: 帮我看看房价走势数据
+  FAIL want=search got=learn []: 找几个练口语的免费资源
+  FAIL want=build got=remember []: 帮我撸一个命令行计算器
+  FAIL want=build got=search []: 帮我造一个轮子：通用重试装饰器
+  FAIL want=build got=diagnose []: 帮我搞个爬虫监控价格变动
+  FAIL want=build got=change []: 帮我搭个静态站点托管我的笔记
+  FAIL want=build got=change []: 写个中间件统一处理异常
+  FAIL want=change got=route []: 帮我把这个类拆成三个文件
+  FAIL want=change got=route []: 帮我卸载掉这个没用的包
+  FAIL want=change got=recall []: 把配置里的超时时间调大一点

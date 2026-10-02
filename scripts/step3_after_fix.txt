@@ -1,0 +1,6 @@
+
+held-out acceptance: 201/204 passed, 3 failures
+Scope: semantic proposal mode/schema/syntax only; execution authorization requires a separate host test.
+  FAIL H160 [plain-bracket] 帮我把日志里的 [ERROR] 行抓出来: mode 'diagnose' != 'change'
+  FAIL H179 [continuation-refusal] 不要: abstention must recommend clarification; revocation must recommend clarification
+  FAIL H182 [plain] 替我通读一遍合同挑出风险条款: mode 'learn' != 'answer'

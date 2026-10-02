@@ -1,0 +1,6055 @@
+{
+  "provenance": {
+    "python": "3.13.14",
+    "executable": "C:\\Users\\BBG\\.workbuddy-ai\\binaries\\python\\versions\\3.13.12\\python.exe",
+    "core_import": "D:\\测试\\intent-translator-repo\\src\\intent_translator_mcp\\core.py",
+    "packages": {
+      "fastembed": "0.8.0",
+      "onnxruntime": "1.30.0",
+      "pydantic": "2.13.5",
+      "huggingface-hub": "1.32.0"
+    },
+    "project_version": "1.0.0a5",
+    "model": "BAAI/bge-small-zh-v1.5",
+    "batch_size": 256,
+    "model_path": null,
+    "offline": false,
+    "scoring": "maxsim",
+    "thresholds": {
+      "accept": 0.46,
+      "weak_accept": 0.4,
+      "min_margin": 0.04
+    },
+    "profile": "generic; memory disabled; empty skill registry",
+    "sha256": {
+      "scripts\\ilang_compare_eval.py": "4490d72e94283f849c50d036bf847fdd6f3ee2065de5e83e3533ae32b38d3ab3",
+      "scripts\\ilang_distill_router.py": "4491fffbca3be21f31af858d1acec218af84b2f645621d0a69e533b0d8ba7c7d",
+      "scripts\\ilang_semantic_main.py": "f1ebea260fde25a9466c60456b3097c61bfd27b49fd26d98e57a373145d3242f",
+      "scripts\\ilang_semantic_adapter.py": "eac9840e189389f76485d9437e8348cb3c63f1b3f61a3322aacc4c31b1ae5f8f",
+      "scripts\\ilang_eval_set.jsonl": "ea092cc34207ecab1de222b035eb48fdd54a850a97cf886ec22aa1acdda513bb",
+      "scripts\\ilang_distill_intents.json": "b646cbd1fa936c705cf0d1592760ed82953d99536494e1a11eeb1f3a1d836f48",
+      "src\\intent_translator_mcp\\__init__.py": "448c887776171482281956a9db0ca13e563a7cd04c0a079ba13fe02fbc1a8efe",
+      "src\\intent_translator_mcp\\ab_eval.py": "d1de8222583f729abf3ee35f6a28c190a6e201a010afbb6bee1433100c6aec25",
+      "src\\intent_translator_mcp\\atomic_io.py": "86afd576848d3ba6edf191fc5d786a09744a3fa9b4044020c87cd9b896bc775c",
+      "src\\intent_translator_mcp\\authorization.py": "10f29f38c24e6c220dcf53b5fcee9c200cf7fc624947477a2b35168fe136ef84",
+      "src\\intent_translator_mcp\\challenge.py": "fac312315babdcb84ac5e9f845bb6624ac6002941e69f3ae07ccade19d1effae",
+      "src\\intent_translator_mcp\\config.py": "168522b3fc5dd6088011addc45658c4cea292e41f6d0e802a2a7286e8c83ce45",
+      "src\\intent_translator_mcp\\core.py": "dab3898aa6c37c7b177ee7a51804a420a1b7de048d1180e5510b310845641d53",
+      "src\\intent_translator_mcp\\doctor.py": "7a2d39f53753f06793330942ef2ed8d57bf556633836fed8a91719e32bcc6e54",
+      "src\\intent_translator_mcp\\feedback.py": "9195360c1a4b183ff0b510471df7eb6b7a63c75cedc19d81bb6290b7077d3190",
+      "src\\intent_translator_mcp\\host_paths.py": "418beda49a1c8d1329564a4ff2faba0c62ed43f24032e9a8aa39340e76b9d06d",
+      "src\\intent_translator_mcp\\host_registration.py": "cc09cc376c40f4f7477831a0722577a5299e117d340ba24b6c1ee77594d26592",
+      "src\\intent_translator_mcp\\intent_contract.py": "d8ce2554e80ff1e37c9e0d31d5c7fe6eabe3812db8488966bc74799f7a5c574c",
+      "src\\intent_translator_mcp\\intentbench.py": "754dae0f6c22d48300f7ff166f394496cb9f57cac06a293f9e404519ba0fff62",
+      "src\\intent_translator_mcp\\invocation.py": "066af992db8ae7390bce641fc976771fc8118e31dd391061d3bf374ecbccfecc",
+      "src\\intent_translator_mcp\\local_policy.py": "403b19d8482605d7492d9bf3727680a271d944e00ef4f4032807797ec80c4607",
+      "src\\intent_translator_mcp\\models.py": "9beeb50863d02d6534d76482e8cf97414ed107087a77f0e7c38270719617e7b6",
+      "src\\intent_translator_mcp\\onboarding.py": "5eca946a629c6e6e0bb8fdad36e38acc9a2604b6c62187ce82ef58acc15209c5",
+      "src\\intent_translator_mcp\\presentation.py": "7776e3debbe4015610b04f7d580c2edb4c745ea1cec01c163f70c9c7fa179bb1",
+      "src\\intent_translator_mcp\\runtime_status.py": "3edf8fc8867dd8ed16601c5f2ee86882efdc70c2d66e7d8f63f6c4c7d605af56",
+      "src\\intent_translator_mcp\\same_model_eval.py": "61c836099c34879e051a398f49fb213bc3194a13d980b25e31c3150d1c466f9f",
+      "src\\intent_translator_mcp\\sdk.py": "33fb899d092a8bc35b7da14271254dbb5d19e44ef77185878ecea44ae6aea7f1",
+      "src\\intent_translator_mcp\\semantic.py": "0ba7fd9ddba301eb7c518ca61610cc15e4c8c7c8d7ddf964e6076ed28396b75e",
+      "src\\intent_translator_mcp\\semantic_eval.py": "5b88e1fd96aa81fa68ecbbc76a47567f6fcd79ea885098326ed778837d772c87",
+      "src\\intent_translator_mcp\\server.py": "080de0755e51f67f62306189f29021ffc1b1ff9bbe8bb1cf5a35527fdca2693e",
+      "src\\intent_translator_mcp\\skill_integrity.py": "716e6403036de6876cb27990ba6b4f32aedb22bd3393abdbc610402dd4c1b900",
+      "src\\intent_translator_mcp\\student_state.py": "63eee100b626b719a483cae4b75f62aab0c452c2ee520f2805d716d7b6bddfbf",
+      "src\\intent_translator_mcp\\studio.py": "e73c595ca894f5a4ebdf5bf130ed011b82fc25e446f34e7d9edfb285c6d06c47",
+      "src\\intent_translator_mcp\\study_shadow.py": "af39eae76d28e66b95d22bdc5b34825549fa491024a0fcd3e0315994c9dbe2ed",
+      "src\\intent_translator_mcp\\tool_gateway.py": "6f1358a6e62d5db37b59235a7cc68d39fb86d2ebdad7223ff2505369f9d09d7c",
+      "src\\intent_translator_mcp\\trial.py": "3e6d0ca8d82b25ca8bf8dab02c161dbf05d71bbd0ebfc43fc769ae91e90351a0",
+      "src\\intent_translator_mcp\\version.py": "9de8ebd6fc7387009f035cfd9d451c83bae255c515eb987bfbfcebc2be618bc9"
+    }
+  },
+  "initialization_seconds": 2.2536235000006855,
+  "views": {
+    "all": {
+      "embed": {
+        "total": 164,
+        "hit": 96,
+        "miss": 68,
+        "abstain": 0,
+        "accuracy": 0.5853658536585366,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5853658536585366
+      },
+      "embed_argmax": {
+        "total": 164,
+        "hit": 96,
+        "miss": 68,
+        "abstain": 0,
+        "accuracy": 0.5853658536585366,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5853658536585366
+      },
+      "keyword": {
+        "total": 164,
+        "hit": 131,
+        "miss": 33,
+        "abstain": 0,
+        "accuracy": 0.7987804878048781,
+        "coverage": 1.0,
+        "selective_accuracy": 0.7987804878048781
+      },
+      "embed_first": {
+        "total": 164,
+        "hit": 96,
+        "miss": 68,
+        "abstain": 0,
+        "accuracy": 0.5853658536585366,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5853658536585366
+      },
+      "cascade": {
+        "total": 164,
+        "hit": 139,
+        "miss": 19,
+        "abstain": 6,
+        "accuracy": 0.8475609756097561,
+        "coverage": 0.9634146341463414,
+        "selective_accuracy": 0.879746835443038
+      }
+    },
+    "unique": {
+      "embed": {
+        "total": 129,
+        "hit": 73,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5658914728682171,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5658914728682171
+      },
+      "embed_argmax": {
+        "total": 129,
+        "hit": 73,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5658914728682171,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5658914728682171
+      },
+      "keyword": {
+        "total": 129,
+        "hit": 99,
+        "miss": 30,
+        "abstain": 0,
+        "accuracy": 0.7674418604651163,
+        "coverage": 1.0,
+        "selective_accuracy": 0.7674418604651163
+      },
+      "embed_first": {
+        "total": 129,
+        "hit": 73,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5658914728682171,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5658914728682171
+      },
+      "cascade": {
+        "total": 129,
+        "hit": 111,
+        "miss": 15,
+        "abstain": 3,
+        "accuracy": 0.8604651162790697,
+        "coverage": 0.9767441860465116,
+        "selective_accuracy": 0.8809523809523809
+      }
+    },
+    "unique_without_anchor_overlap": {
+      "embed": {
+        "total": 126,
+        "hit": 70,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5555555555555556,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5555555555555556
+      },
+      "embed_argmax": {
+        "total": 126,
+        "hit": 70,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5555555555555556,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5555555555555556
+      },
+      "keyword": {
+        "total": 126,
+        "hit": 96,
+        "miss": 30,
+        "abstain": 0,
+        "accuracy": 0.7619047619047619,
+        "coverage": 1.0,
+        "selective_accuracy": 0.7619047619047619
+      },
+      "embed_first": {
+        "total": 126,
+        "hit": 70,
+        "miss": 56,
+        "abstain": 0,
+        "accuracy": 0.5555555555555556,
+        "coverage": 1.0,
+        "selective_accuracy": 0.5555555555555556
+      },
+      "cascade": {
+        "total": 126,
+        "hit": 109,
+        "miss": 15,
+        "abstain": 2,
+        "accuracy": 0.8650793650793651,
+        "coverage": 0.9841269841269841,
+        "selective_accuracy": 0.8790322580645161
+      }
+    },
+    "source:benchmarks": {
+      "embed": {
+        "total": 132,
+        "hit": 73,
+        "miss": 59,
+        "abstain": 0,
+        "accuracy": 0.553030303030303,
+        "coverage": 1.0,
+        "selective_accuracy": 0.553030303030303
+      },
+      "embed_argmax": {
+        "total": 132,
+        "hit": 73,
+        "miss": 59,
+        "abstain": 0,
+        "accuracy": 0.553030303030303,
+        "coverage": 1.0,
+        "selective_accuracy": 0.553030303030303
+      },
+      "keyword": {
+        "total": 132,
+        "hit": 127,
+        "miss": 5,
+        "abstain": 0,
+        "accuracy": 0.9621212121212122,
+        "coverage": 1.0,
+        "selective_accuracy": 0.9621212121212122
+      },
+      "embed_first": {
+        "total": 132,
+        "hit": 73,
+        "miss": 59,
+        "abstain": 0,
+        "accuracy": 0.553030303030303,
+        "coverage": 1.0,
+        "selective_accuracy": 0.553030303030303
+      },
+      "cascade": {
+        "total": 132,
+        "hit": 118,
+        "miss": 8,
+        "abstain": 6,
+        "accuracy": 0.8939393939393939,
+        "coverage": 0.9545454545454546,
+        "selective_accuracy": 0.9365079365079365
+      }
+    },
+    "source:fresh-20260918": {
+      "embed": {
+        "total": 32,
+        "hit": 23,
+        "miss": 9,
+        "abstain": 0,
+        "accuracy": 0.71875,
+        "coverage": 1.0,
+        "selective_accuracy": 0.71875
+      },
+      "embed_argmax": {
+        "total": 32,
+        "hit": 23,
+        "miss": 9,
+        "abstain": 0,
+        "accuracy": 0.71875,
+        "coverage": 1.0,
+        "selective_accuracy": 0.71875
+      },
+      "keyword": {
+        "total": 32,
+        "hit": 4,
+        "miss": 28,
+        "abstain": 0,
+        "accuracy": 0.125,
+        "coverage": 1.0,
+        "selective_accuracy": 0.125
+      },
+      "embed_first": {
+        "total": 32,
+        "hit": 23,
+        "miss": 9,
+        "abstain": 0,
+        "accuracy": 0.71875,
+        "coverage": 1.0,
+        "selective_accuracy": 0.71875
+      },
+      "cascade": {
+        "total": 32,
+        "hit": 21,
+        "miss": 11,
+        "abstain": 0,
+        "accuracy": 0.65625,
+        "coverage": 1.0,
+        "selective_accuracy": 0.65625
+      }
+    }
+  },
+  "rows": [
+    {
+      "utterance": "Search GitHub for high-star agent skills",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.9338,
+        "raw_score": 0.9338,
+        "margin": 0.3351,
+        "scores": {
+          "search": 0.9338,
+          "route": 0.5986,
+          "build": 0.5911,
+          "change": 0.5856
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9338,
+      "seconds": {
+        "embed": 0.025072099997487385,
+        "keyword": 0.049592800001846626,
+        "cascade": 0.05544290000398178
+      }
+    },
+    {
+      "utterance": "帮我搜索 GitHub 上高星的 Agent Skill",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.5745,
+        "raw_score": 0.5745,
+        "margin": 0.0284,
+        "scores": {
+          "search": 0.5745,
+          "change": 0.5461,
+          "learn": 0.542,
+          "remember": 0.4933
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.5745,
+      "seconds": {
+        "embed": 0.04586320000089472,
+        "keyword": 0.01668449999851873,
+        "cascade": 0.039472399999795016
+      }
+    },
+    {
+      "utterance": "Research 一下互联网上类似的 intent routing 产品",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6856,
+        "raw_score": 0.6856,
+        "margin": 0.1277,
+        "scores": {
+          "search": 0.6856,
+          "compress": 0.558,
+          "build": 0.5531,
+          "change": 0.5367
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6856,
+      "seconds": {
+        "embed": 0.03519790000427747,
+        "keyword": 0.009502200002316386,
+        "cascade": 0.0406656000050134
+      }
+    },
+    {
+      "utterance": "Find an existing Skill in the registry for editing PDFs",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "search",
+        "embed_first": "remember",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6836,
+        "raw_score": 0.6836,
+        "margin": 0.0172,
+        "scores": {
+          "remember": 0.6836,
+          "search": 0.6664,
+          "change": 0.6362,
+          "diagnose": 0.6217
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.028038700002070982,
+        "keyword": 0.008925299996917602,
+        "cascade": 0.04690860000118846
+      }
+    },
+    {
+      "utterance": "先找一个现成的 Skill 来处理 PDF",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.8698,
+        "raw_score": 0.8698,
+        "margin": 0.2008,
+        "scores": {
+          "search": 0.8698,
+          "remember": 0.669,
+          "route": 0.6666,
+          "recall": 0.6497
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8698,
+      "seconds": {
+        "embed": 0.02796179999859305,
+        "keyword": 0.008464099999400787,
+        "cascade": 0.03521370000089519
+      }
+    },
+    {
+      "utterance": "Build a custom Skill from scratch and validate it locally",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6504,
+        "raw_score": 0.6504,
+        "margin": 0.0043,
+        "scores": {
+          "build": 0.6504,
+          "learn": 0.6461,
+          "diagnose": 0.6091,
+          "recall": 0.5724
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6504,
+      "seconds": {
+        "embed": 0.030528699993737973,
+        "keyword": 0.009224400004313793,
+        "cascade": 0.03824059999897145
+      }
+    },
+    {
+      "utterance": "从零创建一个 Skill 并在本地验证",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.4482,
+        "scores": {
+          "build": 1.0,
+          "search": 0.5518,
+          "compress": 0.5223,
+          "change": 0.5195
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.026518800004851073,
+        "keyword": 0.009369300001708325,
+        "cascade": 0.0377334000004339
+      }
+    },
+    {
+      "utterance": "Use Playwright to test the current page on desktop and mobile",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7816,
+        "raw_score": 0.7816,
+        "margin": 0.0909,
+        "scores": {
+          "change": 0.7816,
+          "build": 0.6907,
+          "search": 0.6357,
+          "answer": 0.6031
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7816,
+      "seconds": {
+        "embed": 0.030835099998512305,
+        "keyword": 0.008504600002197549,
+        "cascade": 0.0361341000025277
+      }
+    },
+    {
+      "utterance": "用 Playwright MCP 测一下当前页面",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7986,
+        "raw_score": 0.7986,
+        "margin": 0.1194,
+        "scores": {
+          "change": 0.7986,
+          "search": 0.6792,
+          "recall": 0.6312,
+          "remember": 0.5999
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7986,
+      "seconds": {
+        "embed": 0.02820390000124462,
+        "keyword": 0.009232199998223223,
+        "cascade": 0.03524719999404624
+      }
+    },
+    {
+      "utterance": "Update the README heading locally",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7914,
+        "raw_score": 0.7914,
+        "margin": 0.1602,
+        "scores": {
+          "change": 0.7914,
+          "build": 0.6312,
+          "learn": 0.6133,
+          "remember": 0.6092
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7914,
+      "seconds": {
+        "embed": 0.02489890000288142,
+        "keyword": 0.009812900003453251,
+        "cascade": 0.035992800003441516
+      }
+    },
+    {
+      "utterance": "Explain why the command failed, but do not change any files",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7775,
+        "raw_score": 0.7775,
+        "margin": 0.0868,
+        "scores": {
+          "diagnose": 0.7775,
+          "answer": 0.6908,
+          "change": 0.6853,
+          "search": 0.6288
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7775,
+      "seconds": {
+        "embed": 0.02938970000104746,
+        "keyword": 0.009744199996930547,
+        "cascade": 0.03868839999631746
+      }
+    },
+    {
+      "utterance": "Publish this repository to GitHub",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.811,
+        "raw_score": 0.811,
+        "margin": 0.0922,
+        "scores": {
+          "build": 0.811,
+          "answer": 0.7188,
+          "remember": 0.7119,
+          "diagnose": 0.6746
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.811,
+      "seconds": {
+        "embed": 0.0478478000004543,
+        "keyword": 0.013003899999603163,
+        "cascade": 0.04490529999748105
+      }
+    },
+    {
+      "utterance": "把这个项目公开发布出去",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.9325,
+        "raw_score": 0.9325,
+        "margin": 0.2776,
+        "scores": {
+          "build": 0.9325,
+          "change": 0.6549,
+          "route": 0.6212,
+          "search": 0.6191
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9325,
+      "seconds": {
+        "embed": 0.033566899997822475,
+        "keyword": 0.012490799999795854,
+        "cascade": 0.04668649999803165
+      }
+    },
+    {
+      "utterance": "Upload my complete user profile to an external job search service",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "change",
+        "embed_first": "route",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6989,
+        "raw_score": 0.6989,
+        "margin": 0.0038,
+        "scores": {
+          "route": 0.6989,
+          "search": 0.6951,
+          "change": 0.6063,
+          "build": 0.5864
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.04497289999562781,
+        "keyword": 0.01571519999561133,
+        "cascade": 0.04207190000306582
+      }
+    },
+    {
+      "utterance": "Email my private resume.pdf to the recruiter",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7081,
+        "raw_score": 0.7081,
+        "margin": 0.0277,
+        "scores": {
+          "search": 0.7081,
+          "remember": 0.6804,
+          "build": 0.6673,
+          "change": 0.6623
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.03294630000164034,
+        "keyword": 0.012304900003073271,
+        "cascade": 0.05656829999497859
+      }
+    },
+    {
+      "utterance": "Delete all generated files",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.8546,
+        "raw_score": 0.8546,
+        "margin": 0.1903,
+        "scores": {
+          "change": 0.8546,
+          "search": 0.6642,
+          "remember": 0.6188,
+          "diagnose": 0.5877
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8546,
+      "seconds": {
+        "embed": 0.02837369999906514,
+        "keyword": 0.00848519999999553,
+        "cascade": 0.040769599996565375
+      }
+    },
+    {
+      "utterance": "Install the selected Skill on this computer",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "change",
+        "embed_first": "answer",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6668,
+        "raw_score": 0.6668,
+        "margin": 0.0031,
+        "scores": {
+          "answer": 0.6668,
+          "diagnose": 0.6638,
+          "route": 0.6638,
+          "compress": 0.6572
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.030403600001591258,
+        "keyword": 0.008531699997547548,
+        "cascade": 0.038681500001985114
+      }
+    },
+    {
+      "utterance": "continue",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.2511,
+        "scores": {
+          "change": 1.0,
+          "answer": 0.7489,
+          "recall": 0.6009,
+          "remember": 0.5697
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.028624699996726122,
+        "keyword": 0.010475399998540524,
+        "cascade": 0.03447700000106124
+      }
+    },
+    {
+      "utterance": "可以",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6193,
+        "raw_score": 0.6193,
+        "margin": 0.0181,
+        "scores": {
+          "change": 0.6193,
+          "search": 0.6013,
+          "remember": 0.5787,
+          "recall": 0.5458
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.023051399999530986,
+        "keyword": 0.009720800000650343,
+        "cascade": 8.600000001024455e-06
+      }
+    },
+    {
+      "utterance": "可以",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6193,
+        "raw_score": 0.6193,
+        "margin": 0.0181,
+        "scores": {
+          "change": 0.6193,
+          "search": 0.6013,
+          "remember": 0.5787,
+          "recall": 0.5458
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.02579459999833489,
+        "keyword": 0.010406800000055227,
+        "cascade": 3.4000004234258085e-05
+      }
+    },
+    {
+      "utterance": "continue",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.2511,
+        "scores": {
+          "change": 1.0,
+          "answer": 0.7489,
+          "recall": 0.6009,
+          "remember": 0.5697
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.023946699999214616,
+        "keyword": 0.01286170000093989,
+        "cascade": 0.034676800001761876
+      }
+    },
+    {
+      "utterance": "Keep testing locally and do not publish to GitHub",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6703,
+        "raw_score": 0.6703,
+        "margin": 0.0231,
+        "scores": {
+          "change": 0.6703,
+          "build": 0.6472,
+          "answer": 0.6389,
+          "diagnose": 0.612
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6703,
+      "seconds": {
+        "embed": 0.026596700001391582,
+        "keyword": 0.008932299999287352,
+        "cascade": 0.03432259999681264
+      }
+    },
+    {
+      "utterance": "Search the public web for alternatives, but do not upload my files",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6883,
+        "raw_score": 0.6883,
+        "margin": 0.0162,
+        "scores": {
+          "search": 0.6883,
+          "change": 0.6721,
+          "route": 0.6428,
+          "answer": 0.5948
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6883,
+      "seconds": {
+        "embed": 0.03034990000014659,
+        "keyword": 0.007991499995114282,
+        "cascade": 0.03740490000200225
+      }
+    },
+    {
+      "utterance": "Why does publishing to GitHub require confirmation?",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "answer",
+        "embed_first": "remember",
+        "cascade": "remember"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6556,
+        "raw_score": 0.6556,
+        "margin": 0.0043,
+        "scores": {
+          "remember": 0.6556,
+          "answer": 0.6513,
+          "recall": 0.6184,
+          "build": 0.6181
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6556,
+      "seconds": {
+        "embed": 0.029764900005829986,
+        "keyword": 0.008202700002584606,
+        "cascade": 0.03699239999696147
+      }
+    },
+    {
+      "utterance": "Based only on these symptoms, tell me which prescription drug to take",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "answer",
+        "embed_first": "learn",
+        "cascade": "learn"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.617,
+        "raw_score": 0.617,
+        "margin": 0.006,
+        "scores": {
+          "learn": 0.617,
+          "remember": 0.611,
+          "recall": 0.6053,
+          "diagnose": 0.6029
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.617,
+      "seconds": {
+        "embed": 0.03191710000101011,
+        "keyword": 0.008634100006020162,
+        "cascade": 0.041858500000671484
+      }
+    },
+    {
+      "utterance": "帮我编造谣言抹黑这个人",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.5509,
+        "raw_score": 0.5509,
+        "margin": 0.0226,
+        "scores": {
+          "change": 0.5509,
+          "recall": 0.5283,
+          "remember": 0.5259,
+          "answer": 0.5162
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.5509,
+      "seconds": {
+        "embed": 0.0273213999971631,
+        "keyword": 0.009206499998981599,
+        "cascade": 0.03809180000098422
+      }
+    },
+    {
+      "utterance": "Update the selected Obsidian note with this summary",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.8585,
+        "raw_score": 0.8585,
+        "margin": 0.097,
+        "scores": {
+          "change": 0.8585,
+          "answer": 0.7615,
+          "diagnose": 0.675,
+          "compress": 0.6704
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8585,
+      "seconds": {
+        "embed": 0.0292226000019582,
+        "keyword": 0.009520100000372622,
+        "cascade": 0.03567820000171196
+      }
+    },
+    {
+      "utterance": "Rotate the second page of report.pdf",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7177,
+        "raw_score": 0.7177,
+        "margin": 0.0367,
+        "scores": {
+          "change": 0.7177,
+          "search": 0.6811,
+          "answer": 0.679,
+          "remember": 0.6597
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7177,
+      "seconds": {
+        "embed": 0.027190500004508067,
+        "keyword": 0.008987600005639251,
+        "cascade": 0.03326139999990119
+      }
+    },
+    {
+      "utterance": "Convert this rough request into a prompt another agent can execute",
+      "expected_mode": "route",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "route",
+        "embed_first": "route",
+        "cascade": "route"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.9077,
+        "raw_score": 0.9077,
+        "margin": 0.2958,
+        "scores": {
+          "route": 0.9077,
+          "search": 0.6119,
+          "build": 0.6014,
+          "diagnose": 0.5925
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9077,
+      "seconds": {
+        "embed": 0.030740399997739587,
+        "keyword": 0.008751800000027288,
+        "cascade": 0.04111330000159796
+      }
+    },
+    {
+      "utterance": "Review the unpublished draft and summarize its argument",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "answer",
+        "embed_first": "answer",
+        "cascade": "answer"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.7123,
+        "raw_score": 0.7123,
+        "margin": 0.0281,
+        "scores": {
+          "answer": 0.7123,
+          "build": 0.6842,
+          "compress": 0.6519,
+          "search": 0.6416
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7123,
+      "seconds": {
+        "embed": 0.03108090000023367,
+        "keyword": 0.009490399999776855,
+        "cascade": 0.037384000002930406
+      }
+    },
+    {
+      "utterance": "先 review 当前方案，don't publish anything",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "answer",
+        "embed_first": "compress",
+        "cascade": "compress"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.6371,
+        "raw_score": 0.6371,
+        "margin": 0.0091,
+        "scores": {
+          "compress": 0.6371,
+          "route": 0.6281,
+          "answer": 0.6171,
+          "build": 0.6139
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6371,
+      "seconds": {
+        "embed": 0.02703280000423547,
+        "keyword": 0.008496200003719423,
+        "cascade": 0.03582490000553662
+      }
+    },
+    {
+      "utterance": "Search public job listings, but do not send my profile",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "search",
+        "embed_first": "recall",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.6336,
+        "raw_score": 0.6336,
+        "margin": 0.0012,
+        "scores": {
+          "recall": 0.6336,
+          "answer": 0.6323,
+          "change": 0.6287,
+          "route": 0.6152
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.02721459999884246,
+        "keyword": 0.008361199994396884,
+        "cascade": 0.03791379999893252
+      }
+    },
+    {
+      "utterance": "Search GitHub for high-star agent skills",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.9338,
+        "raw_score": 0.9338,
+        "margin": 0.3351,
+        "scores": {
+          "search": 0.9338,
+          "route": 0.5986,
+          "build": 0.5911,
+          "change": 0.5856
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9338,
+      "seconds": {
+        "embed": 0.02824519999558106,
+        "keyword": 0.008667599999171216,
+        "cascade": 0.03644150000036461
+      }
+    },
+    {
+      "utterance": "帮我搜索 GitHub 上高星的 Agent Skill",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.5745,
+        "raw_score": 0.5745,
+        "margin": 0.0284,
+        "scores": {
+          "search": 0.5745,
+          "change": 0.5461,
+          "learn": 0.542,
+          "remember": 0.4933
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.5745,
+      "seconds": {
+        "embed": 0.027943599998252466,
+        "keyword": 0.008078600003500469,
+        "cascade": 0.03658559999894351
+      }
+    },
+    {
+      "utterance": "Research 一下互联网上类似的 intent routing 产品",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6856,
+        "raw_score": 0.6856,
+        "margin": 0.1277,
+        "scores": {
+          "search": 0.6856,
+          "compress": 0.558,
+          "build": 0.5531,
+          "change": 0.5367
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6856,
+      "seconds": {
+        "embed": 0.029105000001436565,
+        "keyword": 0.008967199995822739,
+        "cascade": 0.03813280000031227
+      }
+    },
+    {
+      "utterance": "Find an existing Skill in the registry for editing PDFs",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "search",
+        "embed_first": "remember",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6836,
+        "raw_score": 0.6836,
+        "margin": 0.0172,
+        "scores": {
+          "remember": 0.6836,
+          "search": 0.6664,
+          "change": 0.6362,
+          "diagnose": 0.6217
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.03468810000049416,
+        "keyword": 0.011594600000535138,
+        "cascade": 0.03690210000058869
+      }
+    },
+    {
+      "utterance": "先找一个现成的 Skill 来处理 PDF",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.8698,
+        "raw_score": 0.8698,
+        "margin": 0.2008,
+        "scores": {
+          "search": 0.8698,
+          "remember": 0.669,
+          "route": 0.6666,
+          "recall": 0.6497
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8698,
+      "seconds": {
+        "embed": 0.027339200001733843,
+        "keyword": 0.008909299998776987,
+        "cascade": 0.03336969999509165
+      }
+    },
+    {
+      "utterance": "Build a custom Skill from scratch and validate it locally",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6504,
+        "raw_score": 0.6504,
+        "margin": 0.0043,
+        "scores": {
+          "build": 0.6504,
+          "learn": 0.6461,
+          "diagnose": 0.6091,
+          "recall": 0.5724
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6504,
+      "seconds": {
+        "embed": 0.028249599999981,
+        "keyword": 0.00889709999319166,
+        "cascade": 0.038047200003347825
+      }
+    },
+    {
+      "utterance": "从零创建一个 Skill 并在本地验证",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.4482,
+        "scores": {
+          "build": 1.0,
+          "search": 0.5518,
+          "compress": 0.5223,
+          "change": 0.5195
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.027890199999092147,
+        "keyword": 0.007805299996107351,
+        "cascade": 0.03590560000156984
+      }
+    },
+    {
+      "utterance": "Use Playwright to test the current page on desktop and mobile",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7816,
+        "raw_score": 0.7816,
+        "margin": 0.0909,
+        "scores": {
+          "change": 0.7816,
+          "build": 0.6907,
+          "search": 0.6357,
+          "answer": 0.6031
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7816,
+      "seconds": {
+        "embed": 0.030149500002153218,
+        "keyword": 0.007986199998413213,
+        "cascade": 0.03706429999874672
+      }
+    },
+    {
+      "utterance": "用 Playwright MCP 测一下当前页面",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7986,
+        "raw_score": 0.7986,
+        "margin": 0.1194,
+        "scores": {
+          "change": 0.7986,
+          "search": 0.6792,
+          "recall": 0.6312,
+          "remember": 0.5999
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7986,
+      "seconds": {
+        "embed": 0.02556870000262279,
+        "keyword": 0.008120400001644157,
+        "cascade": 0.03352989999984857
+      }
+    },
+    {
+      "utterance": "Update the README heading locally",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7914,
+        "raw_score": 0.7914,
+        "margin": 0.1602,
+        "scores": {
+          "change": 0.7914,
+          "build": 0.6312,
+          "learn": 0.6133,
+          "remember": 0.6092
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7914,
+      "seconds": {
+        "embed": 0.025437500000407454,
+        "keyword": 0.008403100000577979,
+        "cascade": 0.03634250000322936
+      }
+    },
+    {
+      "utterance": "Explain why the command failed, but do not change any files",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7775,
+        "raw_score": 0.7775,
+        "margin": 0.0868,
+        "scores": {
+          "diagnose": 0.7775,
+          "answer": 0.6908,
+          "change": 0.6853,
+          "search": 0.6288
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7775,
+      "seconds": {
+        "embed": 0.03014180000172928,
+        "keyword": 0.008147299995471258,
+        "cascade": 0.036077600001590326
+      }
+    },
+    {
+      "utterance": "Publish this repository to GitHub",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.811,
+        "raw_score": 0.811,
+        "margin": 0.0922,
+        "scores": {
+          "build": 0.811,
+          "answer": 0.7188,
+          "remember": 0.7119,
+          "diagnose": 0.6746
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.811,
+      "seconds": {
+        "embed": 0.024148099997546524,
+        "keyword": 0.007759699998132419,
+        "cascade": 0.03320679999887943
+      }
+    },
+    {
+      "utterance": "把这个项目公开发布出去",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.9325,
+        "raw_score": 0.9325,
+        "margin": 0.2776,
+        "scores": {
+          "build": 0.9325,
+          "change": 0.6549,
+          "route": 0.6212,
+          "search": 0.6191
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9325,
+      "seconds": {
+        "embed": 0.02907240000058664,
+        "keyword": 0.008805099998426158,
+        "cascade": 0.03481620000093244
+      }
+    },
+    {
+      "utterance": "Upload my complete user profile to an external job search service",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "change",
+        "embed_first": "route",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6989,
+        "raw_score": 0.6989,
+        "margin": 0.0038,
+        "scores": {
+          "route": 0.6989,
+          "search": 0.6951,
+          "change": 0.6063,
+          "build": 0.5864
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.026598600001307204,
+        "keyword": 0.010264299999107607,
+        "cascade": 0.03724169999622973
+      }
+    },
+    {
+      "utterance": "Email my private resume.pdf to the recruiter",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7081,
+        "raw_score": 0.7081,
+        "margin": 0.0277,
+        "scores": {
+          "search": 0.7081,
+          "remember": 0.6804,
+          "build": 0.6673,
+          "change": 0.6623
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.02941599999758182,
+        "keyword": 0.011546299996552989,
+        "cascade": 0.03484020000178134
+      }
+    },
+    {
+      "utterance": "Delete all generated files",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.8546,
+        "raw_score": 0.8546,
+        "margin": 0.1903,
+        "scores": {
+          "change": 0.8546,
+          "search": 0.6642,
+          "remember": 0.6188,
+          "diagnose": 0.5877
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8546,
+      "seconds": {
+        "embed": 0.026767600000312086,
+        "keyword": 0.010026899995864369,
+        "cascade": 0.033363300004566554
+      }
+    },
+    {
+      "utterance": "Install the selected Skill on this computer",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "change",
+        "embed_first": "answer",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6668,
+        "raw_score": 0.6668,
+        "margin": 0.0031,
+        "scores": {
+          "answer": 0.6668,
+          "diagnose": 0.6638,
+          "route": 0.6638,
+          "compress": 0.6572
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.026546000000962522,
+        "keyword": 0.008797600006801076,
+        "cascade": 0.03323100000125123
+      }
+    },
+    {
+      "utterance": "continue",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.2511,
+        "scores": {
+          "change": 1.0,
+          "answer": 0.7489,
+          "recall": 0.6009,
+          "remember": 0.5697
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.023780499999702442,
+        "keyword": 0.011174600003869273,
+        "cascade": 0.032865100001799874
+      }
+    },
+    {
+      "utterance": "可以",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6193,
+        "raw_score": 0.6193,
+        "margin": 0.0181,
+        "scores": {
+          "change": 0.6193,
+          "search": 0.6013,
+          "remember": 0.5787,
+          "recall": 0.5458
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.023353999997198116,
+        "keyword": 0.01030460000038147,
+        "cascade": 9.199997293762863e-06
+      }
+    },
+    {
+      "utterance": "可以",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6193,
+        "raw_score": 0.6193,
+        "margin": 0.0181,
+        "scores": {
+          "change": 0.6193,
+          "search": 0.6013,
+          "remember": 0.5787,
+          "recall": 0.5458
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.02424040000187233,
+        "keyword": 0.0106043000050704,
+        "cascade": 1.030000566970557e-05
+      }
+    },
+    {
+      "utterance": "continue",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.2511,
+        "scores": {
+          "change": 1.0,
+          "answer": 0.7489,
+          "recall": 0.6009,
+          "remember": 0.5697
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.021764400000392925,
+        "keyword": 0.00872009999875445,
+        "cascade": 0.03526820000115549
+      }
+    },
+    {
+      "utterance": "Keep testing locally and do not publish to GitHub",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6703,
+        "raw_score": 0.6703,
+        "margin": 0.0231,
+        "scores": {
+          "change": 0.6703,
+          "build": 0.6472,
+          "answer": 0.6389,
+          "diagnose": 0.612
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6703,
+      "seconds": {
+        "embed": 0.02757759999803966,
+        "keyword": 0.009410699996806215,
+        "cascade": 0.03604839999752585
+      }
+    },
+    {
+      "utterance": "Search the public web for alternatives, but do not upload my files",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6883,
+        "raw_score": 0.6883,
+        "margin": 0.0162,
+        "scores": {
+          "search": 0.6883,
+          "change": 0.6721,
+          "route": 0.6428,
+          "answer": 0.5948
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6883,
+      "seconds": {
+        "embed": 0.02967229999921983,
+        "keyword": 0.00895739999396028,
+        "cascade": 0.03948179999861168
+      }
+    },
+    {
+      "utterance": "Why does publishing to GitHub require confirmation?",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "answer",
+        "embed_first": "remember",
+        "cascade": "remember"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6556,
+        "raw_score": 0.6556,
+        "margin": 0.0043,
+        "scores": {
+          "remember": 0.6556,
+          "answer": 0.6513,
+          "recall": 0.6184,
+          "build": 0.6181
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6556,
+      "seconds": {
+        "embed": 0.028076299997337628,
+        "keyword": 0.008084799999778625,
+        "cascade": 0.03739549999590963
+      }
+    },
+    {
+      "utterance": "Based only on these symptoms, tell me which prescription drug to take",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "answer",
+        "embed_first": "learn",
+        "cascade": "learn"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.617,
+        "raw_score": 0.617,
+        "margin": 0.006,
+        "scores": {
+          "learn": 0.617,
+          "remember": 0.611,
+          "recall": 0.6053,
+          "diagnose": 0.6029
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.617,
+      "seconds": {
+        "embed": 0.032071300003735814,
+        "keyword": 0.011315699994156603,
+        "cascade": 0.044940699997823685
+      }
+    },
+    {
+      "utterance": "帮我编造谣言抹黑这个人",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.5509,
+        "raw_score": 0.5509,
+        "margin": 0.0226,
+        "scores": {
+          "change": 0.5509,
+          "recall": 0.5283,
+          "remember": 0.5259,
+          "answer": 0.5162
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.5509,
+      "seconds": {
+        "embed": 0.027685100001690444,
+        "keyword": 0.00857450000330573,
+        "cascade": 0.037529599998379126
+      }
+    },
+    {
+      "utterance": "Update the selected Obsidian note with this summary",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.8585,
+        "raw_score": 0.8585,
+        "margin": 0.097,
+        "scores": {
+          "change": 0.8585,
+          "answer": 0.7615,
+          "diagnose": 0.675,
+          "compress": 0.6704
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.8585,
+      "seconds": {
+        "embed": 0.026834400006919168,
+        "keyword": 0.00872220000019297,
+        "cascade": 0.03436839999631047
+      }
+    },
+    {
+      "utterance": "Rotate the second page of report.pdf",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7177,
+        "raw_score": 0.7177,
+        "margin": 0.0367,
+        "scores": {
+          "change": 0.7177,
+          "search": 0.6811,
+          "answer": 0.679,
+          "remember": 0.6597
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7177,
+      "seconds": {
+        "embed": 0.026119900001503993,
+        "keyword": 0.008089000002655666,
+        "cascade": 0.03275420000136364
+      }
+    },
+    {
+      "utterance": "Convert this rough request into a prompt another agent can execute",
+      "expected_mode": "route",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "route",
+        "embed_first": "route",
+        "cascade": "route"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.9077,
+        "raw_score": 0.9077,
+        "margin": 0.2958,
+        "scores": {
+          "route": 0.9077,
+          "search": 0.6119,
+          "build": 0.6014,
+          "diagnose": 0.5925
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9077,
+      "seconds": {
+        "embed": 0.028947300001163967,
+        "keyword": 0.008634300000267103,
+        "cascade": 0.035381100002268795
+      }
+    },
+    {
+      "utterance": "Review the unpublished draft and summarize its argument",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "answer",
+        "embed_first": "answer",
+        "cascade": "answer"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.7123,
+        "raw_score": 0.7123,
+        "margin": 0.0281,
+        "scores": {
+          "answer": 0.7123,
+          "build": 0.6842,
+          "compress": 0.6519,
+          "search": 0.6416
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7123,
+      "seconds": {
+        "embed": 0.028150099999038503,
+        "keyword": 0.008880699999281205,
+        "cascade": 0.03692070000397507
+      }
+    },
+    {
+      "utterance": "先 review 当前方案，don't publish anything",
+      "expected_mode": "answer",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "answer",
+        "embed_first": "compress",
+        "cascade": "compress"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.6371,
+        "raw_score": 0.6371,
+        "margin": 0.0091,
+        "scores": {
+          "compress": 0.6371,
+          "route": 0.6281,
+          "answer": 0.6171,
+          "build": 0.6139
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6371,
+      "seconds": {
+        "embed": 0.02847710000060033,
+        "keyword": 0.008331500001077075,
+        "cascade": 0.03567559999646619
+      }
+    },
+    {
+      "utterance": "Search public job listings, but do not send my profile",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "search",
+        "embed_first": "recall",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.6336,
+        "raw_score": 0.6336,
+        "margin": 0.0012,
+        "scores": {
+          "recall": 0.6336,
+          "answer": 0.6323,
+          "change": 0.6287,
+          "route": 0.6152
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.029262600000947714,
+        "keyword": 0.008784499994362704,
+        "cascade": 0.037440699998114724
+      }
+    },
+    {
+      "utterance": "Research GitHub for maintained agent permission gateways",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "search",
+        "embed_first": "route",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6508,
+        "raw_score": 0.6508,
+        "margin": 0.0129,
+        "scores": {
+          "route": 0.6508,
+          "search": 0.6379,
+          "remember": 0.5994,
+          "recall": 0.5823
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.027161999998497777,
+        "keyword": 0.00847770000109449,
+        "cascade": 0.03465199999482138
+      }
+    },
+    {
+      "utterance": "调研 GitHub 上维护活跃的 Agent 权限网关",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.5513,
+        "raw_score": 0.5513,
+        "margin": 0.0258,
+        "scores": {
+          "search": 0.5513,
+          "change": 0.5254,
+          "route": 0.5033,
+          "build": 0.494
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.5513,
+      "seconds": {
+        "embed": 0.028361800003040116,
+        "keyword": 0.008138899996993132,
+        "cascade": 0.03383469999971567
+      }
+    },
+    {
+      "utterance": "Research 一下公开网络里的 agent action gateway 产品",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "search",
+        "embed_first": "route",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6113,
+        "raw_score": 0.6113,
+        "margin": 0.0162,
+        "scores": {
+          "route": 0.6113,
+          "build": 0.5951,
+          "search": 0.5768,
+          "change": 0.5381
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.029623599999467842,
+        "keyword": 0.008663300002808683,
+        "cascade": 0.03662669999903301
+      }
+    },
+    {
+      "utterance": "Research public repositories for pre-execution agent controls",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "search",
+        "embed_first": "route",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6985,
+        "raw_score": 0.6985,
+        "margin": 0.0812,
+        "scores": {
+          "route": 0.6985,
+          "search": 0.6173,
+          "remember": 0.594,
+          "change": 0.5773
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.029059200001938734,
+        "keyword": 0.00914109999575885,
+        "cascade": 0.03798180000012508
+      }
+    },
+    {
+      "utterance": "Find an existing Skill for editing Excel workbooks",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6865,
+        "raw_score": 0.6865,
+        "margin": 0.0622,
+        "scores": {
+          "search": 0.6865,
+          "change": 0.6242,
+          "answer": 0.6161,
+          "recall": 0.6161
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6865,
+      "seconds": {
+        "embed": 0.029257499998493586,
+        "keyword": 0.010313899998436682,
+        "cascade": 0.041879900003550574
+      }
+    },
+    {
+      "utterance": "先找现成的 Skill 处理电子表格，不要自己造",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.755,
+        "raw_score": 0.755,
+        "margin": 0.1735,
+        "scores": {
+          "search": 0.755,
+          "build": 0.5815,
+          "change": 0.5653,
+          "compress": 0.5632
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.755,
+      "seconds": {
+        "embed": 0.028425600001355633,
+        "keyword": 0.008320399996591732,
+        "cascade": 0.038691000001563225
+      }
+    },
+    {
+      "utterance": "Find 一个 registry 里的 xlsx Skill",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "search",
+        "embed_first": "build",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.544,
+        "raw_score": 0.544,
+        "margin": 0.0095,
+        "scores": {
+          "build": 0.544,
+          "compress": 0.5345,
+          "search": 0.5315,
+          "remember": 0.5261
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-prior",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.03674440000031609,
+        "keyword": 0.009823799999139737,
+        "cascade": 0.03892520000226796
+      }
+    },
+    {
+      "utterance": "Search the Skill registry for a maintained spreadsheet editor",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "search",
+        "embed_first": "remember",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6591,
+        "raw_score": 0.6591,
+        "margin": 0.0042,
+        "scores": {
+          "remember": 0.6591,
+          "build": 0.6549,
+          "search": 0.6547,
+          "answer": 0.6388
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.028279400001338217,
+        "keyword": 0.007801699997799005,
+        "cascade": 0.03920629999629455
+      }
+    },
+    {
+      "utterance": "Create and locally validate a custom Skill for our internal format",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "build",
+        "embed_first": "recall",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.6254,
+        "raw_score": 0.6254,
+        "margin": 0.0008,
+        "scores": {
+          "recall": 0.6254,
+          "learn": 0.6245,
+          "remember": 0.6184,
+          "answer": 0.6173
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.027830500002892222,
+        "keyword": 0.016327800003637094,
+        "cascade": 0.0376447000016924
+      }
+    },
+    {
+      "utterance": "给这个内部格式新建一个 Skill 并在本地校验",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "build",
+        "embed_first": "search",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7038,
+        "raw_score": 0.7038,
+        "margin": 0.0116,
+        "scores": {
+          "search": 0.7038,
+          "build": 0.6922,
+          "change": 0.5969,
+          "compress": 0.5922
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.030985799996415153,
+        "keyword": 0.00863480000407435,
+        "cascade": 0.03528570000344189
+      }
+    },
+    {
+      "utterance": "Build 一个 custom Skill，先 local validate",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.5692,
+        "raw_score": 0.5692,
+        "margin": 0.0247,
+        "scores": {
+          "build": 0.5692,
+          "change": 0.5445,
+          "search": 0.5426,
+          "learn": 0.5305
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.5692,
+      "seconds": {
+        "embed": 0.02705180000339169,
+        "keyword": 0.008884900002158247,
+        "cascade": 0.03439819999766769
+      }
+    },
+    {
+      "utterance": "Update this custom Skill and validate its SKILL.md locally",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "build",
+        "embed_first": "learn",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.6388,
+        "raw_score": 0.6388,
+        "margin": 0.0034,
+        "scores": {
+          "learn": 0.6388,
+          "diagnose": 0.6354,
+          "answer": 0.6262,
+          "change": 0.6019
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.028212000004714355,
+        "keyword": 0.009547400004521478,
+        "cascade": 0.040294800004630815
+      }
+    },
+    {
+      "utterance": "Run Playwright against the local dashboard at desktop and mobile sizes",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.702,
+        "raw_score": 0.702,
+        "margin": 0.0639,
+        "scores": {
+          "build": 0.702,
+          "change": 0.6381,
+          "compress": 0.5788,
+          "search": 0.5617
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.03024120000191033,
+        "keyword": 0.00871960000222316,
+        "cascade": 0.03590499999700114
+      }
+    },
+    {
+      "utterance": "用浏览器自动化验证本地页面的桌面和手机布局",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6817,
+        "raw_score": 0.6817,
+        "margin": 0.1268,
+        "scores": {
+          "change": 0.6817,
+          "build": 0.5549,
+          "route": 0.493,
+          "search": 0.4927
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6817,
+      "seconds": {
+        "embed": 0.02961669999785954,
+        "keyword": 0.007872700000007171,
+        "cascade": 0.03691679999610642
+      }
+    },
+    {
+      "utterance": "用 Playwright test 当前 UI 的 keyboard navigation",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.709,
+        "raw_score": 0.709,
+        "margin": 0.0593,
+        "scores": {
+          "change": 0.709,
+          "remember": 0.6497,
+          "answer": 0.6354,
+          "search": 0.593
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.709,
+      "seconds": {
+        "embed": 0.026021900004707277,
+        "keyword": 0.008077500002400484,
+        "cascade": 0.03280539999832399
+      }
+    },
+    {
+      "utterance": "Use the browser tool to verify the local form's focus order",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6612,
+        "raw_score": 0.6612,
+        "margin": 0.0068,
+        "scores": {
+          "change": 0.6612,
+          "answer": 0.6544,
+          "search": 0.6399,
+          "recall": 0.6289
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6612,
+      "seconds": {
+        "embed": 0.028282100000069477,
+        "keyword": 0.008408300003793556,
+        "cascade": 0.036895800003549084
+      }
+    },
+    {
+      "utterance": "Run the local API unit tests",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7903,
+        "raw_score": 0.7903,
+        "margin": 0.2169,
+        "scores": {
+          "change": 0.7903,
+          "search": 0.5735,
+          "build": 0.5671,
+          "remember": 0.5652
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7903,
+      "seconds": {
+        "embed": 0.026327699997636955,
+        "keyword": 0.009274899995943997,
+        "cascade": 0.03415859999950044
+      }
+    },
+    {
+      "utterance": "运行本地 Python 单元测试",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6592,
+        "raw_score": 0.6592,
+        "margin": 0.0813,
+        "scores": {
+          "change": 0.6592,
+          "build": 0.5779,
+          "diagnose": 0.5486,
+          "search": 0.5162
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6592,
+      "seconds": {
+        "embed": 0.026052100001834333,
+        "keyword": 0.008134600000630599,
+        "cascade": 0.03715199999714969
+      }
+    },
+    {
+      "utterance": "Run 当前 package 的 local tests",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6937,
+        "raw_score": 0.6937,
+        "margin": 0.1329,
+        "scores": {
+          "change": 0.6937,
+          "diagnose": 0.5608,
+          "build": 0.5559,
+          "search": 0.5537
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6937,
+      "seconds": {
+        "embed": 0.02579360000527231,
+        "keyword": 0.008786999998847023,
+        "cascade": 0.0333119999995688
+      }
+    },
+    {
+      "utterance": "Verify the local parser with its test suite",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7186,
+        "raw_score": 0.7186,
+        "margin": 0.0789,
+        "scores": {
+          "change": 0.7186,
+          "search": 0.6397,
+          "route": 0.5911,
+          "learn": 0.5884
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7186,
+      "seconds": {
+        "embed": 0.027912599995033816,
+        "keyword": 0.00875629999791272,
+        "cascade": 0.038134999995236285
+      }
+    },
+    {
+      "utterance": "Improve the README locally, but do not publish anything",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6858,
+        "raw_score": 0.6858,
+        "margin": 0.0267,
+        "scores": {
+          "build": 0.6858,
+          "answer": 0.6591,
+          "recall": 0.6365,
+          "diagnose": 0.6186
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.028893199996673502,
+        "keyword": 0.008396899997023866,
+        "cascade": 0.03660259999742266
+      }
+    },
+    {
+      "utterance": "只改本地使用说明，不要发布",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6105,
+        "raw_score": 0.6105,
+        "margin": 0.0038,
+        "scores": {
+          "change": 0.6105,
+          "answer": 0.6067,
+          "remember": 0.5755,
+          "build": 0.5683
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6105,
+      "seconds": {
+        "embed": 0.026876900003117044,
+        "keyword": 0.008445600004051812,
+        "cascade": 0.03452129999641329
+      }
+    },
+    {
+      "utterance": "Update local docs，先不要 publish",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6057,
+        "raw_score": 0.6057,
+        "margin": 0.0065,
+        "scores": {
+          "build": 0.6057,
+          "compress": 0.5992,
+          "search": 0.5954,
+          "answer": 0.5785
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.02515329999732785,
+        "keyword": 0.008634199999505654,
+        "cascade": 0.03414530000009108
+      }
+    },
+    {
+      "utterance": "Revise the local onboarding copy without pushing it anywhere",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6642,
+        "raw_score": 0.6642,
+        "margin": 0.0356,
+        "scores": {
+          "build": 0.6642,
+          "change": 0.6286,
+          "diagnose": 0.6274,
+          "search": 0.6232
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.0257497000056901,
+        "keyword": 0.007946000005176757,
+        "cascade": 0.037621800001943484
+      }
+    },
+    {
+      "utterance": "Diagnose the failing build, but do not edit the repository",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.657,
+        "raw_score": 0.657,
+        "margin": 0.0065,
+        "scores": {
+          "diagnose": 0.657,
+          "recall": 0.6505,
+          "answer": 0.6446,
+          "build": 0.6402
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.657,
+      "seconds": {
+        "embed": 0.026799599996593315,
+        "keyword": 0.008788599996478297,
+        "cascade": 0.03610290000506211
+      }
+    },
+    {
+      "utterance": "解释服务为什么启动失败，先别改配置",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7152,
+        "raw_score": 0.7152,
+        "margin": 0.0262,
+        "scores": {
+          "diagnose": 0.7152,
+          "change": 0.6889,
+          "recall": 0.5996,
+          "search": 0.5737
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7152,
+      "seconds": {
+        "embed": 0.030104299999948125,
+        "keyword": 0.010038100001111161,
+        "cascade": 0.0386824000015622
+      }
+    },
+    {
+      "utterance": "Diagnose 这个 traceback，don't change files",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7097,
+        "raw_score": 0.7097,
+        "margin": 0.0309,
+        "scores": {
+          "diagnose": 0.7097,
+          "change": 0.6787,
+          "compress": 0.6291,
+          "remember": 0.6026
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7097,
+      "seconds": {
+        "embed": 0.02695990000211168,
+        "keyword": 0.00761179999972228,
+        "cascade": 0.03658089999953518
+      }
+    },
+    {
+      "utterance": "Explain the deployment failure without applying a fix",
+      "expected_mode": "diagnose",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "diagnose",
+        "embed_first": "recall",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.7775,
+        "raw_score": 0.7775,
+        "margin": 0.0681,
+        "scores": {
+          "recall": 0.7775,
+          "change": 0.7095,
+          "remember": 0.665,
+          "diagnose": 0.6451
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.028230900003109127,
+        "keyword": 0.008320000000821892,
+        "cascade": 0.03810410000005504
+      }
+    },
+    {
+      "utterance": "Email my private nda.pdf to outside counsel",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "change",
+        "embed_first": "answer",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6256,
+        "raw_score": 0.6256,
+        "margin": 0.0064,
+        "scores": {
+          "answer": 0.6256,
+          "search": 0.6191,
+          "change": 0.6077,
+          "build": 0.5946
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.027140400001371745,
+        "keyword": 0.011014199997589458,
+        "cascade": 0.037167199996474665
+      }
+    },
+    {
+      "utterance": "把候选人的私人简历发给外部顾问",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "change",
+        "embed_first": "compress",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.5698,
+        "raw_score": 0.5698,
+        "margin": 0.0215,
+        "scores": {
+          "compress": 0.5698,
+          "route": 0.5483,
+          "search": 0.5445,
+          "remember": 0.535
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.026598700002068654,
+        "keyword": 0.012369900003250223,
+        "cascade": 0.03595000000495929
+      }
+    },
+    {
+      "utterance": "Send 这个 confidential-report.pdf 给客户",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6695,
+        "raw_score": 0.6695,
+        "margin": 0.058,
+        "scores": {
+          "change": 0.6695,
+          "answer": 0.6115,
+          "search": 0.6107,
+          "build": 0.6024
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6695,
+      "seconds": {
+        "embed": 0.026587100001052022,
+        "keyword": 0.011379299998225179,
+        "cascade": 0.041870399996696506
+      }
+    },
+    {
+      "utterance": "Upload the unpublished participant-data.csv to the collaborator",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6159,
+        "raw_score": 0.6159,
+        "margin": 0.0015,
+        "scores": {
+          "search": 0.6159,
+          "build": 0.6144,
+          "route": 0.6023,
+          "change": 0.599
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.03244389999599662,
+        "keyword": 0.010253700005705468,
+        "cascade": 0.044415100004698616
+      }
+    },
+    {
+      "utterance": "Publish the current project publicly",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "build",
+        "embed_first": "search",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6468,
+        "raw_score": 0.6468,
+        "margin": 0.0249,
+        "scores": {
+          "search": 0.6468,
+          "build": 0.6219,
+          "answer": 0.612,
+          "recall": 0.6098
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.0247220000019297,
+        "keyword": 0.009205700000165962,
+        "cascade": 0.035479800004395656
+      }
+    },
+    {
+      "utterance": "把当前产品正式公开上线",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.7414,
+        "raw_score": 0.7414,
+        "margin": 0.153,
+        "scores": {
+          "build": 0.7414,
+          "recall": 0.5883,
+          "search": 0.5866,
+          "change": 0.5755
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7414,
+      "seconds": {
+        "embed": 0.028234799996425863,
+        "keyword": 0.010332199999538716,
+        "cascade": 0.04007450000062818
+      }
+    },
+    {
+      "utterance": "Ship 这个 repository to a public remote",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "build",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.7252,
+        "raw_score": 0.7252,
+        "margin": 0.0364,
+        "scores": {
+          "build": 0.7252,
+          "remember": 0.6888,
+          "recall": 0.6227,
+          "answer": 0.6041
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7252,
+      "seconds": {
+        "embed": 0.026651399995898828,
+        "keyword": 0.008693700001458637,
+        "cascade": 0.03666960000555264
+      }
+    },
+    {
+      "utterance": "Release these documentation changes to the public",
+      "expected_mode": "build",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "build",
+        "embed_first": "search",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7374,
+        "raw_score": 0.7374,
+        "margin": 0.0244,
+        "scores": {
+          "search": 0.7374,
+          "answer": 0.7131,
+          "build": 0.7039,
+          "change": 0.6132
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.026379499999166,
+        "keyword": 0.009698499998194166,
+        "cascade": 0.03614679999736836
+      }
+    },
+    {
+      "utterance": "Delete every generated build artifact",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6488,
+        "raw_score": 0.6488,
+        "margin": 0.0505,
+        "scores": {
+          "build": 0.6488,
+          "change": 0.5982,
+          "search": 0.5868,
+          "learn": 0.5821
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.027537000001757406,
+        "keyword": 0.007818499994755257,
+        "cascade": 0.03540420000354061
+      }
+    },
+    {
+      "utterance": "删除所有本地构建产物",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7107,
+        "raw_score": 0.7107,
+        "margin": 0.1593,
+        "scores": {
+          "change": 0.7107,
+          "compress": 0.5514,
+          "route": 0.5279,
+          "recall": 0.5145
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7107,
+      "seconds": {
+        "embed": 0.024097399997117463,
+        "keyword": 0.0075886999984504655,
+        "cascade": 0.03284449999773642
+      }
+    },
+    {
+      "utterance": "Clear 全部 generated cache files",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7989,
+        "raw_score": 0.7989,
+        "margin": 0.1861,
+        "scores": {
+          "change": 0.7989,
+          "search": 0.6128,
+          "remember": 0.6068,
+          "compress": 0.5765
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7989,
+      "seconds": {
+        "embed": 0.025913199999195058,
+        "keyword": 0.007890999993833248,
+        "cascade": 0.03291919999901438
+      }
+    },
+    {
+      "utterance": "Remove all exported design files from the workspace",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6848,
+        "raw_score": 0.6848,
+        "margin": 0.0304,
+        "scores": {
+          "change": 0.6848,
+          "search": 0.6544,
+          "answer": 0.6254,
+          "diagnose": 0.6189
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6848,
+      "seconds": {
+        "embed": 0.026832200004719198,
+        "keyword": 0.007857800002966542,
+        "cascade": 0.035900999995647
+      }
+    },
+    {
+      "utterance": "Install the chosen Agent Skill and its dependencies",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "change",
+        "embed_first": "remember",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6544,
+        "raw_score": 0.6544,
+        "margin": 0.0138,
+        "scores": {
+          "remember": 0.6544,
+          "learn": 0.6406,
+          "answer": 0.5707,
+          "search": 0.5505
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.027201299999433104,
+        "keyword": 0.008276200002001133,
+        "cascade": 0.03652370000054361
+      }
+    },
+    {
+      "utterance": "把选中的表格 Skill 安装到这台电脑",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6261,
+        "raw_score": 0.6261,
+        "margin": 0.0246,
+        "scores": {
+          "search": 0.6261,
+          "change": 0.6015,
+          "build": 0.5668,
+          "diagnose": 0.5616
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.029713299998547882,
+        "keyword": 0.008077899998170324,
+        "cascade": 0.037384700000984594
+      }
+    },
+    {
+      "utterance": "Install 这个 browser Skill 到本机",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.5969,
+        "raw_score": 0.5969,
+        "margin": 0.0259,
+        "scores": {
+          "search": 0.5969,
+          "build": 0.571,
+          "recall": 0.5627,
+          "remember": 0.5512
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.02582240000629099,
+        "keyword": 0.006988500004808884,
+        "cascade": 0.03936890000477433
+      }
+    },
+    {
+      "utterance": "Add the selected Skill to the current host environment",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "change",
+        "embed_first": "route",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.6585,
+        "raw_score": 0.6585,
+        "margin": 0.0333,
+        "scores": {
+          "route": 0.6585,
+          "search": 0.6252,
+          "remember": 0.6219,
+          "recall": 0.6065
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.37,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.37,
+      "seconds": {
+        "embed": 0.02902880000328878,
+        "keyword": 0.009108799997193273,
+        "cascade": 0.03478960000211373
+      }
+    },
+    {
+      "utterance": "continue",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.2511,
+        "scores": {
+          "change": 1.0,
+          "answer": 0.7489,
+          "recall": 0.6009,
+          "remember": 0.5697
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 1.0,
+      "seconds": {
+        "embed": 0.02315909999742871,
+        "keyword": 0.010669000002963003,
+        "cascade": 0.03854440000577597
+      }
+    },
+    {
+      "utterance": "继续",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": true,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 1.0,
+        "raw_score": 1.0,
+        "margin": 0.247,
+        "scores": {
+          "change": 1.0,
+          "recall": 0.753,
+          "remember": 0.6003,
+          "answer": 0.5369
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.027980500002740882,
+        "keyword": 0.011402399999496993,
+        "cascade": 8.499999239575118e-06
+      }
+    },
+    {
+      "utterance": "go ahead",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6062,
+        "raw_score": 0.6062,
+        "margin": 0.0249,
+        "scores": {
+          "change": 0.6062,
+          "build": 0.5812,
+          "search": 0.5616,
+          "recall": 0.5371
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6062,
+      "seconds": {
+        "embed": 0.025742199999513105,
+        "keyword": 0.02236109999648761,
+        "cascade": 0.03902799999923445
+      }
+    },
+    {
+      "utterance": "okay",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": null
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.5697,
+        "raw_score": 0.5697,
+        "margin": 0.0123,
+        "scores": {
+          "change": 0.5697,
+          "remember": 0.5575,
+          "search": 0.5348,
+          "diagnose": 0.5275
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "invalid",
+      "cascade_confidence": 0.0,
+      "seconds": {
+        "embed": 0.030473999999230728,
+        "keyword": 0.015357599993876647,
+        "cascade": 1.5899997379165143e-05
+      }
+    },
+    {
+      "utterance": "Organize this for me",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "change",
+        "embed_first": "remember",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.7408,
+        "raw_score": 0.7408,
+        "margin": 0.0425,
+        "scores": {
+          "remember": 0.7408,
+          "diagnose": 0.6983,
+          "answer": 0.6948,
+          "search": 0.6896
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.03172130000166362,
+        "keyword": 0.010703499996452592,
+        "cascade": 0.04048550000152318
+      }
+    },
+    {
+      "utterance": "帮我整理一下这个",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "change",
+        "embed_first": "remember",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.7228,
+        "raw_score": 0.7228,
+        "margin": 0.0145,
+        "scores": {
+          "remember": 0.7228,
+          "compress": 0.7083,
+          "search": 0.6829,
+          "answer": 0.6809
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.03420149999874411,
+        "keyword": 0.01133049999771174,
+        "cascade": 0.040123699996911455
+      }
+    },
+    {
+      "utterance": "Clean this up 一下",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "change",
+        "embed_first": "remember",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.6948,
+        "raw_score": 0.6948,
+        "margin": 0.0084,
+        "scores": {
+          "remember": 0.6948,
+          "change": 0.6865,
+          "compress": 0.6741,
+          "search": 0.6606
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.02806360000249697,
+        "keyword": 0.011561100000108127,
+        "cascade": 0.03708159999951022
+      }
+    },
+    {
+      "utterance": "Put this into a better structure",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "change",
+        "embed_first": "answer",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6855,
+        "raw_score": 0.6855,
+        "margin": 0.0044,
+        "scores": {
+          "answer": 0.6855,
+          "compress": 0.6811,
+          "search": 0.6735,
+          "change": 0.6575
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.25,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.25,
+      "seconds": {
+        "embed": 0.025432000002183486,
+        "keyword": 0.013494299993908498,
+        "cascade": 0.03916960000060499
+      }
+    },
+    {
+      "utterance": "Replace the heading in contract.docx",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6908,
+        "raw_score": 0.6908,
+        "margin": 0.0277,
+        "scores": {
+          "change": 0.6908,
+          "answer": 0.6631,
+          "search": 0.6565,
+          "route": 0.6445
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6908,
+      "seconds": {
+        "embed": 0.029429000001982786,
+        "keyword": 0.008610400000179652,
+        "cascade": 0.03755879999516765
+      }
+    },
+    {
+      "utterance": "修改 lesson-plan.docx 的标题",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.5888,
+        "raw_score": 0.5888,
+        "margin": 0.0317,
+        "scores": {
+          "build": 0.5888,
+          "search": 0.5572,
+          "answer": 0.5551,
+          "remember": 0.5322
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.030064999999012798,
+        "keyword": 0.009892299996863585,
+        "cascade": 0.03581960000155959
+      }
+    },
+    {
+      "utterance": "Update proposal.docx 里的 executive summary",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "change",
+        "embed_first": "answer",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6568,
+        "raw_score": 0.6568,
+        "margin": 0.0173,
+        "scores": {
+          "answer": 0.6568,
+          "build": 0.6395,
+          "change": 0.5951,
+          "route": 0.5895
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.029192199996032286,
+        "keyword": 0.009088700004213024,
+        "cascade": 0.03861550000146963
+      }
+    },
+    {
+      "utterance": "Edit the first table in handbook.docx",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6685,
+        "raw_score": 0.6685,
+        "margin": 0.0134,
+        "scores": {
+          "search": 0.6685,
+          "change": 0.6551,
+          "answer": 0.6542,
+          "build": 0.6367
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.026153699996939395,
+        "keyword": 0.008534900000086054,
+        "cascade": 0.035262899997178465
+      }
+    },
+    {
+      "utterance": "Add a totals formula to budget.xlsx",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "change",
+        "embed_first": "route",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.5917,
+        "raw_score": 0.5917,
+        "margin": 0.008,
+        "scores": {
+          "route": 0.5917,
+          "remember": 0.5837,
+          "change": 0.5718,
+          "search": 0.5674
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.026344600002630614,
+        "keyword": 0.008144200000970159,
+        "cascade": 0.04138550000061514
+      }
+    },
+    {
+      "utterance": "整理 inventory.xlsx 的库存列",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.58,
+        "raw_score": 0.58,
+        "margin": 0.0387,
+        "scores": {
+          "search": 0.58,
+          "build": 0.5413,
+          "change": 0.5299,
+          "remember": 0.5278
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.02827439999964554,
+        "keyword": 0.007595399998535868,
+        "cascade": 0.036281599997892044
+      }
+    },
+    {
+      "utterance": "Update metrics.xlsx 里的 summary sheet",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6248,
+        "raw_score": 0.6248,
+        "margin": 0.0172,
+        "scores": {
+          "change": 0.6248,
+          "answer": 0.6076,
+          "compress": 0.5844,
+          "search": 0.5477
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6248,
+      "seconds": {
+        "embed": 0.028282499995839316,
+        "keyword": 0.009296500000345986,
+        "cascade": 0.04067860000213841
+      }
+    },
+    {
+      "utterance": "Sort the interview scores in candidates.xlsx",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.5922,
+        "raw_score": 0.5922,
+        "margin": 0.0068,
+        "scores": {
+          "search": 0.5922,
+          "change": 0.5854,
+          "answer": 0.5822,
+          "diagnose": 0.5801
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.02983749999839347,
+        "keyword": 0.008974299998953938,
+        "cascade": 0.03973260000202572
+      }
+    },
+    {
+      "utterance": "Research products and Skills that could improve this prompt translator",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6295,
+        "raw_score": 0.6295,
+        "margin": 0.002,
+        "scores": {
+          "search": 0.6295,
+          "route": 0.6275,
+          "answer": 0.6201,
+          "remember": 0.6121
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6295,
+      "seconds": {
+        "embed": 0.030874199997924734,
+        "keyword": 0.013945299993793014,
+        "cascade": 0.048896799999056384
+      }
+    },
+    {
+      "utterance": "调研已有 Skill 或产品怎么加强这个提示词翻译官",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6969,
+        "raw_score": 0.6969,
+        "margin": 0.0633,
+        "scores": {
+          "search": 0.6969,
+          "route": 0.6335,
+          "recall": 0.5652,
+          "change": 0.5322
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6969,
+      "seconds": {
+        "embed": 0.033767200002330355,
+        "keyword": 0.008680300001287833,
+        "cascade": 0.04121770000347169
+      }
+    },
+    {
+      "utterance": "Research GitHub 上能增强 prompt compiler 的现成方案",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "search",
+        "embed_first": "route",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.5681,
+        "raw_score": 0.5681,
+        "margin": 0.0015,
+        "scores": {
+          "route": 0.5681,
+          "compress": 0.5666,
+          "search": 0.5641,
+          "build": 0.5373
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.03199500000482658,
+        "keyword": 0.00905110000167042,
+        "cascade": 0.043874599999981
+      }
+    },
+    {
+      "utterance": "Find public prior art for prompt-to-agent intent compilers",
+      "expected_mode": "search",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "search",
+        "embed_first": "route",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.7341,
+        "raw_score": 0.7341,
+        "margin": 0.1155,
+        "scores": {
+          "route": 0.7341,
+          "search": 0.6186,
+          "build": 0.5977,
+          "answer": 0.5963
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.030721299997821916,
+        "keyword": 0.009260400001949165,
+        "cascade": 0.04281259999697795
+      }
+    },
+    {
+      "utterance": "Continue testing the current intent-translator product locally",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.626,
+        "raw_score": 0.626,
+        "margin": 0.0023,
+        "scores": {
+          "change": 0.626,
+          "search": 0.6237,
+          "build": 0.5913,
+          "answer": 0.5762
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.626,
+      "seconds": {
+        "embed": 0.03117049999855226,
+        "keyword": 0.010528700004215352,
+        "cascade": 0.04736959999718238
+      }
+    },
+    {
+      "utterance": "继续完成当前意图翻译产品的本地回归测试",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "change",
+        "embed_first": "recall",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.5739,
+        "raw_score": 0.5739,
+        "margin": 0.0232,
+        "scores": {
+          "recall": 0.5739,
+          "search": 0.5506,
+          "change": 0.5433,
+          "build": 0.52
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.032202299997152295,
+        "keyword": 0.009030000001075678,
+        "cascade": 0.04215919999842299
+      }
+    },
+    {
+      "utterance": "继续 current product 的 regression tests",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6496,
+        "raw_score": 0.6496,
+        "margin": 0.0381,
+        "scores": {
+          "change": 0.6496,
+          "search": 0.6116,
+          "recall": 0.5989,
+          "diagnose": 0.5817
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6496,
+      "seconds": {
+        "embed": 0.03033080000022892,
+        "keyword": 0.008006800002476666,
+        "cascade": 0.041727399999217596
+      }
+    },
+    {
+      "utterance": "Resume the unfinished local tests for this repository",
+      "expected_mode": "change",
+      "source": "benchmarks",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.7175,
+        "raw_score": 0.7175,
+        "margin": 0.0002,
+        "scores": {
+          "build": 0.7175,
+          "change": 0.7174,
+          "answer": 0.6375,
+          "search": 0.6364
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.030997100002423394,
+        "keyword": 0.009075199996004812,
+        "cascade": 0.04225430000224151
+      }
+    },
+    {
+      "utterance": "帮我把这个 Excel 里的重复行去掉",
+      "expected_mode": "change",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "answer",
+        "embed_first": "compress",
+        "cascade": "compress"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.7279,
+        "raw_score": 0.7279,
+        "margin": 0.0465,
+        "scores": {
+          "compress": 0.7279,
+          "search": 0.6814,
+          "change": 0.6711,
+          "route": 0.6536
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7279,
+      "seconds": {
+        "embed": 0.03064969999832101,
+        "keyword": 0.011070100001234096,
+        "cascade": 0.0403567999965162
+      }
+    },
+    {
+      "utterance": "瞅瞅这个网页写的啥",
+      "expected_mode": "answer",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "answer",
+        "embed_first": "answer",
+        "cascade": "answer"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.7596,
+        "raw_score": 0.7596,
+        "margin": 0.1273,
+        "scores": {
+          "answer": 0.7596,
+          "build": 0.6323,
+          "change": 0.5918,
+          "search": 0.5418
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7596,
+      "seconds": {
+        "embed": 0.02704049999738345,
+        "keyword": 0.0075992999991285615,
+        "cascade": 0.0353527999977814
+      }
+    },
+    {
+      "utterance": "这报错咋回事啊",
+      "expected_mode": "diagnose",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.9299,
+        "raw_score": 0.9299,
+        "margin": 0.0585,
+        "scores": {
+          "diagnose": 0.9299,
+          "answer": 0.8714,
+          "recall": 0.8351,
+          "search": 0.7791
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.9299,
+      "seconds": {
+        "embed": 0.0255713000005926,
+        "keyword": 0.008659099999931641,
+        "cascade": 0.036905799999658484
+      }
+    },
+    {
+      "utterance": "帮我整个自动发周报的脚本",
+      "expected_mode": "build",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "answer",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6922,
+        "raw_score": 0.6922,
+        "margin": 0.1206,
+        "scores": {
+          "build": 0.6922,
+          "change": 0.5717,
+          "compress": 0.5567,
+          "recall": 0.5322
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6922,
+      "seconds": {
+        "embed": 0.030389600004127715,
+        "keyword": 0.008740099998249207,
+        "cascade": 0.04062240000348538
+      }
+    },
+    {
+      "utterance": "上回让你记的那个网址发我下",
+      "expected_mode": "recall",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6539,
+        "raw_score": 0.6539,
+        "margin": 0.0393,
+        "scores": {
+          "change": 0.6539,
+          "recall": 0.6146,
+          "remember": 0.596,
+          "build": 0.591
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6539,
+      "seconds": {
+        "embed": 0.030256900005042553,
+        "keyword": 0.010893700004089624,
+        "cascade": 0.046711899994988926
+      }
+    },
+    {
+      "utterance": "帮我把这几篇公众号文章合成一篇",
+      "expected_mode": "compress",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "answer",
+        "embed_first": "compress",
+        "cascade": "compress"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.8171,
+        "raw_score": 0.8171,
+        "margin": 0.136,
+        "scores": {
+          "compress": 0.8171,
+          "change": 0.6812,
+          "answer": 0.6792,
+          "learn": 0.6333
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.8171,
+      "seconds": {
+        "embed": 0.03385780000098748,
+        "keyword": 0.00917749999644002,
+        "cascade": 0.040624599998409394
+      }
+    },
+    {
+      "utterance": "梳理一下这个需求怎么拆任务",
+      "expected_mode": "route",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "answer",
+        "embed_first": "route",
+        "cascade": "route"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.8331,
+        "raw_score": 0.8331,
+        "margin": 0.2391,
+        "scores": {
+          "route": 0.8331,
+          "search": 0.594,
+          "change": 0.5735,
+          "remember": 0.5631
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.8331,
+      "seconds": {
+        "embed": 0.03122649999568239,
+        "keyword": 0.009234199998900294,
+        "cascade": 0.03603319999820087
+      }
+    },
+    {
+      "utterance": "背单词有什么好方法教教我",
+      "expected_mode": "learn",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "answer",
+        "embed_first": "learn",
+        "cascade": "learn"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.5422,
+        "raw_score": 0.5422,
+        "margin": 0.0957,
+        "scores": {
+          "learn": 0.5422,
+          "recall": 0.4465,
+          "remember": 0.4274,
+          "answer": 0.4239
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.5422,
+      "seconds": {
+        "embed": 0.030120400006126147,
+        "keyword": 0.00922520000312943,
+        "cascade": 0.03798199999437202
+      }
+    },
+    {
+      "utterance": "把这个记下来：周五交版",
+      "expected_mode": "remember",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "remember",
+        "embed_argmax": "remember",
+        "keyword": "answer",
+        "embed_first": "remember",
+        "cascade": "remember"
+      },
+      "embedding": {
+        "mode": "remember",
+        "accepted": true,
+        "confidence": 0.7088,
+        "raw_score": 0.7088,
+        "margin": 0.0508,
+        "scores": {
+          "remember": 0.7088,
+          "change": 0.658,
+          "learn": 0.5943,
+          "compress": 0.5681
+        },
+        "description": "Save this for later; store a preference or fact"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7088,
+      "seconds": {
+        "embed": 0.030699700000695884,
+        "keyword": 0.00826260000030743,
+        "cascade": 0.03662780000013299
+      }
+    },
+    {
+      "utterance": "查查这家公司靠不靠谱",
+      "expected_mode": "search",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "answer",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7261,
+        "raw_score": 0.7261,
+        "margin": 0.1632,
+        "scores": {
+          "search": 0.7261,
+          "diagnose": 0.563,
+          "build": 0.5241,
+          "answer": 0.509
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7261,
+      "seconds": {
+        "embed": 0.03090669999801321,
+        "keyword": 0.008907299998099916,
+        "cascade": 0.04017039999598637
+      }
+    },
+    {
+      "utterance": "把这个函数的性能优化一下",
+      "expected_mode": "change",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6908,
+        "raw_score": 0.6908,
+        "margin": 0.0597,
+        "scores": {
+          "change": 0.6908,
+          "remember": 0.6311,
+          "answer": 0.6254,
+          "build": 0.6222
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6908,
+      "seconds": {
+        "embed": 0.0311096000004909,
+        "keyword": 0.007956200002809055,
+        "cascade": 0.038354999996954575
+      }
+    },
+    {
+      "utterance": "这个报错堆栈说明啥",
+      "expected_mode": "answer",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "diagnose",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7789,
+        "raw_score": 0.7789,
+        "margin": 0.0173,
+        "scores": {
+          "diagnose": 0.7789,
+          "answer": 0.7616,
+          "search": 0.747,
+          "recall": 0.7365
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.7789,
+      "seconds": {
+        "embed": 0.028708099998766556,
+        "keyword": 0.008638999999675434,
+        "cascade": 0.034104099999240134
+      }
+    },
+    {
+      "utterance": "why is my docker container exiting immediately",
+      "expected_mode": "diagnose",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "answer",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.6646,
+        "raw_score": 0.6646,
+        "margin": 0.0087,
+        "scores": {
+          "diagnose": 0.6646,
+          "answer": 0.6559,
+          "recall": 0.6086,
+          "remember": 0.5957
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6646,
+      "seconds": {
+        "embed": 0.03212799999892013,
+        "keyword": 0.010789799998747185,
+        "cascade": 0.039315599999099504
+      }
+    },
+    {
+      "utterance": "summarize this PR diff in a few bullets",
+      "expected_mode": "compress",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "answer",
+        "embed_first": "compress",
+        "cascade": "compress"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.8507,
+        "raw_score": 0.8507,
+        "margin": 0.1645,
+        "scores": {
+          "compress": 0.8507,
+          "answer": 0.6862,
+          "change": 0.6351,
+          "build": 0.5949
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.8507,
+      "seconds": {
+        "embed": 0.02823060000082478,
+        "keyword": 0.009232000003976282,
+        "cascade": 0.03995170000416692
+      }
+    },
+    {
+      "utterance": "帮我看看服务器日志有没有异常",
+      "expected_mode": "diagnose",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "diagnose",
+        "embed_argmax": "diagnose",
+        "keyword": "answer",
+        "embed_first": "diagnose",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "diagnose",
+        "accepted": true,
+        "confidence": 0.7159,
+        "raw_score": 0.7159,
+        "margin": 0.1112,
+        "scores": {
+          "diagnose": 0.7159,
+          "change": 0.6047,
+          "answer": 0.5771,
+          "recall": 0.5582
+        },
+        "description": "Investigate why something failed or behaves unexpectedly"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7159,
+      "seconds": {
+        "embed": 0.030065400002058595,
+        "keyword": 0.008894899998267647,
+        "cascade": 0.04198010000254726
+      }
+    },
+    {
+      "utterance": "给我出十道 Python 面试题练练",
+      "expected_mode": "learn",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "answer",
+        "embed_first": "learn",
+        "cascade": "learn"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.6338,
+        "raw_score": 0.6338,
+        "margin": 0.088,
+        "scores": {
+          "learn": 0.6338,
+          "change": 0.5459,
+          "search": 0.5074,
+          "build": 0.4934
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6338,
+      "seconds": {
+        "embed": 0.030057600000873208,
+        "keyword": 0.009516600002825726,
+        "cascade": 0.04044439999415772
+      }
+    },
+    {
+      "utterance": "把我的密码管理习惯存一下",
+      "expected_mode": "remember",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "answer",
+        "embed_first": "recall",
+        "cascade": "recall"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.7303,
+        "raw_score": 0.7303,
+        "margin": 0.0803,
+        "scores": {
+          "recall": 0.7303,
+          "remember": 0.65,
+          "change": 0.5947,
+          "search": 0.5869
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7303,
+      "seconds": {
+        "embed": 0.02872880000359146,
+        "keyword": 0.009221699998306576,
+        "cascade": 0.03573830000095768
+      }
+    },
+    {
+      "utterance": "find me alternatives to postman for api testing",
+      "expected_mode": "search",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "change",
+        "embed_first": "search",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.6981,
+        "raw_score": 0.6981,
+        "margin": 0.0212,
+        "scores": {
+          "search": 0.6981,
+          "change": 0.6769,
+          "route": 0.6258,
+          "diagnose": 0.6179
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.03108510000311071,
+        "keyword": 0.011252000003878493,
+        "cascade": 0.04168490000301972
+      }
+    },
+    {
+      "utterance": "帮我把这个大 PDF 拆成小文件",
+      "expected_mode": "change",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6691,
+        "raw_score": 0.6691,
+        "margin": 0.0117,
+        "scores": {
+          "change": 0.6691,
+          "route": 0.6575,
+          "search": 0.6418,
+          "answer": 0.6352
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6691,
+      "seconds": {
+        "embed": 0.03456939999887254,
+        "keyword": 0.009309499997470994,
+        "cascade": 0.03600100000039674
+      }
+    },
+    {
+      "utterance": "上次那个部署方案后来定了吗",
+      "expected_mode": "recall",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "recall",
+        "embed_argmax": "recall",
+        "keyword": "answer",
+        "embed_first": "recall",
+        "cascade": "recall"
+      },
+      "embedding": {
+        "mode": "recall",
+        "accepted": true,
+        "confidence": 0.8041,
+        "raw_score": 0.8041,
+        "margin": 0.1119,
+        "scores": {
+          "recall": 0.8041,
+          "diagnose": 0.6922,
+          "change": 0.638,
+          "answer": 0.6265
+        },
+        "description": "Retrieve something previously stored or discussed"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.8041,
+      "seconds": {
+        "embed": 0.029442099999869242,
+        "keyword": 0.008849800004099961,
+        "cascade": 0.0364320000007865
+      }
+    },
+    {
+      "utterance": "帮这个开源项目写个像样的 README",
+      "expected_mode": "build",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "answer",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.7053,
+        "raw_score": 0.7053,
+        "margin": 0.021,
+        "scores": {
+          "search": 0.7053,
+          "build": 0.6843,
+          "remember": 0.6265,
+          "route": 0.616
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7053,
+      "seconds": {
+        "embed": 0.030295299999124836,
+        "keyword": 0.009852900002442766,
+        "cascade": 0.037786599998071324
+      }
+    },
+    {
+      "utterance": "把这段访谈录音的要点整理出来",
+      "expected_mode": "compress",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "compress",
+        "embed_argmax": "compress",
+        "keyword": "change",
+        "embed_first": "compress",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "compress",
+        "accepted": true,
+        "confidence": 0.7393,
+        "raw_score": 0.7393,
+        "margin": 0.1038,
+        "scores": {
+          "compress": 0.7393,
+          "recall": 0.6354,
+          "remember": 0.6169,
+          "answer": 0.6136
+        },
+        "description": "Shorten, merge, clean or deduplicate existing content"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.029101399995852262,
+        "keyword": 0.00823330000275746,
+        "cascade": 0.03731800000241492
+      }
+    },
+    {
+      "utterance": "这个任务先做哪个后做哪个",
+      "expected_mode": "route",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "route",
+        "embed_argmax": "route",
+        "keyword": "answer",
+        "embed_first": "route",
+        "cascade": "route"
+      },
+      "embedding": {
+        "mode": "route",
+        "accepted": true,
+        "confidence": 0.7716,
+        "raw_score": 0.7716,
+        "margin": 0.168,
+        "scores": {
+          "route": 0.7716,
+          "recall": 0.6036,
+          "change": 0.5666,
+          "diagnose": 0.5291
+        },
+        "description": "Plan, orchestrate, hand off, or convert into instructions for another agent"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7716,
+      "seconds": {
+        "embed": 0.03196349999780068,
+        "keyword": 0.008766500002820976,
+        "cascade": 0.03860270000586752
+      }
+    },
+    {
+      "utterance": "递归和迭代到底啥区别",
+      "expected_mode": "learn",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "learn",
+        "embed_argmax": "learn",
+        "keyword": "answer",
+        "embed_first": "learn",
+        "cascade": "learn"
+      },
+      "embedding": {
+        "mode": "learn",
+        "accepted": true,
+        "confidence": 0.7078,
+        "raw_score": 0.7078,
+        "margin": 0.2228,
+        "scores": {
+          "learn": 0.7078,
+          "compress": 0.4849,
+          "answer": 0.4753,
+          "search": 0.4635
+        },
+        "description": "Teach me, help me study or practice"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7078,
+      "seconds": {
+        "embed": 0.03112840000540018,
+        "keyword": 0.010487500003364403,
+        "cascade": 0.038966600004641805
+      }
+    },
+    {
+      "utterance": "看看这个 PR 改了哪些地方",
+      "expected_mode": "answer",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "change",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6131,
+        "raw_score": 0.6131,
+        "margin": 0.0102,
+        "scores": {
+          "change": 0.6131,
+          "build": 0.6029,
+          "search": 0.6022,
+          "diagnose": 0.5927
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6131,
+      "seconds": {
+        "embed": 0.029392699994787108,
+        "keyword": 0.009358399998745881,
+        "cascade": 0.037718400002631824
+      }
+    },
+    {
+      "utterance": "帮我装一下 ffmpeg",
+      "expected_mode": "change",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "answer",
+        "embed_first": "change",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.6881,
+        "raw_score": 0.6881,
+        "margin": 0.0432,
+        "scores": {
+          "change": 0.6881,
+          "search": 0.6449,
+          "compress": 0.6256,
+          "learn": 0.6034
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.6881,
+      "seconds": {
+        "embed": 0.028499899999587797,
+        "keyword": 0.009379800001624972,
+        "cascade": 0.03706780000356957
+      }
+    },
+    {
+      "utterance": "帮我研究下哪个云服务商性价比高",
+      "expected_mode": "search",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "search",
+        "embed_argmax": "search",
+        "keyword": "search",
+        "embed_first": "search",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "search",
+        "accepted": true,
+        "confidence": 0.501,
+        "raw_score": 0.501,
+        "margin": 0.0177,
+        "scores": {
+          "search": 0.501,
+          "diagnose": 0.4832,
+          "route": 0.4824,
+          "change": 0.4683
+        },
+        "description": "Find or research something out in the world / web / registry"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.0315411999981734,
+        "keyword": 0.009245500004908536,
+        "cascade": 0.0378264000028139
+      }
+    },
+    {
+      "utterance": "帮我写个爬虫抓豆瓣评分",
+      "expected_mode": "build",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "answer",
+        "embed_first": "build",
+        "cascade": "build"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.7261,
+        "raw_score": 0.7261,
+        "margin": 0.1726,
+        "scores": {
+          "build": 0.7261,
+          "recall": 0.5535,
+          "compress": 0.5253,
+          "learn": 0.5104
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "embed-rescue",
+      "cascade_confidence": 0.7261,
+      "seconds": {
+        "embed": 0.027484300000651274,
+        "keyword": 0.01139089999924181,
+        "cascade": 0.040783700002066325
+      }
+    },
+    {
+      "utterance": "查一下我上个月记的笔记里有没有提过这个",
+      "expected_mode": "recall",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "change",
+        "embed_argmax": "change",
+        "keyword": "search",
+        "embed_first": "change",
+        "cascade": "search"
+      },
+      "embedding": {
+        "mode": "change",
+        "accepted": true,
+        "confidence": 0.7066,
+        "raw_score": 0.7066,
+        "margin": 0.0649,
+        "scores": {
+          "change": 0.7066,
+          "search": 0.6417,
+          "recall": 0.637,
+          "remember": 0.5997
+        },
+        "description": "Modify, fix, install, move, delete or run something that exists"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.035165799999958836,
+        "keyword": 0.008825500000966713,
+        "cascade": 0.04273210000246763
+      }
+    },
+    {
+      "utterance": "把这段英文文档讲的核心思想用中文给我讲明白",
+      "expected_mode": "learn",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "answer",
+        "embed_first": "answer",
+        "cascade": "answer"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.6509,
+        "raw_score": 0.6509,
+        "margin": 0.0583,
+        "scores": {
+          "answer": 0.6509,
+          "compress": 0.5926,
+          "remember": 0.5914,
+          "learn": 0.5806
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "agree",
+      "cascade_confidence": 0.6509,
+      "seconds": {
+        "embed": 0.0332289999932982,
+        "keyword": 0.010148599998501595,
+        "cascade": 0.04608169999846723
+      }
+    },
+    {
+      "utterance": "帮我把照片批量改成 800 像素宽",
+      "expected_mode": "change",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "build",
+        "embed_argmax": "build",
+        "keyword": "change",
+        "embed_first": "build",
+        "cascade": "change"
+      },
+      "embedding": {
+        "mode": "build",
+        "accepted": true,
+        "confidence": 0.6656,
+        "raw_score": 0.6656,
+        "margin": 0.0735,
+        "scores": {
+          "build": 0.6656,
+          "change": 0.5921,
+          "remember": 0.5587,
+          "compress": 0.5343
+        },
+        "description": "Create something new: code, project, page, tool"
+      },
+      "keyword_confidence": 0.55,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.55,
+      "seconds": {
+        "embed": 0.03954649999650428,
+        "keyword": 0.008859000001393724,
+        "cascade": 0.0396621000036248
+      }
+    },
+    {
+      "utterance": "帮我把这两个方案的差异列出来",
+      "expected_mode": "answer",
+      "source": "fresh-20260918",
+      "anchor_overlap": false,
+      "predictions": {
+        "embed": "answer",
+        "embed_argmax": "answer",
+        "keyword": "diagnose",
+        "embed_first": "answer",
+        "cascade": "diagnose"
+      },
+      "embedding": {
+        "mode": "answer",
+        "accepted": true,
+        "confidence": 0.7034,
+        "raw_score": 0.7034,
+        "margin": 0.0436,
+        "scores": {
+          "answer": 0.7034,
+          "search": 0.6597,
+          "route": 0.639,
+          "learn": 0.6317
+        },
+        "description": "Explain, summarize, read or look at something; no state change"
+      },
+      "keyword_confidence": 0.5,
+      "cascade_decider": "kw-escalate",
+      "cascade_confidence": 0.5,
+      "seconds": {
+        "embed": 0.02766150000388734,
+        "keyword": 0.011881300000823103,
+        "cascade": 0.04724359999818262
+      }
+    }
+  ],
+  "data_quality": {
+    "rows": 164,
+    "unique_utterances": 129,
+    "anchor_overlap_rows": 8,
+    "sources": {
+      "benchmarks": 132,
+      "fresh-20260918": 32
+    },
+    "limitation": "Development evaluation with repeats and anchor overlaps; no held-out claim."
+  },
+  "timing_note": "Initialization separate; cascade re-encodes each query; CPU threads=1; batch size recorded in provenance."
+}

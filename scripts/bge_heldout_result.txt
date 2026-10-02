@@ -1,0 +1,2 @@
+BGE cascade held-out: 122/204 = 59.8%
+fails by constraint: {"plain": 70, "no-egress": 1, "no-share": 1, "read-only": 2, "plain-bracket": 5, "invalid": 1, "continuation": 2}
